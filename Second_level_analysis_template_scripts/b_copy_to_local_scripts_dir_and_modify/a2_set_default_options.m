@@ -8,12 +8,12 @@
 % --------------------------------------------------------------------
 dofullplot = true;         % default true  Can set to false to save time
 omit_histograms = false;     % default false Histograms not useful for large samples 
-dozipimages = true;        % default true  Set to false to avoid load on data upload/download when re-running often
+dozipimages = false;        % default true  Set to false to avoid load on data upload/download when re-running often
 
 % prep_3a_run_second_level_regression_and_save options 
 % --------------------------------------------------------------------
 dorobust = true;            % robust statistics [true, false] -- default true
-myscaling = 'raw';          % 'raw' or 'scaled'
+myscaling = 'scaled';          % 'raw' or 'scaled'; @lukasvo76: changed the default here, since I want to use z-scored images, and I will set up z-scoring using fmri_data.rescale in prep_2_load_image_data_and_save.m
 design_matrix_type = 'custom';   % 'group' or 'custom'
                             % Group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group;
                             % Custom: use all columns of table object DAT.BETWEENPERSON.contrasts{c};
@@ -36,7 +36,7 @@ maskname = which('gray_matter_mask.img');
 
 % prep_4_apply_signatures_and_save options 
 % --------------------------------------------------------------------
-use_scaled_images = false;
+use_scaled_images = true; % @lukasvo76: changed the default here, since I want to use z-scored images - see above
 
 % z_batch_publish_everything, z_batch_publish_analyses options 
 % --------------------------------------------------------------------
