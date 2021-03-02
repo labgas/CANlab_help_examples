@@ -4,12 +4,11 @@
 % long as the contrast weights are zero for all elements with
 % different numbers of images.
 
-% @lukasvo76: added z-scoring of contrast images (in addition to contrasting
-% z-scored condition images from prep_2) to test their performance with
-% @bogpetre
+% @lukasvo76: added l2norm-rescaling of contrast images (in addition to contrasting
+% z-scored condition images from prep_2)
 
 
-%% Create raw and z-scored contrast images from raw condition images
+%% Create raw and l2norm-rescaled contrast images from raw condition images
 % -------------------------------------------------------------------------
 if ~isfield(DAT, 'contrasts') || isempty(DAT.contrasts)
     % skip
@@ -73,7 +72,7 @@ for c = 1:size(DAT.contrasts, 1)
     DATA_OBJ_CON{c}.source_notes = DAT.contrastnames;
     
     % Z-score contrast images - added by @lukasvo76 01/03/21
-    DATA_OBJ_CONscc{c} = rescale(DATA_OBJ_CON{c}, 'zscoreimages');
+    DATA_OBJ_CONscc{c} = rescale(DATA_OBJ_CON{c}, 'l2norm_images');
     
     % Enforce variable types in objects to save space
     DATA_OBJ_CON{c} = enforce_variable_types(DATA_OBJ_CON{c}); 
@@ -97,7 +96,7 @@ for c = 1:size(DAT.contrasts, 1)
         if ~omit_histograms
             
             hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'singleaxis');
-            title([DAT.contrastnames{c} ' histograms for each z-scored contrast image']);
+            title([DAT.contrastnames{c} ' histograms for each raw contrast image']);
             drawnow; snapnow
             
             hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'by_tissue_type');
@@ -108,13 +107,13 @@ for c = 1:size(DAT.contrasts, 1)
     end
     
     % for z-scored contrast images
-    fprintf('%s\nQC metrics for z-scored contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+    fprintf('%s\nQC metrics for l2norm-rescaled contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
     
     [group_metrics individual_metrics gwcsf gwcsfmean] = qc_metrics_second_level(DATA_OBJ_CONscc{c});
     drawnow; snapnow
     
     if dofullplot
-        fprintf('%s\nPlot of z-scored contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+        fprintf('%s\nPlot of l2norm-rescaled contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
         disp(DATA_OBJ_CONscc{c}.fullpath)
         
         plot(DATA_OBJ_CONscc{c}); drawnow; snapnow
@@ -122,7 +121,7 @@ for c = 1:size(DAT.contrasts, 1)
         if ~omit_histograms
             
             hist_han = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'singleaxis');
-            title([DAT.contrastnames{c} ' histograms for each raw contrast image']);
+            title([DAT.contrastnames{c} ' histograms for each l2norm-rescaled contrast image']);
             drawnow; snapnow
             
             hist_han = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'by_tissue_type');
