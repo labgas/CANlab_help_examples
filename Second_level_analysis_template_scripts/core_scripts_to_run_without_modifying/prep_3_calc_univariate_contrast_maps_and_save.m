@@ -4,15 +4,13 @@
 % long as the contrast weights are zero for all elements with
 % different numbers of images.
 
-% Now set in a2_set_default_options
-if ~exist('omit_histograms', 'var')
-    a2_set_default_options;
-end
+% @lukasvo76: added z-scoring of contrast images (in addition to contrasting
+% z-scored condition images from prep_2) to test their performance with
+% @bogpetre
 
-% omit_histograms = true;
 
-% Create contrast images
-% ------------------------------------------------------------------------
+%% Create raw and z-scored contrast images from raw condition images
+% -------------------------------------------------------------------------
 if ~isfield(DAT, 'contrasts') || isempty(DAT.contrasts)
     % skip
     return
@@ -74,29 +72,69 @@ for c = 1:size(DAT.contrasts, 1)
     DATA_OBJ_CON{c}.image_names = DAT.contrastnames;
     DATA_OBJ_CON{c}.source_notes = DAT.contrastnames;
     
+    % Z-score contrast images - added by @lukasvo76 01/03/21
+    DATA_OBJ_CONscc{c} = rescale(DATA_OBJ_CON{c}, 'zscoreimages');
+    
     % Enforce variable types in objects to save space
     DATA_OBJ_CON{c} = enforce_variable_types(DATA_OBJ_CON{c}); 
+    DATA_OBJ_CONscc{c} = enforce_variable_types(DATA_OBJ_CONscc{c}); 
     
     % QUALITY CONTROL METRICS
     % ------------------------------------------------------------------------
     
-    fprintf('%s\nQC plots for contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+    % for raw contrast images
+    fprintf('%s\nQC metrics for raw contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
     
     [group_metrics individual_metrics gwcsf gwcsfmean] = qc_metrics_second_level(DATA_OBJ_CON{c});
     drawnow; snapnow
     
-    if ~omit_histograms
+    if dofullplot
+        fprintf('%s\nPlot of raw contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+        disp(DATA_OBJ_CON{c}.fullpath)
         
-        figure;
-        hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'by_tissue_type');
-        drawnow; snapnow
-        close, close
+        plot(DATA_OBJ_CON{c}); drawnow; snapnow
+        
+        if ~omit_histograms
+            
+            hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'singleaxis');
+            title([DAT.contrastnames{c} ' histograms for each z-scored contrast image']);
+            drawnow; snapnow
+            
+            hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'by_tissue_type');
+            drawnow; snapnow
+            
+        end
+        
+    end
+    
+    % for z-scored contrast images
+    fprintf('%s\nQC metrics for z-scored contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+    
+    [group_metrics individual_metrics gwcsf gwcsfmean] = qc_metrics_second_level(DATA_OBJ_CONscc{c});
+    drawnow; snapnow
+    
+    if dofullplot
+        fprintf('%s\nPlot of z-scored contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+        disp(DATA_OBJ_CONscc{c}.fullpath)
+        
+        plot(DATA_OBJ_CONscc{c}); drawnow; snapnow
+        
+        if ~omit_histograms
+            
+            hist_han = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'singleaxis');
+            title([DAT.contrastnames{c} ' histograms for each raw contrast image']);
+            drawnow; snapnow
+            
+            hist_han = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'by_tissue_type');
+            drawnow; snapnow
+            
+        end
         
     end
     
 end
 
-%% Same, for CSF-adjusted images
+%% Create contrast images from z-scored condition images
 % -------------------------------------------------------------------------
 
 for i = 1:k
@@ -134,7 +172,7 @@ for c = 1:size(DAT.contrasts, 1)
         end
         
         if size(condat, 2) ~= my_size
-            fprintf('Condition %3.0f : number of images does not match. Check DATA_OBJ images and contrasts.', i);
+            fprintf('Condition %3.0f : number of images does not match. Check DATA_OBJsc images and contrasts.', i);
             error('exiting.')
         end
         
@@ -153,34 +191,46 @@ for c = 1:size(DAT.contrasts, 1)
     % QUALITY CONTROL METRICS
     % ------------------------------------------------------------------------
     
-    fprintf('%s\nQC plots for CSF-scaled data, contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+    fprintf('%s\nQC metrics for contrast (from z-scored condition images): %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
     
     [group_metrics individual_metrics gwcsf gwcsfmean] = qc_metrics_second_level(DATA_OBJ_CONsc{c});
     drawnow; snapnow
     
-    if ~omit_histograms
+    if dofullplot
+        fprintf('%s\nPlot of contrast (from z-scored condition images): %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+        disp(DATA_OBJ_CONsc{c}.fullpath)
         
-        figure
-        hist_han = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'by_tissue_type');
-        drawnow; snapnow
-        close, close
+        plot(DATA_OBJ_CONsc{c}); drawnow; snapnow
+        
+        if ~omit_histograms
+            
+            hist_han = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'singleaxis');
+            title([DAT.contrastnames{c} ' histograms for each contrast image (from z-scored condition images)']);
+            drawnow; snapnow
+            
+            hist_han = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'by_tissue_type');
+            drawnow; snapnow
+            
+        end
         
     end
     
 end
 
+
 %% Save results
 % ------------------------------------------------------------------------
 
-savefilenamedata = fullfile(resultsdir, 'contrast_data_objects.mat');   % both scaled and unscaled
+savefilenamedata = fullfile(resultsdir, 'contrast_data_objects.mat');   % both unscaled and two versions of scaled
 save(savefilenamedata, 'DATA_OBJ_CON*', '-v7.3');                       % Note: 6/7/17 Tor switched to -v7.3 format by default 
 
 % For publish output
 disp(basedir)
 fprintf('Saved results%sDATA_OBJ_CON\n', filesep);
 
+
 %% Get contrasts in global gray, white, CSF values
-% ------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 DAT.gray_white_csf_contrasts = {};
 
@@ -206,6 +256,7 @@ for c = 1:size(DAT.contrasts, 1)
     end
     
 end
+
 
 %% Save results
 % ------------------------------------------------------------------------
