@@ -9,7 +9,7 @@
 % @bogpetre
 
 
-%% Create raw and l2normed contrast images from raw condition images
+%% Create raw and z-scored contrast images from raw condition images
 % -------------------------------------------------------------------------
 if ~isfield(DAT, 'contrasts') || isempty(DAT.contrasts)
     % skip
@@ -72,8 +72,8 @@ for c = 1:size(DAT.contrasts, 1)
     DATA_OBJ_CON{c}.image_names = DAT.contrastnames;
     DATA_OBJ_CON{c}.source_notes = DAT.contrastnames;
     
-    % l2norm contrast images - added by @lukasvo76 01/03/21
-    DATA_OBJ_CONscc{c} = rescale(DATA_OBJ_CON{c}, 'l2norm_images');
+    % Z-score contrast images - added by @lukasvo76 01/03/21
+    DATA_OBJ_CONscc{c} = rescale(DATA_OBJ_CON{c}, 'zscoreimages');
     
     % Enforce variable types in objects to save space
     DATA_OBJ_CON{c} = enforce_variable_types(DATA_OBJ_CON{c}); 
