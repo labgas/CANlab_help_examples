@@ -37,18 +37,26 @@
 % (3) Checks again and uses the default options if they are still missing
 % (e.g., not specified in an older/incomplete copy of a2_set_default_options)
 
+%% Settings
+%--------------------------------------------------------------------------
+
 % Now set in a2_set_default_options
-options_needed = {'dorobust', 'myscaling', 'design_matrix_type'};  % Options we are looking for. Set in a2_set_default_options
+options_needed = {'dorobust', 'myscaling', 'design_matrix_type'}; % options we are looking for. Set in a2_set_default_options % @lukasvo76: or in study-specific version of that script
 options_exist = cellfun(@exist, options_needed); 
 
-option_default_values = {false, 'raw', 'group'};          % defaults if we cannot find info in a2_set_default_options at all 
+option_default_values = {true, 'raw', 'group'}; % defaults if we cannot find info in a2_set_default_options at all ; @lukasvo76: changed the defaults to align with a2_emosymp_m1_s1_set_default_options
 
 plugin_get_options_for_analysis_script
 
+% define masks to be applied & choose mask
+gray_matter_mask = which('gray_matter_mask.img');
+neurosynth_emo_mask = 'C:\Users\lukas\Dropbox (Dartmouth College)\fMRI_emotion_Giao\Masks\EmoMeta_mask_Binair.nii';
+my_mask = gray_matter_mask; % @lukasvo76: change to [] if you don't want to apply a mask at this stage
 
 
-%% Check for required DAT fields. Skip analysis and print warnings if missing.
-% ---------------------------------------------------------------------
+%% Check for required DAT fields
+% -------------------------------------------------------------------------
+
 % List required fields in DAT, in cell array:
 required_fields = {'BETWEENPERSON', 'contrastnames', 'contrasts' 'contrastcolors'};
 
@@ -57,24 +65,19 @@ if ~ok_to_run
     return
 end
 
-% Initialize fmridisplay slice display if needed, or clear existing display
-% --------------------------------------------------------------------
+
+%% Initialize fmridisplay slice display if needed, or clear existing display
+% -------------------------------------------------------------------------
 
 % Specify which montage to add title to. This is fixed for a given slice display
 % whmontage = 5; 
 % plugin_check_or_create_slice_display; % script, checks for o2 and uses whmontage
 
-% --------------------------------------------------------------------
 
+%% Run between-person Second-level regression for each contrast
+% -------------------------------------------------------------------------
 
 printhdr('Second-level regressions discriminate between-person contrasts');
-
-
-% --------------------------------------------------------------------
-%
-% Run between-person Second-level regression for each contrast
-%
-% --------------------------------------------------------------------
 
 kc = size(DAT.contrasts, 1);
 
@@ -83,7 +86,7 @@ regression_stats_results = cell(1, kc);
 for c = 1:kc
     
     % Get design matrix for this contrast
-    % --------------------------------------------------------------------
+    % ---------------------------------------------------------------------
     
     mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
     
@@ -99,8 +102,10 @@ for c = 1:kc
         case 'group'
             
             % Use 'groups' single regressor
-            [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, c);
-            X = group;
+            [group,~,~] = plugin_get_group_names_colors(DAT, mygroupnamefield, c);
+            groupnames = DAT.BETWEENPERSON.contrasts{c}.Properties.VariableNames;
+            X = group (:,1); % lukasvo76: changed to only select first column (group identifier) to fit the case where we have added covariates in prep_1b but do not want to include them in our design matrix - which is the purpose of the "group" option in the first place!
+            groupnames = groupnames(1); % lukasvo76: ditto for groupnames
             
             if isempty(group)
                 fprintf('Group not defined for contrast %s. Skipping.\n', DAT.contrastnames{c});
@@ -117,16 +122,22 @@ for c = 1:kc
     wh = find(mycontrast);
     
     % Select data for this contrast
-    % --------------------------------------------------------------------
+    % ---------------------------------------------------------------------
     
     switch myscaling
         case 'raw'
-            printstr('Raw (unscaled) images used in between-person SVM');
+            printstr('Raw (unscaled) images used in between-person GLM');
             cat_obj = DATA_OBJ_CON{c};
+            if ~isempty(my_mask)
+                cat_obj = apply_mask(cat_obj,my_mask);
+            end
             
         case 'scaled'
-            printstr('Scaled images used in between-person SVM');
-            cat_obj = DATA_OBJ_CON{c};
+            printstr('Scaled images used in between-person GLM');
+            cat_obj = DATA_OBJ_CONsc{c};
+            if ~isempty(my_mask)
+                cat_obj = apply_mask(cat_obj,my_mask);
+            end
             
         otherwise
             error('myscaling must be ''raw'' or ''scaled''');
@@ -134,8 +145,8 @@ for c = 1:kc
     
   
     
-    % a. Format and attach outcomes: 1, -1 group variable FOR NOW
-    % --------------------------------------------------------------------
+    % Format and attach outcomes: 1, -1 group variable FOR NOW
+    % ---------------------------------------------------------------------
     
     % Confirm design_matrix is 1, -1, or mean-centered
     meancentered = ~(abs(mean(X)) > 1000 * eps);
@@ -178,18 +189,18 @@ for c = 1:kc
     cat_obj.X = X;
     
     % Skip if necessary
-    % --------------------------------------------------------------------
-%     
-%     if all(cat_obj.X > 0) || all(cat_obj.X < 0)
-%         % Only positive or negative weights - nothing to compare
-%         
-%         printhdr(' Only positive or negative regressor values - bad design');
-%         
-%         continue
-%     end
+    % ---------------------------------------------------------------------
+    
+    if all(cat_obj.X > 0) || all(cat_obj.X < 0)
+        % Only positive or negative weights - nothing to compare
+        
+        printhdr(' Only positive or negative regressor values - bad design');
+        
+        continue
+    end
     
     % Run voxel-wise regression model
-    % --------------------------------------------------------------------
+    % ---------------------------------------------------------------------
     
     if dorobust
         robuststring = 'robust';
@@ -199,7 +210,7 @@ for c = 1:kc
     end
     
     % out.t has t maps for all regressors, intercept is last
-    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames);
+    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nodisplay');
     
 
     % Make sure variable types are right data formats
@@ -217,13 +228,16 @@ for c = 1:kc
     regression_stats.analysis_name = DAT.contrastnames{c};
     regression_stats.variable_names = [groupnames {'Intercept'}];
     
-    % prints output automatically - name axis
+    % print output - name axis % @lukasvo76: changed original code to
+    % include unthreshold orthviews for each contrast in html output
+    orthviews(regression_stats.t);
     for kk = 1:length(regression_stats.variable_names)
         spm_orthviews_name_axis(regression_stats.variable_names{kk}, kk);
     end
+    drawnow;snapnow;
     
     % Save stats objects for results later
-    % --------------------------------------------------------------------
+    % ---------------------------------------------------------------------
 
     regression_stats_results{c} = regression_stats;
         
@@ -232,8 +246,8 @@ for c = 1:kc
     
 end  % between-person contrast
 
-% Save
-% --------------------------------------------------------------------
+%% Save
+% -------------------------------------------------------------------------
 savefilenamedata = fullfile(resultsdir, 'regression_stats_and_maps.mat');
 
 save(savefilenamedata, 'regression_stats_results', '-v7.3');
@@ -242,7 +256,8 @@ fprintf('Filename: %s\n', savefilenamedata);
 
 
 
-
+% @lukasvo76: this subfunction may be redundant as there is a standalone
+% CANlab function with the same name
 function [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i)
 
 group = []; groupnames = []; groupcolors = [];
