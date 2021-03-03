@@ -121,7 +121,6 @@ for i = 1:k
     set(title_handle, 'FontSize', 18);
 
     % Activate, name, and save figure
-
     fighan = activate_figures(o2); % Find and activate figure associated with existing fmridisplay object o2
     if ~isempty(fighan)
         set(fighan{1}, 'Tag', figtitle);
@@ -131,7 +130,6 @@ for i = 1:k
     end
     
     % Table of results (10 vox or greater)
-    
     fprintf('Table of results for clusters >= 10 contiguous voxels.');
     r(cat(1, r.numVox) < 10) = [];    
     [rpos, rneg] = table(r);       % add labels
@@ -154,6 +152,5 @@ for i = 1:k
         end
         
     end % end conditional montage plot if there are regions to show
-    
-    
+      
 end
