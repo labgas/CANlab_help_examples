@@ -22,21 +22,21 @@ end
     
 %% T-test on each contrast image
 % ------------------------------------------------------------------------
-% docompact2 = 0;  % 0 for default, 1 for compact2 version
+docompact2 = 0;  % 0 for default, 1 for compact2 version
 
 printhdr('Contrast maps - OLS t-tests');
 
 k = size(DAT.contrasts, 1);
 contrast_t_fdr = {};
 
-% if docompact2
-%     o2 = canlab_results_fmridisplay([], 'compact2', 'noverbose');
-%     whmontage = 1;
-% else
-%     create_figure('fmridisplay'); axis off
-%     o2 = canlab_results_fmridisplay([], 'noverbose');
-%     whmontage = 5;
-% end
+if docompact2
+    o2 = canlab_results_fmridisplay([], 'compact2', 'noverbose');
+    whmontage = 1;
+else
+    create_figure('fmridisplay'); axis off
+    o2 = canlab_results_fmridisplay([], 'noverbose');
+    whmontage = 5;
+end
 
 for i = 1:k
     
@@ -63,12 +63,11 @@ for i = 1:k
     o2 = addblobs(o2, r, 'splitcolor', 'noverbose'); %  To change colors: 'splitcolor', {[0 0 1] [0 1 1] [1 .5 0] [1 1 0]}, 
     o2 = legend(o2);
     
-    %axes(o2.montage{whmontage}.axis_handles(5));
+    % axes(o2.montage{whmontage}.axis_handles(5));
     [o2, title_handle] = title_montage(o2, whmontage, figstr);
     set(title_handle, 'FontSize', 18);
 
     % Activate, name, and save figure
-
     fighan = activate_figures(o2); % Find and activate figure associated with existing fmridisplay object o2
     if ~isempty(fighan)
         set(fighan{1}, 'Tag', figtitle);
@@ -77,10 +76,10 @@ for i = 1:k
         disp('Cannot find figure - Tag field was not set or figure was closed. Skipping save operation.');
     end
     
-    % Table of results (3 vox or greater)
-    fprintf('Table of results for clusters >= 3 contiguous voxels.');
-    r(cat(1, r.numVox) < 3) = [];                   % r = extent_threshold(r);
-    
+    % Table of results (5 vox or greater) 
+    % @lukasvo76: changed the default from 3 to 5 voxels
+    fprintf('Table of results for clusters >= 5 contiguous voxels.');
+    r(cat(1, r.numVox) < 5) = [];                   % r = extent_threshold(r);
     [rpos, rneg] = table(r);       % add labels
     r = [rpos rneg];               % re-concatenate labeled regions
     
@@ -89,7 +88,6 @@ for i = 1:k
         o3 = montage(r, 'colormap', 'regioncenters');
         
         % Activate, name, and save figure - then close
-        
         figtitle = sprintf('%s_05_FDR_regions', DAT.contrastnames{i});
         region_fig_han = activate_figures(o3);
         if ~isempty(region_fig_han)
@@ -145,7 +143,6 @@ for i = 1:k
         o3 = montage(r, 'colormap', 'regioncenters');
         
         % Activate, name, and save figure - then close
-        
         figtitle = sprintf('%s_01_unc_regions', DAT.contrastnames{i});
         region_fig_han = activate_figures(o3);
         if ~isempty(region_fig_han)
@@ -160,4 +157,3 @@ for i = 1:k
     
     
 end
-
