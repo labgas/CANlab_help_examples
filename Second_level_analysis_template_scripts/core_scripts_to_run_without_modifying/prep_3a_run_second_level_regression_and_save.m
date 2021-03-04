@@ -48,11 +48,6 @@ option_default_values = {true, 'raw', 'group'}; % defaults if we cannot find inf
 
 plugin_get_options_for_analysis_script
 
-% define masks to be applied & choose mask
-gray_matter_mask = which('gray_matter_mask.img');
-neurosynth_emo_mask = 'C:\Users\lukas\Dropbox (Dartmouth College)\fMRI_emotion_Giao\Masks\EmoMeta_mask_Binair.nii';
-my_mask = gray_matter_mask; % @lukasvo76: change to [] if you don't want to apply a mask at this stage
-
 
 %% Check for required DAT fields
 % -------------------------------------------------------------------------
@@ -128,15 +123,11 @@ for c = 1:kc
         case 'raw'
             printstr('Raw (unscaled) images used in between-person GLM');
             cat_obj = DATA_OBJ_CON{c};
-            if ~isempty(my_mask)
-                cat_obj = apply_mask(cat_obj,my_mask);
             end
             
         case 'scaled'
             printstr('Scaled images used in between-person GLM');
             cat_obj = DATA_OBJ_CONsc{c};
-            if ~isempty(my_mask)
-                cat_obj = apply_mask(cat_obj,my_mask);
             end
             
         otherwise
