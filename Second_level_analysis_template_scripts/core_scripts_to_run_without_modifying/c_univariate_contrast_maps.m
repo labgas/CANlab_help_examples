@@ -10,14 +10,14 @@ end
 whmontage = 5; 
 plugin_check_or_create_slice_display; % script, checks for o2 and uses whmontage
 
-maskname = 'gray_matter_mask.img';
+maskname = 'gray_matter_mask.img'; % lukasvo76: change to mask of your choice (mask needs to be on your Matlab path) or to [] if you don't want to apply masking at this stage
 if exist(maskname, 'file')
     apply_mask_before_fdr = true; 
-    mask_string = 'within gray-matter mask.';
+    mask_string = strcat('within mask_', maskname);
     mask = fmri_data(which(maskname), 'noverbose'); 
 else
     apply_mask_before_fdr = false;
-    mask_string = sprintf('without gray-matter masking (file %s is missing).', maskname);
+    mask_string = sprintf('without masking');
 end 
     
 %% T-test on each contrast image
@@ -54,7 +54,7 @@ for i = 1:k
         contrast_t_fdr{i} = threshold(contrast_t_fdr{i}, .05, 'fdr');
     end
     
-    fprintf('\nShowing results at FDR q < .05, %s\n', apply_mask_before_fdr);    
+    fprintf('\nShowing results at FDR q < .05, %s\n', mask_string);    
     
     % 1st plot at 0.05 FDR
     % -----------------------------------------------
