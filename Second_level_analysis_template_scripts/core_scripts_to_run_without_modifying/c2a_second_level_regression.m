@@ -35,7 +35,7 @@ load(savefilenamedata, 'regression_stats_results');
 maskname = 'gray_matter_mask.img'; % lukasvo76: change to mask of your choice (mask needs to be on your Matlab path) or to [] if you don't want to apply masking at this stage
 if exist(maskname, 'file')
     apply_mask_before_fdr = true; 
-    mask_string = strcat('within mask_', maskname);
+    mask_string = sprintf('within mask %s', maskname(:,1:end-4));
     mask = fmri_data(which(maskname), 'noverbose'); 
 else
     apply_mask_before_fdr = false;
@@ -48,7 +48,7 @@ end
 ncontrasts = size (regression_stats_results, 2);
 
 for c = 1:ncontrasts
-    %%
+
     analysisname = regression_stats_results{c}.analysis_name;
     names = regression_stats_results{c}.variable_names;
     t = regression_stats_results{c}.t;
@@ -81,7 +81,7 @@ for c = 1:ncontrasts
         o2 = title_montage(o2, 2*j, [analysisname ' ' names{j}]);
     end
     
-    figtitle = sprintf('Regression results 05_FDR %s %s', analysisname);
+    figtitle = sprintf('Regression results 05_FDR %s', analysisname);
     set(gcf, 'Tag', figtitle);
     plugin_save_figure;
     clear o2, clear figtitle
@@ -138,7 +138,7 @@ for c = 1:ncontrasts
         o2 = title_montage(o2, 2*j, [analysisname ' ' names{j}]);
     end
     
-    figtitle = sprintf('Regression results 01_uncorrected %s', analysisname);
+    figtitle = sprintf('Regression results 01_unc %s', analysisname);
     set(gcf, 'Tag', figtitle);
     plugin_save_figure;
     clear o2, clear figtitle
@@ -163,7 +163,7 @@ for c = 1:ncontrasts
             o3 = montage(r, 'colormap', 'regioncenters');
 
             % Activate, name, and save figure - then close
-            figtitle = sprintf('%s_%s_01_uncorrected_regions_%s', analysisname, names{j}, mask_string);
+            figtitle = sprintf('%s_%s_01_unc_regions_%s', analysisname, names{j}, mask_string);
             region_fig_han = activate_figures(o3);
             if ~isempty(region_fig_han)
                 set(region_fig_han{1}, 'Tag', figtitle);

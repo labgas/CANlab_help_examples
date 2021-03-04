@@ -13,7 +13,7 @@ plugin_check_or_create_slice_display; % script, checks for o2 and uses whmontage
 maskname = 'gray_matter_mask.img'; % lukasvo76: change to mask of your choice (mask needs to be on your Matlab path) or to [] if you don't want to apply masking at this stage
 if exist(maskname, 'file')
     apply_mask_before_fdr = true; 
-    mask_string = strcat('within mask_', maskname);
+    mask_string = sprintf('within mask %s', maskname(:,1:end-4));
     mask = fmri_data(which(maskname), 'noverbose'); 
 else
     apply_mask_before_fdr = false;
