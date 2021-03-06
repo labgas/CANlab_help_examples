@@ -1,6 +1,6 @@
 % THIS SCRIPT RUNS SVMs for WITHIN-PERSON CONTRASTS
 % Specified in DAT.contrasts
-% --------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 
 % USER OPTIONS
@@ -23,7 +23,7 @@ plugin_get_options_for_analysis_script
 
 
 % Specified in DAT.contrasts
-% --------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 spath = which('use_spider.m');
 if isempty(spath)
@@ -36,7 +36,7 @@ if dobootstrap, svmtime = tic; end
 
 
 %% Train all models
-% --------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 svm_stats_results = cell(1, kc);
 
@@ -46,14 +46,14 @@ for c = 1:kc
     printstr(dashes)
     
     mycontrast = DAT.contrasts(c, :);
-    wh = find(mycontrast);
+    wh = find(mycontrast); % wh is which conditions have non-zero contrast weights
     
     % Create combined data object with all input images
-    % --------------------------------------------------------------------
+    % ---------------------------------------------------------------------
     [cat_obj, condition_codes] = cat(DATA_OBJ{wh});
     
     % Norm options:
-    % --------------------------------------------------------------------
+    % ---------------------------------------------------------------------
     % possibly normalize_each_subject_by_l2norm; can help with numerical scaling and inter-subject scaling diffs
     % Sometimes condition differences are very small relative to baseline
     % values and SVM is numerically unstable. If so, re-normalizing each
@@ -81,10 +81,15 @@ for c = 1:kc
     % b. Define holdout sets: Define based on plugin script
     %    Assume that subjects are in same position in each input file
     % --------------------------------------------------------------------
-
-    plugin_get_holdout_sets;
     
-    cat_obj.Y = outcome_value;
+    if DAT.BETWEENPERSON.group % lukasvo76: built in this option to manually define your holdout sets balancing for group variable, wrote a new plugin based on @bogpetre's walkthrough code for single-trials and between-within MVPA
+        plugin_get_holdout_sets_balanced_groups;
+        cat_obj.Y = outcome_value;
+        
+    else % @lukasvo76: this is the original CANlabcode which works fine if you do not have to balance your holdout sets for a group variable
+        plugin_get_holdout_sets;
+        cat_obj.Y = outcome_value;
+    end
     
     % Skip if necessary
     % --------------------------------------------------------------------
@@ -111,7 +116,7 @@ for c = 1:kc
     % Save stats objects for results later
     % --------------------------------------------------------------------
     
-    stats.weight_obj = enforce_variable_types(stats.weight_obj);
+%     stats.weight_obj = enforce_variable_types(stats.weight_obj);
     svm_stats_results{c} = stats;
         
     if dobootstrap, disp('Cumulative run time:'), toc(svmtime); end
