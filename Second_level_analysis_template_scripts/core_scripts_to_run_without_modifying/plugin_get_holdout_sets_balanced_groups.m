@@ -63,7 +63,7 @@ switch holdout_set_type
             for j = 1:length(wh)
                 
                 holdout_set{j}(mytest(1:n(j))) = i;  % works if some conditions have fewer images, though we expect them to match
-                
+                holdout_set{j} = holdout_set{j}';
             end
             
         end
