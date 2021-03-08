@@ -13,7 +13,9 @@
 % (3) Checks again and uses the default options if they are still missing
 % (e.g., not specified in an older/incomplete copy of a2_set_default_options)
 
-% Now set in a2_set_default_options
+
+%% Now set in a2_set_default_options
+---------------------------------------------------------------------------
 options_needed = {'dosavesvmstats', 'dobootstrap', 'boot_n'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed); 
 
@@ -22,7 +24,7 @@ option_default_values = {true false 1000};          % defaults if we cannot find
 plugin_get_options_for_analysis_script
 
 
-% Specified in DAT.contrasts
+%% Specified in DAT.contrasts
 % -------------------------------------------------------------------------
 
 spath = which('use_spider.m');
@@ -50,7 +52,8 @@ for c = 1:kc
     
     % Create combined data object with all input images
     % ---------------------------------------------------------------------
-    [cat_obj, condition_codes] = cat(DATA_OBJ{wh});
+    [cat_obj, condition_codes] = cat(DATA_OBJ{wh}); 
+    cat_obj = remove_empty(cat_obj); % @lukasvo76: added this as the cat function includes replace_empty on the objects, which causes problems later on with the stats_object output of predict; I also guess we do not want to run the SVMs on these "artificial" zeroes?
     
     % Norm options:
     % ---------------------------------------------------------------------
