@@ -19,7 +19,25 @@
 
 %% LOAD REGRESSION RESULTS (if needed)
 
-savefilenamedata = fullfile(resultsdir, 'regression_stats_and_maps.mat');
+switch myscaling
+    case 'raw'
+        printstr('Raw (unscaled) images used in between-person GLM');
+        scaling_string = 'no_scaling';
+        
+    case 'scaled'
+        printstr('Z-scored images used in between-person GLM');
+        scaling_string = 'scaling_z_score_conditions';
+        
+    case 'scaled_contrasts'
+        printstr('l2norm scaled contrast images used in between-person GLM');
+        scaling_string = 'scaling_l2norm_contrasts';
+        
+    otherwise
+        error('myscaling must be ''raw'' or ''scaled'' or ''scaled_contrasts''');
+        
+end       
+        
+savefilenamedata = fullfile(resultsdir, ['regression_stats_and_maps_',scaling_string,'.mat']);
 
 if ~exist(savefilenamedata, 'file')
     disp('Run prep_3a_run_second_level_regression_and_save.m to get regression results.'); 
@@ -31,12 +49,15 @@ fprintf('\nLoading regression results and maps from %s\n\n', savefilenamedata);
 load(savefilenamedata, 'regression_stats_results');
 
 
-%% SET MASKING OPTIONS
-maskname = 'gray_matter_mask.img'; % lukasvo76: change to mask of your choice (mask needs to be on your Matlab path) or to [] if you don't want to apply masking at this stage
-if exist(maskname, 'file')
-    apply_mask_before_fdr = true; 
-    mask_string = sprintf('within mask %s', maskname(:,1:end-4));
-    mask = fmri_data(which(maskname), 'noverbose'); 
+%% MASKING
+
+if exist(maskname_glm, 'file')
+    apply_mask_before_fdr = true;
+    maskname_short = split(maskname_glm,"\");
+    maskname_short = maskname_short{size(maskname_short,1)};
+    maskname_short = maskname_short(:,1:end-4);
+    mask_string = sprintf('within mask %s', maskname_short);
+    mask = fmri_data_st(maskname_glm, 'noverbose'); 
 else
     apply_mask_before_fdr = false;
     mask_string = sprintf('without masking');
@@ -81,7 +102,7 @@ for c = 1:ncontrasts
         o2 = title_montage(o2, 2*j, [analysisname ' ' names{j}]);
     end
     
-    figtitle = sprintf('Regression results 05_FDR %s', analysisname);
+    figtitle = sprintf('Regression results %s_05_FDR_%s_%s', analysisname, scaling_string, mask_string);
     set(gcf, 'Tag', figtitle);
     plugin_save_figure;
     clear o2, clear figtitle
@@ -106,7 +127,7 @@ for c = 1:ncontrasts
             o3 = montage(r, 'colormap', 'regioncenters');
 
             % Activate, name, and save figure - then close
-            figtitle = sprintf('%s_%s_05_FDR_regions_%s', analysisname, names{j}, mask_string);
+            figtitle = sprintf('%s_05_FDR_regions_%s_%s_%s', analysisname, names{j}, scaling_string, mask_string);
             region_fig_han = activate_figures(o3);
             if ~isempty(region_fig_han)
                 set(region_fig_han{1}, 'Tag', figtitle);
@@ -138,7 +159,7 @@ for c = 1:ncontrasts
         o2 = title_montage(o2, 2*j, [analysisname ' ' names{j}]);
     end
     
-    figtitle = sprintf('Regression results 01_unc %s', analysisname);
+    figtitle = sprintf('Regression results %s_01_unc %s_%s', analysisname, scaling_string, mask_string);
     set(gcf, 'Tag', figtitle);
     plugin_save_figure;
     clear o2, clear figtitle
@@ -163,7 +184,7 @@ for c = 1:ncontrasts
             o3 = montage(r, 'colormap', 'regioncenters');
 
             % Activate, name, and save figure - then close
-            figtitle = sprintf('%s_%s_01_unc_regions_%s', analysisname, names{j}, mask_string);
+            figtitle = sprintf('%s_01_unc_regions_%s_%s_%s', analysisname, names{j}, scaling_string, mask_string);
             region_fig_han = activate_figures(o3);
             if ~isempty(region_fig_han)
                 set(region_fig_han{1}, 'Tag', figtitle);

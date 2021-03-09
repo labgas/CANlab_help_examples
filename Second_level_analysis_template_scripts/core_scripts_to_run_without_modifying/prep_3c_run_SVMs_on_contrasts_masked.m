@@ -40,10 +40,10 @@ if dobootstrap, svmtime = tic; end
 %% Get mask
 % -------------------------------------------------------------------------
 
-if exist('maskname', 'var') && ~isempty(maskname)
+if exist('maskname_svm', 'var') && ~isempty(maskname_svm)
     
     disp('Masking data')
-    svmmask = fmri_data(maskname, 'noverbose');
+    svmmask = fmri_data(maskname_svm, 'noverbose');
     
 else
     
@@ -152,7 +152,7 @@ for c = 1:kc
     if exist('svmmask', 'var')
     
         svm_stats_results{c}.mask = svmmask;
-        svm_stats_results{c}.maskname = maskname;
+        svm_stats_results{c}.maskname = maskname_svm;
     
     end
     

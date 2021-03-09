@@ -122,16 +122,21 @@ for c = 1:kc
     switch myscaling
         case 'raw'
             printstr('Raw (unscaled) images used in between-person GLM');
+            scaling_string = 'no_scaling';
             cat_obj = DATA_OBJ_CON{c};
-            end
             
         case 'scaled'
-            printstr('Scaled images used in between-person GLM');
+            printstr('Z-scored images used in between-person GLM');
+            scaling_string = 'scaling_z_score_conditions';
             cat_obj = DATA_OBJ_CONsc{c};
-            end
+            
+        case 'scaled_contrasts'
+            printstr('l2norm scaled contrast images used in between-person GLM');
+            scaling_string = 'scaling_l2norm_contrasts';
+            cat_obj = DATA_OBJ_CONscc{c};
             
         otherwise
-            error('myscaling must be ''raw'' or ''scaled''');
+            error('myscaling must be ''raw'' or ''scaled'' or ''scaled_contrasts''');
     end
     
   
@@ -239,7 +244,7 @@ end  % between-person contrast
 
 %% Save
 % -------------------------------------------------------------------------
-savefilenamedata = fullfile(resultsdir, 'regression_stats_and_maps.mat');
+savefilenamedata = fullfile(resultsdir, ['regression_stats_and_maps_',scaling_string,'.mat']);
 
 save(savefilenamedata, 'regression_stats_results', '-v7.3');
 printhdr('Saved regression_stats_results for contrasts');

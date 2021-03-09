@@ -1,3 +1,5 @@
+%% Check whether contrasts are defined
+% ------------------------------------------------------------------------
 if ~isfield(DAT, 'contrasts') || isempty(DAT.contrasts)
     
     % skip
@@ -6,20 +8,30 @@ if ~isfield(DAT, 'contrasts') || isempty(DAT.contrasts)
     return
 end
 
-% Specify which montage to add title to. This is fixed for a given slice display
+
+%% Specify which montage to add title to. This is fixed for a given slice display
+% ------------------------------------------------------------------------
 whmontage = 5; 
 plugin_check_or_create_slice_display; % script, checks for o2 and uses whmontage
 
-maskname = 'gray_matter_mask.img'; % lukasvo76: change to mask of your choice (mask needs to be on your Matlab path) or to [] if you don't want to apply masking at this stage
-if exist(maskname, 'file')
-    apply_mask_before_fdr = true; 
-    mask_string = sprintf('within mask %s', maskname(:,1:end-4));
-    mask = fmri_data(which(maskname), 'noverbose'); 
+scaling_string = 'scaling_l2norm_contrasts';
+
+
+%% Masking
+% ------------------------------------------------------------------------
+if exist(maskname_glm, 'file')
+    apply_mask_before_fdr = true;
+    maskname_short = split(maskname_glm,"\");
+    maskname_short = maskname_short{size(maskname_short,1)};
+    maskname_short = maskname_short(:,1:end-4);
+    mask_string = sprintf('within mask %s', maskname_short);
+    mask = fmri_data_st(maskname_glm, 'noverbose'); 
 else
     apply_mask_before_fdr = false;
     mask_string = sprintf('without masking');
 end 
-    
+ 
+
 %% T-test on each contrast image
 % ------------------------------------------------------------------------
 docompact2 = 0;  % 0 for default, 1 for compact2 version
@@ -40,7 +52,7 @@ end
 
 for i = 1:k
     
-    figtitle = sprintf('%s_05_FDR', DAT.contrastnames{i});
+    figtitle = sprintf('%s_%s_05_FDR_%s', DAT.contrastnames{i}, scaling_string, mask_string);
     figstr = format_strings_for_legend(figtitle); 
     figstr = figstr{1};
     
@@ -88,7 +100,7 @@ for i = 1:k
         o3 = montage(r, 'colormap', 'regioncenters');
         
         % Activate, name, and save figure - then close
-        figtitle = sprintf('%s_05_FDR_regions', DAT.contrastnames{i});
+        figtitle = sprintf('%s_%s_05_FDR_regions_%s', DAT.contrastnames{i}, scaling_string, mask_string);
         region_fig_han = activate_figures(o3);
         if ~isempty(region_fig_han)
             set(region_fig_han{1}, 'Tag', figtitle);
@@ -103,7 +115,7 @@ for i = 1:k
     
     % 2nd plot at 0.01 uncorrected
     % -----------------------------------------------
-    figtitle = sprintf('%s_01_unc', DAT.contrastnames{i});
+    figtitle = sprintf('%s_%s_01_unc_%s', DAT.contrastnames{i}, scaling_string, mask_string);
     figstr = format_strings_for_legend(figtitle);
     figstr = figstr{1};
     
@@ -141,7 +153,7 @@ for i = 1:k
         o3 = montage(r, 'colormap', 'regioncenters');
         
         % Activate, name, and save figure - then close
-        figtitle = sprintf('%s_01_unc_regions', DAT.contrastnames{i});
+        figtitle = sprintf('%s_%s_01_unc_regions_%s', DAT.contrastnames{i}, scaling_string, mask_string);
         region_fig_han = activate_figures(o3);
         if ~isempty(region_fig_han)
             set(region_fig_han{1}, 'Tag', figtitle);
