@@ -129,7 +129,7 @@ for c = 1:kc
     stats = svm_stats_results{c};
     
     o2 = removeblobs(o2);
-    o2 = addblobs(o2, region(stats.weight_obj), 'trans');
+    o2 = addblobs(o2, region(stats.weight_obj)); % @lukasvo76: got rid of 'trans' option in the original code as it caused an error
         
     axes(o2.montage{whmontage}.axis_handles(5));
     title(DAT.contrastnames{c}, 'FontSize', 18)
