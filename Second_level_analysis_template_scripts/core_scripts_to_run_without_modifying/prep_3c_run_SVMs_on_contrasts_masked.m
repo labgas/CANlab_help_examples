@@ -13,16 +13,19 @@
 % (3) Checks again and uses the default options if they are still missing
 % (e.g., not specified in an older/incomplete copy of a2_set_default_options)
 
-% Now set in a2_set_default_options
-options_needed = {'dosavesvmstats', 'dobootstrap', 'boot_n', 'maskname'};  % Options we are looking for. Set in a2_set_default_options
+
+%% Now set in a2_set_default_options
+%--------------------------------------------------------------------------
+options_needed = {'dosavesvmstats', 'dobootstrap', 'boot_n'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed); 
 
-option_default_values = {true false 1000 which('gray_matter_mask.img')};          % defaults if we cannot find info in a2_set_default_options at all 
+option_default_values = {true false 1000};          % defaults if we cannot find info in a2_set_default_options at all 
 
 plugin_get_options_for_analysis_script
 
+
 %% Specified in DAT.contrasts
-% --------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 spath = which('use_spider.m');
 if isempty(spath)
@@ -33,8 +36,9 @@ kc = size(DAT.contrasts, 1);
 
 if dobootstrap, svmtime = tic; end
 
+
 %% Get mask
-% --------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 if exist('maskname', 'var') && ~isempty(maskname)
     
@@ -48,7 +52,7 @@ else
 end
 
 %% Train all models
-% --------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 svm_stats_results = cell(1, kc);
 
@@ -58,14 +62,15 @@ for c = 1:kc
     printstr(dashes)
     
     mycontrast = DAT.contrasts(c, :);
-    wh = find(mycontrast);
+    wh = find(mycontrast); % wh is which conditions have non-zero contrast weights
     
     % Create combined data object with all input images
-    % --------------------------------------------------------------------
-    [cat_obj, condition_codes] = cat(DATA_OBJ{wh});
+    % ---------------------------------------------------------------------
+    [cat_obj, condition_codes] = cat(DATA_OBJ{wh}); 
+    cat_obj = remove_empty(cat_obj); % @lukasvo76: added this as the cat function includes replace_empty on the objects, which causes problems later on with the stats_object output of predict; I also guess we do not want to run the SVMs on these "artificial" zeroes?
     
     % Norm options:
-    % --------------------------------------------------------------------
+    % ---------------------------------------------------------------------
     % possibly normalize_each_subject_by_l2norm; can help with numerical scaling and inter-subject scaling diffs
     % Sometimes condition differences are very small relative to baseline
     % values and SVM is numerically unstable. If so, re-normalizing each
@@ -90,6 +95,7 @@ for c = 1:kc
     end
     
     % Apply mask
+    %----------------------------------------------------------------------
     if exist('svmmask', 'var')
         
         disp('Masking data')
@@ -105,10 +111,15 @@ for c = 1:kc
     % b. Define holdout sets: Define based on plugin script
     %    Assume that subjects are in same position in each input file
     % --------------------------------------------------------------------
-
-    plugin_get_holdout_sets;
     
-    cat_obj.Y = outcome_value;
+    if DAT.BETWEENPERSON.group % lukasvo76: built in this option to manually define your holdout sets balancing for group variable, wrote a new plugin based on @bogpetre's walkthrough code for single-trials and between-within MVPA
+        plugin_get_holdout_sets_balanced_groups;
+        cat_obj.Y = outcome_value;
+        
+    else % @lukasvo76: this is the original CANlabcode which works fine if you do not have to balance your holdout sets for a group variable
+        plugin_get_holdout_sets;
+        cat_obj.Y = outcome_value;
+    end
     
     % Skip if necessary
     % --------------------------------------------------------------------
@@ -135,7 +146,7 @@ for c = 1:kc
     % Save stats objects for results later
     % --------------------------------------------------------------------
     
-    stats.weight_obj = enforce_variable_types(stats.weight_obj);
+%     stats.weight_obj = enforce_variable_types(stats.weight_obj);
     svm_stats_results{c} = stats;
         
     if exist('svmmask', 'var')
