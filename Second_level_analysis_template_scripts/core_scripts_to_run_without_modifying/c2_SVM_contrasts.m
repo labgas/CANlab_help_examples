@@ -24,6 +24,7 @@ printhdr('Cross-validated SVM to discriminate within-person contrasts');
 
 %% Average images collected on the same person within each SVM class, for testing
 % --------------------------------------------------------------------
+
 % - This plugin function calculates (a) cross-validated distances from the
 % SVM hyerplane, and (b) a cross-classification matrix across contrasts
 % - It averages images within the same subject and condition (+ or -,
@@ -72,6 +73,7 @@ end
 
 %% Define effect size functions and between/within ROC type
 % --------------------------------------------------------------------
+
 % Define paired and uppaired functions here for reference
 % This script uses the paired option because it runs within-person
 % contrasts
