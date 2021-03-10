@@ -41,7 +41,7 @@
 %--------------------------------------------------------------------------
 
 % Now set in a2_set_default_options
-options_needed = {'dorobust', 'myscaling', 'design_matrix_type'}; % options we are looking for. Set in a2_set_default_options % @lukasvo76: or in study-specific version of that script
+options_needed = {'dorobust', 'myscaling_glm', 'design_matrix_type'}; % options we are looking for. Set in a2_set_default_options % @lukasvo76: or in study-specific version of that script
 options_exist = cellfun(@exist, options_needed); 
 
 option_default_values = {true, 'raw', 'group'}; % defaults if we cannot find info in a2_set_default_options at all ; @lukasvo76: changed the defaults to align with a2_emosymp_m1_s1_set_default_options
@@ -119,7 +119,7 @@ for c = 1:kc
     % Select data for this contrast
     % ---------------------------------------------------------------------
     
-    switch myscaling
+    switch myscaling_glm
         case 'raw'
             printstr('Raw (unscaled) images used in between-person GLM');
             scaling_string = 'no_scaling';

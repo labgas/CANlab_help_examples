@@ -19,7 +19,7 @@
 
 %% LOAD REGRESSION RESULTS (if needed)
 
-switch myscaling
+switch myscaling_glm
     case 'raw'
         printstr('Raw (unscaled) images used in between-person GLM');
         scaling_string = 'no_scaling';
@@ -33,7 +33,7 @@ switch myscaling
         scaling_string = 'scaling_l2norm_contrasts';
         
     otherwise
-        error('myscaling must be ''raw'' or ''scaled'' or ''scaled_contrasts''');
+        error('myscaling_glm must be ''raw'' or ''scaled'' or ''scaled_contrasts''');
         
 end       
         

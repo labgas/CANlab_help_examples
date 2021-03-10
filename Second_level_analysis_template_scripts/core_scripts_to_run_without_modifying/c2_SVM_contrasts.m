@@ -134,26 +134,24 @@ for c = 1:kc
     o2 = removeblobs(o2);
     o2 = addblobs(o2, region(stats.weight_obj)); % @lukasvo76: got rid of 'trans' option in the original code as it caused an error
         
-%     axes(o2.montage{whmontage}.axis_handles(5));
-%     title(DAT.contrastnames{c}, 'FontSize', 18)
-    title_montage(o2, whmontage, DAT.contrastnames{c}); % For published reports
-
+    axes(o2.montage{whmontage}.axis_handles(5));
+    title(DAT.contrastnames{c}, 'FontSize', 18)
+    
     printstr(DAT.contrastnames{c}); printstr(dashes);
     
     hh = figure(fig_number);  % fig_number set in slice display plugin
     figtitle = sprintf('SVM weight map nothresh %s', DAT.contrastnames{c});
     set(hh, 'Tag', figtitle);
     plugin_save_figure;
-
+    
     % Remove title in case fig is re-printed in html
-%     axes(o2.montage{whmontage}.axis_handles(5));
-%     title(' ', 'FontSize', 18)
-      title_montage(o2, whmontage, 'Blank slice montage'); % For published reports
+    axes(o2.montage{whmontage}.axis_handles(5));
+    title(' ', 'FontSize', 18)
     
     o2 = removeblobs(o2);
     
-%     axes(o2.montage{whmontage}.axis_handles(5));
-%     title('Intentionally Blank', 'FontSize', 18); % For published reports
+    axes(o2.montage{whmontage}.axis_handles(5));
+    title('Intentionally Blank', 'FontSize', 18); % For published reports
     
 end  % within-person contrast
 

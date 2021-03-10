@@ -5,7 +5,24 @@
 % --------------------------------------------------------------------
 
 %% Load stats
-savefilenamedata = fullfile(resultsdir, 'svm_stats_results_betweenperson_contrasts.mat');
+switch myscaling_svm_between
+        case 'raw'
+            printstr('Raw (unscaled) images used in between-person SVM');
+            scaling_string = 'no_scaling';
+            
+        case 'scaled'
+            printstr('Z-scored images used in between-person SVM');
+            scaling_string = 'scaling_z_score_conditions';
+            
+        case 'scaled_contrasts'
+            printstr('l2norm scaled contrast images used in between-person GLM');
+            scaling_string = 'scaling_l2norm_contrasts';
+            
+        otherwise
+            error('myscaling_svm_between must be ''raw'' or ''scaled'' or ''scaled_contrasts''');
+    end
+
+savefilenamedata = fullfile(resultsdir, ['svm_stats_results_betweenperson_contrasts_',scaling_string,'.mat']);
 
 if ~exist(savefilenamedata, 'file')
     disp('Run prep_3d_run_SVM_betweenperson_contrasts with dosavesvmstats = true option to get SVM results.'); 
@@ -17,7 +34,6 @@ fprintf('\nLoading SVM results and maps from %s\n\n', savefilenamedata);
 load(savefilenamedata, 'svm_stats_results');
 
 
-
 %% Initialize fmridisplay slice display if needed, or clear existing display
 % --------------------------------------------------------------------
 
@@ -26,7 +42,6 @@ whmontage = 5;
 plugin_check_or_create_slice_display; % script, checks for o2 and uses whmontage
 
 % --------------------------------------------------------------------
-
 
 printhdr('Cross-validated SVM to discriminate between-person contrasts');
 
@@ -43,7 +58,7 @@ for c = 1:kc
     
     % Summarize output and create ROC plot
     % --------------------------------------------------------------------
-    figtitle = sprintf('SVM ROC %s', DAT.contrastnames{c});
+    figtitle = sprintf('SVM ROC %s_%s', DAT.contrastnames{c}, scaling_string);
     create_figure(figtitle);
     
     disp(' ');
@@ -64,19 +79,26 @@ for c = 1:kc
     % Plot the SVM map
     % --------------------------------------------------------------------
     o2 = removeblobs(o2);
-    o2 = addblobs(o2, region(svm_stats_results{c}.weight_obj), 'trans');
+    o2 = addblobs(o2, region(svm_stats_results{c}.weight_obj)); % @lukasvo76: got rid of 'trans' option in original code as it caused an error
     
-    % axes(o2.montage{whmontage}.axis_handles(5));
+    axes(o2.montage{whmontage}.axis_handles(5));
     title(DAT.contrastnames{c}, 'FontSize', 18)
     
     printstr(DAT.contrastnames{c}); printstr(dashes);
 
     hh = figure(fig_number);  % fig_number set in slice display plugin
-    figtitle = sprintf('SVM weight map nothresh %s', DAT.contrastnames{c});
+    figtitle = sprintf('SVM weight map nothresh %s_%s', DAT.contrastnames{c}, scaling_string);
     set(hh, 'Tag', figtitle);
     plugin_save_figure;
+    
+    % Remove title in case fig is re-printed in html
+    axes(o2.montage{whmontage}.axis_handles(5));
+    title(' ', 'FontSize', 18)
        
     o2 = removeblobs(o2);
+    
+    axes(o2.montage{whmontage}.axis_handles(5));
+    title('Intentionally Blank', 'FontSize', 18); % For published reports
     
 end  % between-person contrast
 

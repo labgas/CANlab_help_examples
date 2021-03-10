@@ -94,7 +94,7 @@ for c = 1:kc
         
     end
     
-    % Apply mask
+    % Apply mask if specific in a2_ script
     %----------------------------------------------------------------------
     if exist('svmmask', 'var')
         
@@ -107,16 +107,16 @@ for c = 1:kc
         
     end
     
-    % a. Format and attach outcomes: 1, -1 for pos/neg contrast values
-    % b. Define holdout sets: Define based on plugin script
-    %    Assume that subjects are in same position in each input file
+    % Format and attach outcomes: 1, -1 for pos/neg contrast values
+    % Define holdout sets: Define based on plugin script
+    % Assume that subjects are in same position in each input file!
     % --------------------------------------------------------------------
     
     if DAT.BETWEENPERSON.group % lukasvo76: built in this option to manually define your holdout sets balancing for group variable, wrote a new plugin based on @bogpetre's walkthrough code for single-trials and between-within MVPA
         plugin_get_holdout_sets_balanced_groups;
         cat_obj.Y = outcome_value;
         
-    else % @lukasvo76: this is the original CANlabcode which works fine if you do not have to balance your holdout sets for a group variable
+    else % @lukasvo76: this is the original CANlab code which works fine if you do not have to balance your holdout sets for a group variable
         plugin_get_holdout_sets;
         cat_obj.Y = outcome_value;
     end
