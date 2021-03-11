@@ -137,7 +137,9 @@ for c = 1:kc
     if dobootstrap
         [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, 'bootsamples', boot_n, 'error_type', 'mcr', parallelstr);
         % Threshold, if possible - can re-threshold later with threshold() method
-        stats.weight_obj = threshold(stats.weight_obj, .05, 'unc'); 
+%         stats.weight_obj = threshold(stats.weight_obj, .05, 'unc'); %
+%         @lukasvo76: commented out since we want to threshold flexibly at
+%         a later stage
         
     else
         [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, 'error_type', 'mcr', parallelstr);
