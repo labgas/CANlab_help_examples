@@ -1,11 +1,13 @@
-
-% subregion names
+%% NPS SUBREGION NAMES
+% -------------------------------------------------------------------------
 posnames = {'vermis'    'rIns'    'rV1'    'rThal'    'lIns'    'rdpIns'    'rS2_Op'    'dACC'};
 negnames = {'rLOC'    'lLOC'    'rpLOC'    'pgACC'    'lSTS'    'rIPL'    'PCC'};
 
-%% NPS Subregions
 
-printhdr('NPS subregions');
+%% CONDITIONS
+% -------------------------------------------------------------------------
+
+printhdr('NPS subregions: conditions');
 % ------------------------------------------------------------------------
 
 figtitle = 'NPS subregions raw data';
@@ -49,10 +51,10 @@ savename = fullfile(figsavedir, [figtitle '.png']);
 saveas(gcf, savename);
 
 
+%% CONTRASTS
+% -------------------------------------------------------------------------
 
-%% NPS Subregions: Contrasts
-
-printhdr('NPS contrasts subregions');
+printhdr('NPS subregions: contrasts');
 % ------------------------------------------------------------------------
 
 kc = size(DAT.contrasts, 1);
@@ -103,5 +105,3 @@ end
 
 plugin_save_figure;
 close
-
-
