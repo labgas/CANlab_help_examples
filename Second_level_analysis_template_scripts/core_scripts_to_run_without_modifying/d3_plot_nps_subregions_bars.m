@@ -1,22 +1,26 @@
-mymetric = 'cosine_sim';    % 'dotproduct' or 'cosine_sim'
+%% USER OPTIONS  & VARIABLE DEFINITIONS
+% -------------------------------------------------------------------------
 
-% Controlling for group admin order covariate (mean-centered by default)
+% METRIC OPTION
+mymetric = 'dotproduct';    % 'dotproduct' or 'cosine_sim'
 
+% CONTROLLING FOR GROUP COVARIATE
 group = [];
 if isfield(DAT, 'BETWEENPERSON') && isfield(DAT.BETWEENPERSON, 'group')
     group = DAT.BETWEENPERSON.group; % empty for no variable to control/remove
 end
 
-
-% subregion names
+% NPS SUBREGION NAMES
 posnames = {'vermis'    'rIns'    'rV1'    'rThal'    'lIns'    'rdpIns'    'rS2_Op'    'dACC'};
 negnames = {'rLOC'    'lLOC'    'rpLOC'    'pgACC'    'lSTS'    'rIPL'    'PCC'};
 
+% OTHER VARIABLES
 k = length(DAT.conditions);
 
 myfontsize = get_font_size(k); % This is a function defined below; ok in Matlab 2016 or later
 
 clear negdat posdat
+
 switch mymetric
     
     case 'cosine_sim'
@@ -43,7 +47,9 @@ colors = seaborn_colors(np + length(negnames));
 poscolors = colors(1:np);
 negcolors = colors(np+1:end);
 
-%% NPS Subregions
+
+%% CONDITIONS
+% -------------------------------------------------------------------------
 
 printhdr('NPS subregions');
 % ------------------------------------------------------------------------
@@ -94,8 +100,8 @@ plugin_save_figure;
 %close
 
 
-
-%% NPS Subregions: Contrasts
+%% CONTRASTS
+% -------------------------------------------------------------------------
 
 printhdr('NPS contrasts subregions');
 % ------------------------------------------------------------------------
@@ -200,4 +206,3 @@ end
 
 
 end
-
