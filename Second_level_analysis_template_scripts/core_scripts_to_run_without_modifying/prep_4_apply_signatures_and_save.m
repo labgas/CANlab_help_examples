@@ -1,5 +1,3 @@
-%
-%
 % Format: The prep_4 script extracts signature responses and saves them.
 % These fields contain data tables:
 % DAT.SIGNATURES.(signaturename).(data scaling).(similarity metric).by_condition
@@ -13,9 +11,10 @@
 % are conditions or contrasts, with variable names based on DAT.conditions
 % or DAT.contrastnames, but with spaces replaced with underscores.
 
-%% -------------------------------------------------------------------------
 
-% USER OPTIONS
+%% USER OPTIONS
+% -------------------------------------------------------------------------
+
 % This is a standard block of code that can be used in multiple scripts.
 % Each script will have its own options needed and default values for
 % these.
@@ -29,11 +28,12 @@
 options_needed = {'use_scaled_images'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed); 
 
-option_default_values = {true false 1000};          % defaults if we cannot find info in a2_set_default_options at all 
+option_default_values = {false};          % defaults if we cannot find info in a2_set_default_options at all 
 
 plugin_get_options_for_analysis_script
 
-%% Set up main extraction - npsresponse and subregions
+
+%% NPS RESPONSE AND SUBREGIONS
 % -------------------------------------------------------------------------
 
 k = length(DAT.conditions);
@@ -47,8 +47,10 @@ DAT.NPSsubregions.negnames = negnames;
 
 printhdr('Extracting NPS, adding to DAT')
 
+% CONDITIONS
+% ----------
+
 % NPS, dot product and cosine sim
-% -------------------------------------------------------------------------
 for i = 1:k
     
     if use_scaled_images
@@ -69,9 +71,7 @@ end
 
 % , ~, ~, DAT.NPSsubregions.npspos_by_region_cosinesim(i), DAT.NPSsubregions.npsneg_by_region_cosinesim(i)
 
-% NPSsubregions, dot product and cosine sim
-% -------------------------------------------------------------------------
-
+% NPS subregions, dot product and cosine sim
 printhdr('Extracting NPS Subregions, adding to DAT.NPSsubregions')
 
 clear posdat negdat spos sneg xx
@@ -86,8 +86,8 @@ for i = 1:k
         
 end
 
-
-%% Contrasts
+% CONTRASTS
+% ---------
 
 printhdr('Defining NPS contrasts, adding to DAT')
 
@@ -124,9 +124,16 @@ for i = 1:kc
     
 end
 
-%% All Signatures
+
+%% ALL SIGNATURES
+% -------------------------------------------------------------------------
 
 printhdr('Extracting all signatures');
+
+% CONDITIONS
+% ----------
+
+% RAW CONDITION IMAGES
 
 % Dot product metric
 DAT.SIG_conditions.raw.dotproduct = apply_all_signatures(DATA_OBJ, 'conditionnames', DAT.conditions);
@@ -134,7 +141,7 @@ DAT.SIG_conditions.raw.dotproduct = apply_all_signatures(DATA_OBJ, 'conditionnam
 % Cosine similarity
 DAT.SIG_conditions.raw.cosine_sim = apply_all_signatures(DATA_OBJ, 'conditionnames', DAT.conditions, 'similarity_metric', 'cosine_similarity');
 
-% Scaled images.  
+% SCALED CONDITION IMAGES  
 % apply_all_signatures will do scaling as well, but we did this in image
 % loading, so use those here
 
@@ -144,23 +151,26 @@ DAT.SIG_conditions.scaled.dotproduct = apply_all_signatures(DATA_OBJsc, 'conditi
 % Cosine similarity
 DAT.SIG_conditions.scaled.cosine_sim = apply_all_signatures(DATA_OBJsc, 'conditionnames', DAT.conditions, 'similarity_metric', 'cosine_similarity');
 
-% Same for contrasts, if they exist
+% CONTRASTS
+% ---------
 
 if exist('DATA_OBJ_CON', 'var') && iscell(DATA_OBJ_CON) && ~isempty(DATA_OBJ_CON{1})
-    
+
+% RAW CONTRAST IMAGES
     DAT.SIG_contrasts.raw.dotproduct = apply_all_signatures(DATA_OBJ_CON, 'conditionnames', DAT.contrastnames);
     DAT.SIG_contrasts.raw.cosine_sim = apply_all_signatures(DATA_OBJ_CON, 'conditionnames', DAT.contrastnames, 'similarity_metric', 'cosine_similarity');
+
+% SCALED CONTRAST IMAGES   
     DAT.SIG_contrasts.scaled.dotproduct = apply_all_signatures(DATA_OBJ_CONsc, 'conditionnames', DAT.contrastnames);
     DAT.SIG_contrasts.scaled.cosine_sim = apply_all_signatures(DATA_OBJ_CONsc, 'conditionnames', DAT.contrastnames, 'similarity_metric', 'cosine_similarity');
     
 end
 
 
-%% Save
+%% SAVE
+% -------------------------------------------------------------------------
 
 printhdr('Save results');
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
 save(savefilename, 'DAT', '-append');
-
-
