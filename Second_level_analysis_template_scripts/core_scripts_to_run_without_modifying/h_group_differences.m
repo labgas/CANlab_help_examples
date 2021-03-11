@@ -3,14 +3,17 @@
 % Signatures, scaling, etc. are defined below.
 
 
-% Define test conditions of interest
+%% USER OPTIONS
 % -------------------------------------------------------------------------
 
-mysignature =   {'NPS', 'NPSpos', 'NPSneg', 'SIIPS' 'GSR' 'Heart'};   % 'NPS' 'NPSpos' 'NPSneg' 'SIIPS' etc.  See load_image_set('npsplus')
+mysignature =   {'NPS', 'NPSpos', 'NPSneg', 'SIIPS'};   % 'NPS' 'NPSpos' 'NPSneg' 'SIIPS' etc.  See load_image_set('npsplus')
 scalenames =    {'raw'};                                % or scaled
 simnames =      {'dotproduct'};                         % or 'cosine_sim' 'dotproduct'
+mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
 
-% Define groups
+%% DEFINE GROUPS IN PREP_1b_PREP_BEHAVIORAL_DATA
+% -------------------------------------------------------------------------
+
 % There are two ways to define groups. The other is condition- and
 % contrast-specific.  These are entered in DAT.BETWEENPERSON.conditions and
 % DAT.BETWEENPERSON.contrasts, in cells.  1 -1 codes work best. 
@@ -20,7 +23,7 @@ simnames =      {'dotproduct'};                         % or 'cosine_sim' 'dotpr
 % -------------------------------------------------------------------------
 
 
-% Loop through signatures, create one plot per contrast
+%% LOOP THROUGH SIGNATURES, TEST GROUP DIFFERENCE, CREATE ONE PLOT PER CONTRAST
 % -------------------------------------------------------------------------
 for s = 1:length(mysignature)
     
@@ -39,8 +42,6 @@ for s = 1:length(mysignature)
     create_figure(figtitle, 1, kc);
     
     for i = 1:kc
-        
-        mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
         
         % Load group variable
         [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
@@ -88,7 +89,12 @@ for s = 1:length(mysignature)
     
 end % signature
 
-%% Subregions - Pos
+
+%% NPS SUBREGIONS, TEST GROUP DIFFERENCE, CREATE ONE PLOT PER CONTRAST
+% -------------------------------------------------------------------------
+
+% POSITIVE
+% --------
 
 % which variables to use
 mysubrfield = 'npspos_by_region_contrasts'; % 'npspos_by_region_cosinesim';     %'npspos_by_regionsc';
@@ -101,7 +107,6 @@ clear means p T
 
 for i = 1:kc  % for each contrast
     
-    mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
     if isempty(group), continue, end % skip this condition/contrast - no groups
     
@@ -162,11 +167,11 @@ for i = 1:kc  % for each contrast
     
 end % panels
 
-%% Subregions - Neg
+% NEGATIVE
+% --------
 
 for i = 1:kc
     
-    mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
     
     if size(group, 2) > 1            % we have multiple variables
@@ -228,43 +233,3 @@ for i = 1:kc
     disp(regionmeans);
     
 end
-
-
-% function [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i)
-% 
-% group = []; groupnames = []; groupcolors = [];
-% 
-% if isfield(DAT, 'BETWEENPERSON') && ...
-%         isfield(DAT.BETWEENPERSON, mygroupnamefield) && ...
-%         iscell(DAT.BETWEENPERSON.(mygroupnamefield)) && ...
-%         length(DAT.BETWEENPERSON.(mygroupnamefield)) >= i && ...
-%         ~isempty(DAT.BETWEENPERSON.(mygroupnamefield){i})
-%     
-%     group = DAT.BETWEENPERSON.(mygroupnamefield){i};
-%     
-% elseif isfield(DAT, 'BETWEENPERSON') && ...
-%         isfield(DAT.BETWEENPERSON, 'group') && ...
-%         ~isempty(DAT.BETWEENPERSON.group)
-%     
-%     group = DAT.BETWEENPERSON.group;
-% 
-% end
-% 
-% 
-% if isfield(DAT, 'BETWEENPERSON') && isfield(DAT.BETWEENPERSON, 'groupnames')
-%     groupnames = DAT.BETWEENPERSON.groupnames;
-% elseif istable(group)
-%     groupnames = group.Properties.VariableNames(1);
-% else
-%     groupnames = {'Group-Pos' 'Group-neg'};
-% end
-% 
-% if isfield(DAT, 'BETWEENPERSON') && isfield(DAT.BETWEENPERSON, 'groupcolors')
-%     groupcolors = DAT.BETWEENPERSON.groupcolors;
-% else
-%     groupcolors = seaborn_colors(2);
-% end
-% 
-% if istable(group), group = table2array(group); end
-% 
-% end
