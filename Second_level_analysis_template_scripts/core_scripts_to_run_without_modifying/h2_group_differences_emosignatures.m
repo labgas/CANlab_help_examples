@@ -1,15 +1,16 @@
 % Runs a two-sample t-test for a set of signature responses, for each
-% contrast.  Also runs NPS subregions. 
+% contrast.
 % Signatures, scaling, etc. are defined below.
 
 
 %% USER OPTIONS
 % -------------------------------------------------------------------------
 
-mysignature =   {'PINES', 'Rejection', 'VPS', 'VPS_nooccip'};   % 'NPS' 'NPSpos' 'NPSneg' 'SIIPS' etc.  See load_image_set('npsplus')
+mysignature =   {'PINES', 'Rejection', 'VPS', 'VPS_nooccip'};
 scalenames =    {'raw'};                                % or scaled
 simnames =      {'dotproduct'};                         % or 'cosine_sim' 'dotproduct'
 mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
+
 
 %% DEFINE GROUPS IN PREP_1b_PREP_BEHAVIORAL_DATA
 % -------------------------------------------------------------------------

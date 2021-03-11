@@ -8,8 +8,9 @@
 
 mysignature =   {'NPS', 'NPSpos', 'NPSneg', 'SIIPS'};   % 'NPS' 'NPSpos' 'NPSneg' 'SIIPS' etc.  See load_image_set('npsplus')
 scalenames =    {'raw'};                                % or scaled
-simnames =      {'dotproduct'};                         % or 'cosine_sim' 'dotproduct'
+simnames =      {'cosine_sim'};                         % or 'cosine_sim' 'dotproduct'
 mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
+
 
 %% DEFINE GROUPS IN PREP_1b_PREP_BEHAVIORAL_DATA
 % -------------------------------------------------------------------------
