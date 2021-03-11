@@ -3,14 +3,17 @@
 % Signatures, scaling, etc. are defined below.
 
 
-% Define test conditions of interest
+%% USER OPTIONS
 % -------------------------------------------------------------------------
 
 mysignature =   {'PINES', 'Rejection', 'VPS', 'VPS_nooccip'};   % 'NPS' 'NPSpos' 'NPSneg' 'SIIPS' etc.  See load_image_set('npsplus')
 scalenames =    {'raw'};                                % or scaled
-simnames =      {'cosine_sim'};                         % or 'cosine_sim' 'dotproduct'
+simnames =      {'dotproduct'};                         % or 'cosine_sim' 'dotproduct'
+mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
 
-% Define groups
+%% DEFINE GROUPS IN PREP_1b_PREP_BEHAVIORAL_DATA
+% -------------------------------------------------------------------------
+
 % There are two ways to define groups. The other is condition- and
 % contrast-specific.  These are entered in DAT.BETWEENPERSON.conditions and
 % DAT.BETWEENPERSON.contrasts, in cells.  1 -1 codes work best. 
@@ -20,13 +23,12 @@ simnames =      {'cosine_sim'};                         % or 'cosine_sim' 'dotpr
 % -------------------------------------------------------------------------
 
 
-% Loop through signatures, create one plot per contrast
+%% LOOP THROUGH SIGNATURES, TEST GROUP DIFFERENCE, CREATE ONE PLOT PER CONTRAST
 % -------------------------------------------------------------------------
 for s = 1:length(mysignature)
     
     % Get data
     % -------------------------------------------------------------------------
-    % conditiondata = table2array(DAT.SIG_conditions.(scalenames{1}).(simnames{1}).(mysignature{s}));
     contrastdata = table2array(DAT.SIG_contrasts.(scalenames{1}).(simnames{1}).(mysignature{s}));
     
     kc = size(contrastdata, 2);
@@ -40,12 +42,24 @@ for s = 1:length(mysignature)
     
     for i = 1:kc
         
-        mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
-        
         % Load group variable
         [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
         
         if isempty(group), continue, end % skip this condition/contrast - no groups
+        
+        if size(group, 2) > 1            % we have multiple variables
+            disp('Warning: Group has > 1 column. Using first column only.')
+            group = group(:, 1);
+        end
+        
+        if length(unique(group)) > 2  % this is a continuous variable
+            disp('Binarizing continuous grouping variable via median split.')
+            group = mediansplit(group);  
+        end
+        
+        % In case we forgot to assign colors or groupnames in prep 1b script
+        if length(groupcolors) < 2, groupcolors = seaborn_colors(2); end
+        if length(groupnames) < 2, groupnames = {'High' 'Low'}; end
         
         % Must code data with pos or neg values
         y = {contrastdata(group > 0, i) contrastdata(group < 0, i)};
@@ -73,4 +87,3 @@ for s = 1:length(mysignature)
     drawnow, snapnow
     
 end % signature
-

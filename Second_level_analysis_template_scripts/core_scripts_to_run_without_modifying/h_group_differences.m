@@ -61,7 +61,7 @@ for s = 1:length(mysignature)
         if length(groupcolors) < 2, groupcolors = seaborn_colors(2); end
         if length(groupnames) < 2, groupnames = {'High' 'Low'}; end
         
-        %y = {DAT.(myfield){i}(group > 0) DAT.(myfield){i}(group < 0)};
+        % Must code data with pos or neg values
         y = {contrastdata(group > 0, i) contrastdata(group < 0, i)};
         
         subplot(1, kc, i)
