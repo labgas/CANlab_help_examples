@@ -29,7 +29,6 @@ for s = 1:length(mysignature)
     
     % Get data
     % -------------------------------------------------------------------------
-    conditiondata = table2array(DAT.SIG_conditions.(scalenames{1}).(simnames{1}).(mysignature{s}));
     contrastdata = table2array(DAT.SIG_contrasts.(scalenames{1}).(simnames{1}).(mysignature{s}));
     
     kc = size(contrastdata, 2);
