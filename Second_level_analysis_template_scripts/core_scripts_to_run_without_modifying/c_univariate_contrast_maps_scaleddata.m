@@ -19,13 +19,13 @@ scaling_string = 'scaling_z_score_conditions';
 
 %% Masking
 % ------------------------------------------------------------------------
-if exist(maskname, 'file')
+if exist(maskname_glm, 'file')
     apply_mask_before_fdr = true;
-    maskname_short = split(maskname,"\");
+    maskname_short = split(maskname_glm,"\");
     maskname_short = maskname_short{size(maskname_short,1)};
     maskname_short = maskname_short(:,1:end-4);
     mask_string = sprintf('within mask %s', maskname_short);
-    mask = fmri_data_st(maskname, 'noverbose'); 
+    mask = fmri_data_st(maskname_glm, 'noverbose'); 
 else
     apply_mask_before_fdr = false;
     mask_string = sprintf('without masking');
