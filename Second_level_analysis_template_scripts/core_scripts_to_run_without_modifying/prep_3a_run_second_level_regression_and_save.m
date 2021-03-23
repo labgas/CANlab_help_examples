@@ -93,6 +93,11 @@ for c = 1:kc
             table_obj = DAT.BETWEENPERSON.(mygroupnamefield){c};
             groupnames = table_obj.Properties.VariableNames;
             X = table2array(table_obj);
+            idx_nan = ~isnan(X);
+            idx_nan = ~(sum(idx_nan,2) < size(idx_nan,2)); % at least one column of X contains NaN
+            imgs_nan = [1:size(X,1)];
+            imgs_nan = imgs_nan(idx_nan');
+            X = X(idx_nan,:);
             
         case 'group'
             
@@ -101,6 +106,7 @@ for c = 1:kc
             groupnames = DAT.BETWEENPERSON.contrasts{c}.Properties.VariableNames;
             X = group (:,1); % lukasvo76: changed to only select first column (group identifier) to fit the case where we have added covariates in prep_1b but do not want to include them in our design matrix - which is the purpose of the "group" option in the first place!
             groupnames = groupnames(1); % lukasvo76: ditto for groupnames
+            imgs_nan = [];
             
             if isempty(group)
                 fprintf('Group not defined for contrast %s. Skipping.\n', DAT.contrastnames{c});
@@ -124,16 +130,25 @@ for c = 1:kc
             printstr('Raw (unscaled) images used in between-person GLM');
             scaling_string = 'no_scaling';
             cat_obj = DATA_OBJ_CON{c};
+            if imgs_nan
+                cat_obj = cat_obj.get_wh_image(imgs_nan);
+            end
             
         case 'scaled'
             printstr('Z-scored images used in between-person GLM');
             scaling_string = 'scaling_z_score_conditions';
             cat_obj = DATA_OBJ_CONsc{c};
+            if imgs_nan
+                cat_obj = cat_obj.get_wh_image(imgs_nan);
+            end
             
         case 'scaled_contrasts'
             printstr('l2norm scaled contrast images used in between-person GLM');
             scaling_string = 'scaling_l2norm_contrasts';
             cat_obj = DATA_OBJ_CONscc{c};
+            if imgs_nan
+                cat_obj = cat_obj.get_wh_image(imgs_nan);
+            end
             
         otherwise
             error('myscaling must be ''raw'' or ''scaled'' or ''scaled_contrasts''');
@@ -187,7 +202,7 @@ for c = 1:kc
     % Skip if necessary
     % ---------------------------------------------------------------------
     
-    if all(cat_obj.X > 0) || all(cat_obj.X < 0)
+    if all(cat_obj.X > 0) | all(cat_obj.X < 0)
         % Only positive or negative weights - nothing to compare
         
         printhdr(' Only positive or negative regressor values - bad design');
