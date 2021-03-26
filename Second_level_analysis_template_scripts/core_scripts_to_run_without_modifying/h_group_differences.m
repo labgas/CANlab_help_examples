@@ -8,7 +8,7 @@
 
 mysignature =   {'NPS', 'NPSpos', 'NPSneg', 'SIIPS'};   % 'NPS' 'NPSpos' 'NPSneg' 'SIIPS' etc.  See load_image_set('npsplus')
 scalenames =    {'raw'};                                % or scaled
-simnames =      {'cosine_sim'};                         % or 'cosine_sim' 'dotproduct'
+simnames =      {'dotproduct'};                         % or 'cosine_sim' 'dotproduct'
 mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
 
 
