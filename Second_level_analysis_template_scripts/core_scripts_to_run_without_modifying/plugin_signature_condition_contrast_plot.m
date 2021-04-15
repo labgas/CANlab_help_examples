@@ -77,7 +77,8 @@ for n = 1:nplots
     drawnow
 end
 
-kludgy_fix_for_y_axis(axh);
+% kludgy_fix_for_y_axis(axh); % lukasvo76: commented out because causing
+% errors in some situations
 
 plugin_save_figure;
 %close
@@ -133,7 +134,8 @@ for n = 1:nplots
     drawnow
 end
 
-kludgy_fix_for_y_axis(axh);
+% kludgy_fix_for_y_axis(axh); % lukasvo76: commented out because causing
+% errors in some situations
 
 plugin_save_figure;
 %close
