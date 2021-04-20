@@ -93,9 +93,8 @@ for c = 1:kc
             
             % Use 'groups' single regressor
             [group,~,~] = plugin_get_group_names_colors(DAT, mygroupnamefield, c);
-            groupnames = DAT.BETWEENPERSON.contrasts{c}.Properties.VariableNames;
-            X = group (:,1); % lukasvo76: changed to only select first column (group identifier) to fit the case where we have added covariates in prep_1b but do not want to include them in our design matrix - which is the purpose of the "group" option in the first place!
-            groupnames = groupnames(1); % lukasvo76: ditto for groupnames
+            groupnames = {'group'};
+            X = group;
             imgs_nan = [];
             
             if isempty(group)
