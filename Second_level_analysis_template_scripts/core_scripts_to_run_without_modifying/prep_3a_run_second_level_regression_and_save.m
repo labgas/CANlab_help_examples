@@ -102,7 +102,7 @@ for c = 1:kc
         case 'group'
             
             % Use 'groups' single regressor
-            [group,~,~] = plugin_get_group_names_colors(DAT, mygroupnamefield, c);
+            group = DAT.BETWEENPERSON.(mygroupnamefield){c}.group;
             groupnames = {'group'};
             X = group;
             imgs_nan = [];
