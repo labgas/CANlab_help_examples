@@ -15,7 +15,7 @@
 
 
 %% Now set in a2_set_default_options
----------------------------------------------------------------------------
+%---------------------------------------------------------------------------
 options_needed = {'dosavesvmstats', 'dobootstrap', 'boot_n'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed); 
 
