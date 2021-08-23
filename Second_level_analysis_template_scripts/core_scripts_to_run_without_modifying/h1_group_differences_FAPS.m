@@ -6,7 +6,7 @@
 %% USER OPTIONS
 % -------------------------------------------------------------------------
 
-mysignature =   {'FAPS'};
+mysignature =   {'FAPS','VIFS','reddan'};
 scalenames =    {'raw'};                                % or scaled
 simnames =      {'dotproduct'};                         % or 'cosine_sim' 'dotproduct'
 mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'

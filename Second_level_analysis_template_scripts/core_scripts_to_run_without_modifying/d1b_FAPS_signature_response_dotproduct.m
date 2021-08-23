@@ -1,4 +1,4 @@
-signatures_to_plot = {'FAPS'};  % NPS, VPS, SIIPS, etc., etc.
+signatures_to_plot = {'FAPS','VIFS','reddan'};  % NPS, VPS, SIIPS, etc., etc.
 myscaling = 'raw';                                       % 'raw' or 'scaled'
 mymetric = 'dotproduct';                                 % 'dotproduct' or 'cosine_sim'
 
