@@ -7,6 +7,7 @@
 ._*
 */.DS*
 **/.DS*
+*.asv
 
 ### LaBGAS ###
 # Created by https://www.toptal.com/developers/gitignore/api/windows,microsoftoffice,matlab
