@@ -102,9 +102,15 @@ for i = 1:k
         figtitle = sprintf('%s_%s_05_FDR_regions_%s', DAT.contrastnames{i}, scaling_string, mask_string);
         region_fig_han = activate_figures(o3);
         if ~isempty(region_fig_han)
-            set(region_fig_han{1}, 'Tag', figtitle);
-            plugin_save_figure;
-            close(region_fig_han{1}), clear o3
+            if iscell(region_fig_han)   % region_fig_han may not be a cell array, so this fixes that - Michael Sun 11/8/2021
+                set(region_fig_han{1}, 'Tag', figtitle);
+                plugin_save_figure;
+                close(region_fig_han{1}), clear o3
+            else                        % region_fig_han may not be a cell array, so this fixes that - Michael Sun 11/8/2021
+                set(region_fig_han, 'Tag', figtitle);
+                plugin_save_figure;
+                close(region_fig_han), clear o3
+            end
         else
             disp('Cannot find figure - Tag field was not set or figure was closed. Skipping save operation.');
         end
@@ -155,9 +161,15 @@ for i = 1:k
         figtitle = sprintf('%s_%s_01_unc_regions_%s', DAT.contrastnames{i}, scaling_string, mask_string);
         region_fig_han = activate_figures(o3);
         if ~isempty(region_fig_han)
-            set(region_fig_han{1}, 'Tag', figtitle);
-            plugin_save_figure;
-            close(region_fig_han{1}), clear o3
+            if iscell(region_fig_han)   % region_fig_han may not be a cell array, so this fixes that - Michael Sun 11/8/2021
+                set(region_fig_han{1}, 'Tag', figtitle);
+                plugin_save_figure;
+                close(region_fig_han{1}), clear o3
+            else                            % region_fig_han may not be a cell array, so this fixes that - Michael Sun 11/8/2021
+                set(region_fig_han, 'Tag', figtitle);
+                plugin_save_figure;
+                close(region_fig_han), clear o3
+            end                
         else
             disp('Cannot find figure - Tag field was not set or figure was closed. Skipping save operation.');
         end
