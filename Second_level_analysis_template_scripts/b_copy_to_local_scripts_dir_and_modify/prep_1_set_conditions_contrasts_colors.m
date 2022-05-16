@@ -1,23 +1,44 @@
-% Modify to specify image file subdirectories, wildcards to locate images, condition names
+%% prep_1_set_conditions_contrasts_colors.m
 %
-%% Set up conditions 
+% CANLAB NOTES:
+% - Modify to specify image file subdirectories, wildcards to locate images, condition names
+%
+% LABGAS NOTES:
+% - Always make a study-specific copy of this script in your code subdataset, do NOT edit in the repo!
+% - Study-specific modifications should in principle be limited to design-related rather
+%       than directory structure-related issues since we use a fixed organisation
+% - This is an example from a simple block design with two conditions used
+%       for the MIST task, among others in https://gin.g-node.org/labgas/proj_discoverie
+%
+%__________________________________________________________________________
+%
+% modified by: Lukas Van Oudenhove
+% date:   Dartmouth, May, 2022
+%
+%__________________________________________________________________________
+% @(#)% a2_set_default_options.m         v1.0
+% last modified: 2022/05/16
+
+
+%% SET UP CONDITIONS
 % ------------------------------------------------------------------------
 
-<<<EDIT A COPY OF THIS IN YOUR LOCAL SCRIPTS DIRECTORY AND DELETE THIS LINE>>>
+% EXAMPLE
 
 % conditions = {'C1' 'C2' 'C3' 'etc'};
 % structural_wildcard = {'c1*nii' 'c2*nii' 'c3*nii' 'etc*nii'};
 % functional_wildcard = {'fc1*nii' 'fc2*nii' 'fc3*nii' 'etc*nii'};
 % colors = {'color1' 'color2' 'color3' etc}  One per condition
 
-fprintf('Image data should be in /data folder\n');
+fprintf('first level beta/con image data should be in /firstleveldir/model_x/sub-xxx organisation\n'); %lukasvo76 adapted to LaBGAS default directory structure
 
 DAT = struct();
 
-% Names of conditions
+% NAMES OF CONDITIONS
+
 % A "condition" usually corresponds to a regressor (beta/COPE image) in a first-level 
 % (single-subject) analysis. You will usually have one image per condition per subject.
-% You will have the opporunity below to specify contrasts across these
+% You will have the opportunity below to specify contrasts across these
 % conditions, which are estimated as part of the prep_ scripts.  
 % For example, if you have a task with three types of stimuli, "pain"
 % "nausea" and "itch", there would be 3 conditions. 
@@ -42,13 +63,17 @@ DAT = struct();
 % Enter a cell array { } with one cell per condition.  Each cell should
 % contain a string specifying the condition name to be used in plots and
 % tables. This does not have to correspond to an image/directory name.
+% 
+% lukasvo76: it is strongly recommended to have these condition names
+% correspond with your first-level condition names defined in
+% DSGN.conditions!
 
-DAT.conditions = {'Pain' 'Nausea' 'Itch'};
+DAT.conditions = {'stress' 'control'};
 
 DAT.conditions = format_strings_for_legend(DAT.conditions);
 
 % SPECIFYING IMAGE FILE LOCATIONS FOR EACH CONDITION
-% ------------------------------------------------------------------------
+
 % The next lines of code specify how to locate the image files associated
 % with each condition.  The image load script (i.e., prep_2...m) will attempt to use
 % the file system (mac osx/windows/linux) to list the files and store them
@@ -84,7 +109,7 @@ DAT.conditions = format_strings_for_legend(DAT.conditions);
 % condition. 
 % If you do not have subfolders, it is OK to leave this empty, i.e., DAT.subfolders = {};
 
-DAT.subfolders = {'Pain_copes' 'Nausea_cope4m1' 'Itch_copes_combo'};
+DAT.subfolders = {'*' '*'}; % lukasvo76: not sure whether we need a wildcard per condition, but it will certainly not harm - to be tested
 
 % Names of wildcard (expression with *, [1-9], 
 % Enter a cell array { } with one cell per condition.  Each cell should
@@ -92,9 +117,10 @@ DAT.subfolders = {'Pain_copes' 'Nausea_cope4m1' 'Itch_copes_combo'};
 % condition. 
 
 DAT.structural_wildcard = {};
-DAT.functional_wildcard = {'cope3*nii' 'cope4*nii' 'cope1*nii'};
+DAT.functional_wildcard = {'con_0001.nii' 'con_0002.nii'};
 
-% Set Contrasts
+
+%% SET UP CONTRASTS
 % ------------------------------------------------------------------------
 % There are three ways to set up contrasts, which will be displayed as
 % maps, run in SVM analyses (if contrast weights are 1 and -1), and used in
@@ -126,15 +152,16 @@ DAT.functional_wildcard = {'cope3*nii' 'cope4*nii' 'cope1*nii'};
 % sets of images, where the ith image is from the ith subject for all
 % conditions).
 
-DAT.contrasts = [1 0 0; 0 1 0; 0 0 1];
+DAT.contrasts = [1 -1];
     
 % Descriptive names for contrasts to be used in plots and tables. Avoid
 % special characters.
-DAT.contrastnames = {'Pain' 'Nausea' 'Itch'};
+DAT.contrastnames = {'stress v control'};
 
 DAT.contrastnames = format_strings_for_legend(DAT.contrastnames);
 
-% Set Colors
+
+%% SET UP COLORS
 % ------------------------------------------------------------------------
 
 % DAT.colors should be a cell array { } with one 3-element rgb vector
@@ -166,7 +193,7 @@ DAT.contrastcolors = mycolors(length(DAT.conditions) + 1:length(mycolors));
 disp('SET up conditions, colors, contrasts in DAT structure.');
 
 
-% Set BETWEEN-CONDITION contrasts, names, and colors
+%% Set BETWEEN-CONDITION contrasts, names, and colors
 % ------------------------------------------------------------------------
 %    If conditions being compared include images for different subjects
 %    i.e., condition{1} and condition{2} include different individuals, 
@@ -178,11 +205,9 @@ disp('SET up conditions, colors, contrasts in DAT structure.');
 
 % Matrix of [n contrasts x k conditions]
 
-DAT.between_condition_cons = [1 -1 0;
-                              1 0 -1];
-
-DAT.between_condition_contrastnames = {'Pain vs Nausea' 'Pain vs Itch'};
-          
-DAT.between_condition_contrastcolors = custom_colors ([.2 .2 .8], [.2 .8 .2], size(DAT.between_condition_cons, 1));
-
-
+% DAT.between_condition_cons = [1 -1 0;
+%                               1 0 -1];
+% 
+% DAT.between_condition_contrastnames = {'Pain vs Nausea' 'Pain vs Itch'};
+%           
+% DAT.between_condition_contrastcolors = custom_colors ([.2 .2 .8], [.2 .8 .2], size(DAT.between_condition_cons, 1));

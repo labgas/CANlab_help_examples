@@ -167,10 +167,10 @@ cd(basedir);
 
 % Standard subdirs
 
-% datadir = fullfile(basedir, 'data'); %lukasvo76: contrary to the original CANlab script, we want to keep firstlevel data in the firstlevel subdataset
-%     if ~exist(datadir, 'dir')
-%         mkdir(datadir); 
-%     end
+datadir = fullfile(firstleveldir, modelname); %lukasvo76: contrary to the original CANlab script, we want to keep firstlevel data in the model-specific dir of the firstlevel subdataset
+    if ~exist(datadir, 'dir')
+        error('\nfirstleveldir for modelname %s does not exist, please check naming and consistency with %s',modelname, firstleveldir) 
+    end
 maskdir = fullfile(basedir,'masks');
     if ~exist(maskdir, 'dir')
         mkdir(maskdir); 
