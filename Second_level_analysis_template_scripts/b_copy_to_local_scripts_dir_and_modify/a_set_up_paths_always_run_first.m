@@ -175,6 +175,7 @@ maskdir = fullfile(basedir,'masks');
     if ~exist(maskdir, 'dir')
         mkdir(maskdir); 
     end
+    addpath(genpath(maskdir),'-end');
 scriptsdir = fullfile(codedir,'secondlevel',modelname); %lukasvo76: contrary to the original CANlab script, we want our scripts to live in the code subdataset
     if ~exist(scriptsdir, 'dir')
         mkdir(scriptsdir); 
