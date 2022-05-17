@@ -47,7 +47,7 @@
 
 if ~exist('rootdir','var')
     warning('\nrootdir variable not found in Matlab workspace, running LaBGAScore_prep_s0_define_directories before proceeding')
-    LaBGAScore_prep_s0_define_directories;
+    ery_4a_prep_s0_define_directories;
     cd(rootdir);
 else
     cd(rootdir);
@@ -58,7 +58,7 @@ end
 
 if ~exist('DSGN','var')
     warning('\nDSGN variable not found in Matlab workspace, running LaBGAScore_firstlevel_s1_options_dsgn_struct.m before proceeding')
-    LaBGAScore_firstlevel_s1_options_dsgn_struct;
+    ery_4a_firstlevel_m2_s1_options_dsgn_struct;
 end
 
 [~,modelname] = fileparts(DSGN.modeldir); 
@@ -163,13 +163,13 @@ basedir = fullfile(rootdir,'secondlevel',modelname);
         mkdir(basedir); 
     end
 
-cd(basedir);
+% cd(basedir);
 
 % Standard subdirs
 
-datadir = fullfile(firstleveldir, modelname); %lukasvo76: contrary to the original CANlab script, we want to keep firstlevel data in the model-specific dir of the firstlevel subdataset
+datadir = fullfile(rootdir,'firstlevel',modelname); %lukasvo76: contrary to the original CANlab script, we want to keep firstlevel data in the model-specific dir of the firstlevel subdataset
     if ~exist(datadir, 'dir')
-        error('\nfirstleveldir for modelname %s does not exist, please check naming and consistency with %s',modelname, firstleveldir) 
+        error('\nfirstleveldir for modelname %s does not exist, please check naming and consistency with %s',modelname, fullfile(rootdir,'firstlevel')) 
     end
 maskdir = fullfile(basedir,'masks');
     if ~exist(maskdir, 'dir')

@@ -7,8 +7,12 @@
 % - Always make a study-specific copy of this script in your code subdataset, do NOT edit in the repo!
 % - Study-specific modifications should in principle be limited to design-related rather
 %       than directory structure-related issues since we use a fixed organisation
-% - This is an example from a simple block design with two conditions used
-%       for the MIST task, among others in https://gin.g-node.org/labgas/proj_discoverie
+% - This is an example from a design with four conditions and 
+%       three contrasts of (particular) interest, 
+%       see preregistration https://osf.io/z6gy2 for design info etc
+%       see datalad dataset as GIN repo https://gin.g-node.org/labgas/proj_erythritol_4a
+% - For another example, see https://github.com/labgas/proj-emosymp/blob/main/secondlevel/model_1_CANlab_classic_GLM/prep_1_emosymp_m1_s3_set_conditions_contrasts_colors.m
+%    
 %
 %__________________________________________________________________________
 %
@@ -16,7 +20,7 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v1.0
+% @(#)% prep_1_set_conditions_contrasts_colors.m         v1.0
 % last modified: 2022/05/16
 
 
@@ -68,7 +72,11 @@ DAT = struct();
 % correspond with your first-level condition names defined in
 % DSGN.conditions!
 
-DAT.conditions = {'stress' 'control'};
+DAT.conditions = {'sucrose' 'erythritol' 'sucralose' 'water'};
+% DAT.conditions = DSGN.conditions{1}; 
+% lukasvo76: only use if 
+% 1) first-level conditions are the same in every run
+% 2) all first-level conditions are of interest at second level
 
 DAT.conditions = format_strings_for_legend(DAT.conditions);
 
@@ -102,6 +110,7 @@ DAT.conditions = format_strings_for_legend(DAT.conditions);
 % for condition 2.  The result
 % would be that we'd list files in
 % [basedir]/data/*/pain.nii for condition 1, and [basedir]/data/*/itch.nii
+% lukasvo76: this is the typical BIDS-compatible situation
 
 % Names of subfolders in [basedir]/data
 % Enter a cell array { } with one cell per condition.  Each cell should
@@ -109,7 +118,7 @@ DAT.conditions = format_strings_for_legend(DAT.conditions);
 % condition. 
 % If you do not have subfolders, it is OK to leave this empty, i.e., DAT.subfolders = {};
 
-DAT.subfolders = {'*' '*'}; % lukasvo76: not sure whether we need a wildcard per condition, but it will certainly not harm - to be tested
+DAT.subfolders = {'*' '*' '*' '*'}; % lukasvo76: not sure whether we need a wildcard per condition, but it will certainly not harm - to be tested
 
 % Names of wildcard (expression with *, [1-9], 
 % Enter a cell array { } with one cell per condition.  Each cell should
@@ -117,7 +126,7 @@ DAT.subfolders = {'*' '*'}; % lukasvo76: not sure whether we need a wildcard per
 % condition. 
 
 DAT.structural_wildcard = {};
-DAT.functional_wildcard = {'con_0001.nii' 'con_0002.nii'};
+DAT.functional_wildcard = {'con_0001.nii' 'con_0002.nii' 'con_0003.nii' 'con_0004.nii'};
 
 
 %% SET UP CONTRASTS
@@ -152,11 +161,11 @@ DAT.functional_wildcard = {'con_0001.nii' 'con_0002.nii'};
 % sets of images, where the ith image is from the ith subject for all
 % conditions).
 
-DAT.contrasts = [1 -1];
+DAT.contrasts = [1 0 -1 0; 1 -1 0 0; 0 1 -1 0];
     
 % Descriptive names for contrasts to be used in plots and tables. Avoid
 % special characters.
-DAT.contrastnames = {'stress v control'};
+DAT.contrastnames = {'sucrose vs sucralose' 'sucrose vs erythritol' 'erythritol vs sucralose'};
 
 DAT.contrastnames = format_strings_for_legend(DAT.contrastnames);
 
@@ -193,7 +202,7 @@ DAT.contrastcolors = mycolors(length(DAT.conditions) + 1:length(mycolors));
 disp('SET up conditions, colors, contrasts in DAT structure.');
 
 
-%% Set BETWEEN-CONDITION contrasts, names, and colors
+%% SET UP BETWEEN-CONDITION CONTRASTS, NAMES, AND COLORS
 % ------------------------------------------------------------------------
 %    If conditions being compared include images for different subjects
 %    i.e., condition{1} and condition{2} include different individuals, 
