@@ -68,13 +68,13 @@ DAT = struct();
 % contain a string specifying the condition name to be used in plots and
 % tables. This does not have to correspond to an image/directory name.
 % 
-% lukasvo76: it is strongly recommended to have these condition names
+% @lukasvo76: it is strongly recommended to have these condition names
 % correspond with your first-level condition names defined in
 % DSGN.conditions!
 
 DAT.conditions = {'sucrose' 'erythritol' 'sucralose' 'water'};
 % DAT.conditions = DSGN.conditions{1}; 
-% lukasvo76: only use if 
+% @lukasvo76: only use if 
 % 1) first-level conditions are the same in every run
 % 2) all first-level conditions are of interest at second level
 
@@ -118,7 +118,8 @@ DAT.conditions = format_strings_for_legend(DAT.conditions);
 % condition. 
 % If you do not have subfolders, it is OK to leave this empty, i.e., DAT.subfolders = {};
 
-DAT.subfolders = {'*' '*' '*' '*'}; % lukasvo76: not sure whether we need a wildcard per condition, but it will certainly not harm - to be tested
+DAT.subfolders = {'*' '*' '*' '*'}; % @lukasvo76: default option for Linux OS, one wildcard per condition
+% DAT.subfolders = {}; % @lukasvo76 fallback option for Windows OS, uses recursive spm_select in prep_2 script to select right con images
 
 % Names of wildcard (expression with *, [1-9], 
 % Enter a cell array { } with one cell per condition.  Each cell should
@@ -126,11 +127,13 @@ DAT.subfolders = {'*' '*' '*' '*'}; % lukasvo76: not sure whether we need a wild
 % condition. 
 
 DAT.structural_wildcard = {};
-DAT.functional_wildcard = {'con_0001.nii' 'con_0002.nii' 'con_0003.nii' 'con_0004.nii'};
+DAT.functional_wildcard = {'con_0001.nii' 'con_0002.nii' 'con_0003.nii' 'con_0004.nii'}; %lukavo76: default option for Linux OS
+% DAT.functional_wildcard = {'^con_0001.*\nii$' '^con_0002.*\nii$' '^con_0003.*\nii$' '^con_0004.*\nii$'}; %lukavo76: fallback option for Windows OS, spm_select uses regular expression to filter (like in the GUI)
 
 
 %% SET UP CONTRASTS
 % ------------------------------------------------------------------------
+
 % There are three ways to set up contrasts, which will be displayed as
 % maps, run in SVM analyses (if contrast weights are 1 and -1), and used in
 % signature and network analyses.
@@ -204,6 +207,7 @@ disp('SET up conditions, colors, contrasts in DAT structure.');
 
 %% SET UP BETWEEN-CONDITION CONTRASTS, NAMES, AND COLORS
 % ------------------------------------------------------------------------
+
 %    If conditions being compared include images for different subjects
 %    i.e., condition{1} and condition{2} include different individuals, 
 %    enter contrasts in DAT.between_condition_cons below.

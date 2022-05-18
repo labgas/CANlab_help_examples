@@ -150,6 +150,26 @@ spmtoolboxdir = fullfile(spmrootdir,'toolbox');
         elseif ~exist('a0_begin_here_readme.m','file') % CANlab_help_examples cloned but not yet on Matlab path
             addpath(genpath(canlabhelpdir),'-end');
         end
+        
+  % CANLAB SINGLE TRIALS
+        canlabsingletrialsdir = fullfile(githubrootdir,'canlab_single_trials');
+        if ~isfolder(canlabsingletrialsdir) % canlab_single_trials not yet cloned
+          canlabsingletrialsurl = "https://github.com/labgas/canlab_single_trials.git";
+          canlabsingletrialsclonecmd = ['git clone ' canlabsingletrialsurl];
+          cd(githubrootdir);
+          [status,cmdout] = system(canlabsingletrialsclonecmd);
+          disp(cmdout);
+              if status == -0
+                  addpath(genpath(canlabsingletrialsdir,'-end'));
+                  warning('\ngit succesfully cloned %s to %s and added repo to Matlab path',canlabsingletrialsurl, canlabsingletrialsdir)
+              else
+                  error('\ncloning %s into %s failed, please try %s in linux terminal before proceeding, or use Gitkraken',canlabsingletrialsurl,canlabsingletrialsdir,canlabsingletrialsclonecmd)
+              end
+          cd(rootdir);
+          clear status cmdout
+        elseif ~exist('fmri_data_st.m','file') % canlab_single_trials cloned but not yet on Matlab path
+            addpath(genpath(canlabsingletrialsdir),'-end');
+        end
 
         
 %% SET BASE DIRECTORY AND CREATE STANDARD SUBDIR STRUCTURE
