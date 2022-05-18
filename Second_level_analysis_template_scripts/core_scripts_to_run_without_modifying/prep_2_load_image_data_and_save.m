@@ -1,10 +1,18 @@
-% load brain
-%  get filenames
-%  load data
-%  apply NPS
-% --------------------------------------------------------
+%% prep_2_load_image_data_and_save.m
+%
+%
+%__________________________________________________________________________
+%
+% modified by: Lukas Van Oudenhove
+% date:   Dartmouth, May, 2022
+%
+%__________________________________________________________________________
+% @(#)% prep_1b_prep_behavioral_data.m         v1.0
+% last modified: 2022/05/16
 
-% USER OPTIONS
+
+%% SET DEFAULT OPTIONS IF NEEDED
+
 % This is a standard block of code that can be used in multiple scripts.
 % Each script will have its own options needed and default values for
 % these.
@@ -14,7 +22,6 @@
 % (3) Checks again and uses the default options if they are still missing
 % (e.g., not specified in an older/incomplete copy of a2_set_default_options)
 
-% Now set in a2_set_default_options
 options_needed = {'dofullplot', 'omit_histograms' 'dozipimages'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed); 
 
@@ -23,34 +30,28 @@ option_default_values = {true false false};          % defaults if we cannot fin
 plugin_get_options_for_analysis_script
 
 
-%% Prep and check image names
+%% PREP AND CHECK IMAGES NAMES
 % -------------------------------------------------------------------------
 
 clear imgs cimgs
 
-for i = 1:length(DAT.conditions)
+for i = 1:size(DAT.conditions,2)
     
     printhdr(sprintf('Raw data, condition %3.0f, %s', i, DAT.conditions{i}));
     
-    % This will vary based on your naming conventions
-    % This version assumes that FOLDERS have names of CONDITIONS and images
-    % are in each folder
-    %
-    % @lukasvo76: LaBGAS convention is to have subfolders by subject
-    % throughout analysis, so we leave DAT.subfolders blank in prep_1, and
-    % I adapted the else part of the if loop below to our conventional
-    % folder structure
+    % @lukasvo76: adapted to LaBGAS/BIDS conventional directory structure
     
     if ~isempty(DAT.subfolders) && ~isempty(DAT.subfolders{i})  % if we have subfolders
         
         str = fullfile(datadir, DAT.subfolders{i}, DAT.functional_wildcard{i});
         
-        % Unzip if needed - 
-        % note, Matlab's gunzip() does not remove .gz images, so use eval( ) version.
-        % note, replace spaces with '\ ' 
-        
-        try eval(['!gunzip ' strrep(str, ' ', '\ ') '.gz']), catch, end     % gunzip([str '.gz'])
-        cimgs{i} = filenames(str, 'absolute');
+%         % Unzip if needed - not needed in LaBGAS case since we typically do
+%         not have zipped con images, although that could be implemented
+%         % note, Matlab's gunzip() does not remove .gz images, so use eval( ) version.
+%         % note, replace spaces with '\ ' 
+%         
+%         try eval(['!gunzip ' strrep(str, ' ', '\ ') '.gz']), catch, end     % gunzip([str '.gz'])
+%         cimgs{i} = filenames(str, 'absolute');
         
         cimgs{i} = plugin_unzip_images_if_needed(str);
         
@@ -81,7 +82,7 @@ for i = 1:length(DAT.conditions)
 end
 
 
-%% Load full objects
+%% LOAD FULL OBJECTS
 % -------------------------------------------------------------------------
 
 % Determine whether we want to sample to the mask (2 x 2 x 2 mm) or native
