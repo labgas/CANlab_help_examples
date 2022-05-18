@@ -1,5 +1,11 @@
 %% prep_2_load_image_data_and_save.m
 %
+% This script 
+% 1) loads first-level beta/con images into CANlab's fmri_data objects, 
+% 2) performs quality control, including plots if requested in a2 script,
+% 3) z-scores images and then repeats 1) and 2)
+% 4) saves the relevant resulting variables in a .mat file to resultsdir
+% 5) publishes an html report (if run using Matlab's publish function)
 %
 %__________________________________________________________________________
 %
@@ -12,6 +18,7 @@
 
 
 %% SET DEFAULT OPTIONS IF NEEDED
+% -------------------------------------------------------------------------
 
 % This is a standard block of code that can be used in multiple scripts.
 % Each script will have its own options needed and default values for
@@ -25,7 +32,7 @@
 options_needed = {'dofullplot', 'omit_histograms' 'dozipimages'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed);        % initializing this means a2_set_defaults_options will never run
 
-option_default_values = {true false false};          % defaults if we cannot find info in a2_set_default_options at all; lukasvo76: changed the default for zipping images
+option_default_values = {true false false};          % defaults if we cannot find info in a2_set_default_options at all; @lukasvo76: changed the default for zipping images
 
 plugin_get_options_for_analysis_script
 
@@ -37,11 +44,11 @@ clear imgs cimgs
 
 for i = 1:size(DAT.conditions,2)
     
-    printhdr(sprintf('Raw data, condition %3.0f, %s', i, DAT.conditions{i}));
+    % @lukasvo76: adapted to LaBGAS/BIDS conventional directory structure,
+    % if should return 1 since we use wildcards for subject subfolders on
+    % Linux OS (see prep_1 script)
     
-    % @lukasvo76: adapted to LaBGAS/BIDS conventional directory structure
-    
-    if ~isempty(DAT.subfolders) && ~isempty(DAT.subfolders{i})  % if we have subfolders
+    if ~isempty(DAT.subfolders) && ~isempty(DAT.subfolders{i})
         
         str = fullfile(datadir, DAT.subfolders{i}, DAT.functional_wildcard{i});
         
@@ -54,11 +61,17 @@ for i = 1:size(DAT.conditions,2)
 %         cimgs{i} = filenames(str, 'absolute');
         
         cimgs{i} = plugin_unzip_images_if_needed(str);
+    
+    % @lukasvo76: this is the fallback option for Windows OS (which does
+    % not accept wildcards before the last separator in the path)
+    % it requires different definiton of subfolder & functional wildcard in
+    % DAT structure set up in prep_1 script, see example there
+    % spm_select uses regular expressions as filter . is wildcard, not *!    
+    
+    else 
         
-    else
-        % 
-        
-        str = spm_select('ExtFPListRec',datadir, DAT.functional_wildcard{i}, Inf); % lukasvo76: spm_select uses regular expressions as filter . is wildcard, not *!
+        str = spm_select('ExtFPListRec',datadir, DAT.functional_wildcard{i}, Inf); 
+
         
 %         % Unzip if needed - not needed in LaBGAS case since we typically do
 %         not have zipped con images, although that could be implemented
@@ -74,8 +87,11 @@ for i = 1:size(DAT.conditions,2)
         
     end
     
-    %  CHECK that files exist
-    if isempty(cimgs{i}), fprintf('Looking in: %s\n', str), error('CANNOT FIND IMAGES. Check path names and wildcards.'); end
+    %  check whether files exist
+    if isempty(cimgs{i}), fprintf('Looking in: %s\n', str)
+        error('CANNOT FIND IMAGES. Check path names and wildcards.'); 
+    end
+    
     cimgs{i} = cellfun(@check_valid_imagename, cimgs{i}, repmat({1}, size(cimgs{i}, 1), 1), 'UniformOutput', false);
     
     DAT.imgs{i} = cimgs{i};
@@ -83,14 +99,18 @@ for i = 1:size(DAT.conditions,2)
 end
 
 
-%% LOAD FULL OBJECTS
+%% LOAD FULL OBJECTS AND QC
 % -------------------------------------------------------------------------
+
+% PREP SAMPLING
+%--------------------------------------------------------------------------
 
 % Determine whether we want to sample to the mask (2 x 2 x 2 mm) or native
 % space, whichever is more space-efficient
 
 test_image = fmri_data(deblank(DAT.imgs{1}(1, :)), 'noverbose');
 voxelsize = diag(test_image.volInfo.mat(1:3, 1:3))';
+
 if prod(abs(voxelsize)) < 8
     sample_type_string = 'sample2mask'; 
     disp('Loading images into canonical mask space (2 x 2 x 2 mm)');
@@ -100,18 +120,20 @@ else
 
 end
 
-printhdr('LOADING IMAGES INTO FMRI_DATA_ST OBJECTS');
+% LOAD IMAGES INTO FMRI_DATA_ST OBJECT
+%--------------------------------------------------------------------------
 
-for i = 1:length(DAT.conditions)
+printhdr('LOADING RAW IMAGES INTO FMRI_DATA_ST OBJECTS'); % @lukasvo76 added
+
+for i = 1:size(DAT.conditions,2)
     
-    printhdr(sprintf('Loading images: condition %3.0f, %s', i, DAT.conditions{i}));
-    printstr(dashes);
+    printhdr(sprintf('Loading raw images: condition %3.0f, %s', i, DAT.conditions{i}));
     
     % If images are less than 2 mm res, sample in native space:
-    DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}); % @lukasvo76: changed to @bogpetre's improved data_st object class
+%     DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}); 
     
     % If images are very large/high-res, you may want to sample to the mask space instead:
-%     DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}, which('brainmask.nii'), sample_type_string, 'noverbose');
+    DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}, which('brainmask.nii'), sample_type_string, 'noverbose'); % @lukasvo76: changed to @bogpetre's improved data_st object class
     
     % make sure we are using right variable types (space-saving)
     % this is new and could be a source of errors - beta testing!
@@ -129,9 +151,8 @@ for i = 1:length(DAT.conditions)
     % ---------------------------------------------------------------------
 
     printhdr(sprintf('QC metrics for images: condition %3.0f, %s', i, DAT.conditions{i}));
-    printstr(dashes);
     
-    [group_metrics individual_metrics values gwcsf gwcsfmean gwcsfl2norm] = qc_metrics_second_level(DATA_OBJ{i});
+    [group_metrics,individual_metrics,values,gwcsf,gwcsfmean,gwcsfl2norm] = qc_metrics_second_level(DATA_OBJ{i});
     
     DAT.quality_metrics_by_condition{i} = group_metrics;
     DAT.gray_white_csf{i} = values;
@@ -141,51 +162,57 @@ for i = 1:length(DAT.conditions)
     
     drawnow; snapnow
     
-    % optional: plot
+    % PLOT (OPTIONAL)
     % ---------------------------------------------------------------------
     
     if dofullplot
         if ischar(DAT.functional_wildcard{i})
-            fprintf('%s\nPlot of images: %s\n%s\n', dashes, DAT.functional_wildcard{i}, dashes);  % This fails when trying to pass in a cell array of wildcards - Michael Sun 10/22/2021
+            fprintf('%s\nPlot of raw images: %s\n%s\n', dashes, DAT.functional_wildcard{i}, dashes);  % This fails when trying to pass in a cell array of wildcards - Michael Sun 10/22/2021
         elseif iscellstr(DAT.functional_wildcard{i}) || isstring(DAT.functional_wildcard{i})
-            fprintf('%s\nPlot of images: %s\n%s\n', dashes, DAT.conditions{i}, dashes);
+            fprintf('%s\nPlot of raw images: %s\n%s\n', dashes, DAT.conditions{i}, dashes);
         end
+        
         disp(DATA_OBJ{i}.fullpath)
 
+        plot(DATA_OBJ{i},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
         
-        plot(DATA_OBJ{i}); drawnow; snapnow
+        drawnow; snapnow
         
         if ~omit_histograms
             
+            create_figure('histogram');
+            set(gcf,'WindowState','maximized');
             hist_han = histogram(DATA_OBJ{i}, 'byimage', 'by_tissue_type');
+            
             drawnow; snapnow
             
         end
         
     end
     
-    % derived measures
+    % DERIVED MEASURES
+    % ---------------------------------------------------------------------
     
     DATA_OBJ{i} = remove_empty(DATA_OBJ{i});
     DAT.globalmeans{i} = mean(DATA_OBJ{i}.dat)';
     DAT.globalstd{i} = std(DATA_OBJ{i}.dat)';
     
-    drawnow, snapnow
+    drawnow; snapnow
+
 end
 
 
-%% Z-score images
+%% Z-SCORE IMAGES, LOAD INTO OBJECTS, AND QC
 % -------------------------------------------------------------------------
 
-printhdr('Z-SCORING IMAGES');
+printhdr('LOADING Z-SCORED IMAGES INTO FMRI_DATA_ST OBJECTS');
 
-for i=1:length(DAT.conditions)
+for i=1:size(DAT.conditions,2)
     
-    % Z-scoring
+    % Z-SCORING
     % ---------------------------------------------------------------------
     
     printhdr(sprintf('Z-scoring images: condition %3.0f, %s', i, DAT.conditions{i}));
-    printstr(dashes);
 
     DATA_OBJsc{i} = rescale(DATA_OBJ{i}, 'zscoreimages');
 
@@ -195,9 +222,8 @@ for i=1:length(DAT.conditions)
     % ---------------------------------------------------------------------
 
     printhdr(sprintf('QC metrics for z-scored images: condition %3.0f, %s', i, DAT.conditions{i}));
-    printstr(dashes);
     
-    [group_metrics individual_metrics values gwcsf gwcsfmean gwcsfl2norm] = qc_metrics_second_level(DATA_OBJsc{i});
+    [group_metrics,individual_metrics,values,gwcsf,gwcsfmean,gwcsfl2norm] = qc_metrics_second_level(DATA_OBJsc{i});
     
     DAT.sc_quality_metrics_by_condition{i} = group_metrics;
     DAT.sc_gray_white_csf{i} = values;
@@ -207,21 +233,32 @@ for i=1:length(DAT.conditions)
     
     drawnow; snapnow
     
-    % optional: plot
+    % PLOT (OPTIONAL)
     % ---------------------------------------------------------------------
     
     if dofullplot
-        fprintf('%s\nPlot of z-scored images: %s\n%s\n', dashes, DAT.functional_wildcard{i}, dashes);
+        if ischar(DAT.functional_wildcard{i})
+            fprintf('%s\nPlot of z-scored images: %s\n%s\n', dashes, DAT.functional_wildcard{i}, dashes);  % This fails when trying to pass in a cell array of wildcards - Michael Sun 10/22/2021
+        elseif iscellstr(DAT.functional_wildcard{i}) || isstring(DAT.functional_wildcard{i})
+            fprintf('%s\nPlot of z-scored images: %s\n%s\n', dashes, DAT.conditions{i}, dashes);
+        end
+
         disp(DATA_OBJsc{i}.fullpath)
         
-        plot(DATA_OBJsc{i}); drawnow; snapnow
+        plot(DATA_OBJsc{i},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run; 
+        
+        drawnow; snapnow
         
         if ~omit_histograms
             
-            hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'singleaxis');
-            title([DAT.conditions{i} ' histograms for each image']);
-            drawnow; snapnow
+              % @lukasvo76 commented out since this is redundant (already
+              % included as subplot in output of plot() function above
+%             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'singleaxis');
+%             title([DAT.conditions{i} ' histograms for each image']);
+%             drawnow; snapnow
             
+            create_figure('histogram');
+            set(gcf,'WindowState','maximized');
             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'by_tissue_type');
             drawnow; snapnow
             
@@ -229,7 +266,8 @@ for i=1:length(DAT.conditions)
         
     end
     
-    % derived measures
+    % DERIVED MEASURES
+    %----------------------------------------------------------------------
     
     DATA_OBJsc{i} = remove_empty(DATA_OBJsc{i});
     DAT.sc_globalmeans{i} = mean(DATA_OBJsc{i}.dat)';
