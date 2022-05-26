@@ -165,9 +165,9 @@ for c = 1:size(DAT.contrasts, 1)
 %             title([DAT.contrastnames{c} ' histograms for each l2norm-rescaled contrast image']);
 %             drawnow; snapnow
             
-            create_figure('histogram_scaled');
+            create_figure('histogram_l2norm');
             set(gcf,'WindowState','maximized');
-            hist_han = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'by_tissue_type');
+            hist_han_l2norm = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'by_tissue_type');
             drawnow; snapnow
             
         end
@@ -264,9 +264,9 @@ for c = 1:size(DAT.contrasts, 1)
 %             title([DAT.contrastnames{c} ' histograms for each contrast image (from z-scored condition images)']);
 %             drawnow; snapnow
             
-            create_figure('histogram_scaled');
+            create_figure('histogram_zscore');
             set(gcf,'WindowState','maximized');
-            hist_han = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'by_tissue_type');
+            hist_han_zscore = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'by_tissue_type');
             drawnow; snapnow
             
         end
