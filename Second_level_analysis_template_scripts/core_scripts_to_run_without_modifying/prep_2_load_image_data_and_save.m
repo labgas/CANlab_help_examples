@@ -1,5 +1,5 @@
 %% prep_2_load_image_data_and_save.m
-%
+
 % This script 
 % 1) loads first-level beta/con images into CANlab's fmri_data objects, 
 % 2) performs quality control, including plots if requested in a2 script,
@@ -13,8 +13,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_1b_prep_behavioral_data.m         v1.0
-% last modified: 2022/05/16
+% @(#)% prep_2_load_image_data_and_save.m         v1.0
+% last modified: 2022/05/26
 
 
 %% SET DEFAULT OPTIONS IF NEEDED
@@ -278,13 +278,13 @@ for i=1:size(DAT.conditions,2)
 end
 
 
-%% SAVE
+%% SAVE RESULTS
 % -------------------------------------------------------------------------
 
 printhdr('Save results');
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
-save(savefilename, 'DAT', 'basedir', 'datadir', 'resultsdir', 'scriptsdir', 'figsavedir');
+save(savefilename, 'DSGN', 'DAT', 'basedir', 'datadir', 'maskdir', 'resultsdir', 'scriptsdir', 'figsavedir','htmlsavedir');
 
 savefilenamedata = fullfile(resultsdir, 'data_objects.mat');
 save(savefilenamedata, 'DATA_OBJ', '-v7.3');                 % Note: 6/7/17 Tor switched to -v7.3 format by default
