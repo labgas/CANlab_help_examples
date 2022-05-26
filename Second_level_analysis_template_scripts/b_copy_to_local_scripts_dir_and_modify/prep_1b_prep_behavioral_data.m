@@ -332,7 +332,7 @@ else
     disp('prep_2/3/4 scripts should be run before generating results.');
 end
 
-printhdr('Save results');
+printhdr('Save DSGN & DAT structures and directory names in image_names_and_setup.mat');
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
-save(savefilename, 'DAT');
+save(savefilename, 'DSGN', 'DAT', 'basedir', 'datadir', 'maskdir', 'resultsdir', 'scriptsdir', 'figsavedir', 'htmlsavedir', '-v7.3');

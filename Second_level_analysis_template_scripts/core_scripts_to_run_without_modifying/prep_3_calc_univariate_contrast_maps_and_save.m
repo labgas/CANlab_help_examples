@@ -279,12 +279,10 @@ end
 %% SAVE RESULTS
 % ------------------------------------------------------------------------
 
+printhdr('Save contrast data objects in contrast_data_objects.mat');
+
 savefilenamedata = fullfile(resultsdir, 'contrast_data_objects.mat');   % both unscaled and two versions of scaled
 save(savefilenamedata, 'DATA_OBJ_CON*', '-v7.3');                       % Note: 6/7/17 Tor switched to -v7.3 format by default 
-
-% For publish output
-disp(basedir)
-fprintf('Saved results%sDATA_OBJ_CON\n', filesep);
 
 
 %% GET CONTRASTS IN GLOBAL GRAY, WHITE, CSF VALUES
@@ -319,6 +317,7 @@ end
 %% ADD TO PREVIOUSLY SAVED RESULTS
 % -------------------------------------------------------------------------
 
+printhdr('added contrast gray/white/csf to DAT in image_names_and_setup.mat');
+
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
 save(savefilename, '-append', 'DAT');
-disp('added contrast gray/white/csf to DAT in image_names_and_setup.mat');
