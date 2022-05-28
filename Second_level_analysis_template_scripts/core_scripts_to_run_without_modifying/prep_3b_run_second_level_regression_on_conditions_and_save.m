@@ -1,3 +1,9 @@
+% NOTE: the use of this script is being deprecated, as the option to run
+% second-level regression on conditions is now built into
+% prep_3a_run_second_level_regression_and_save.m; please use that script
+% instead of this one
+% @lukasvo76, May 2022
+%
 % THIS SCRIPT RUNS BETWEEN-PERSON (2nd-level) Regression analyses
 % for each within-person CONTRAST registered in the analysis
 % 

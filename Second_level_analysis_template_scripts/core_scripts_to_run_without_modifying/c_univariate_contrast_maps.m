@@ -1,4 +1,4 @@
-en %% Check whether contrasts are defined
+%% Check whether contrasts are defined
 % ------------------------------------------------------------------------
 if ~isfield(DAT, 'contrasts') || isempty(DAT.contrasts)
     

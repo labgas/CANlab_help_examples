@@ -1,3 +1,9 @@
+% NOTE: the use of this script is being deprecated, as the option to run
+% robust parcelwise second-level regression on conditions is now built into
+% prep_3a_run_second_level_regression_and_save.m; please use that script
+% instead of this one
+% @lukasvo76, May 2022
+
 % THIS SCRIPT RUNS BETWEEN-PERSON (2nd-level) Robust Parcelwise Regression 
 % analyses for each within-person CONTRAST registered in the analysis, 
 % using Tor's new robfit_parcelwise method for fmri_data objects
