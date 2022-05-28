@@ -1,4 +1,4 @@
-%% a2_set_default_options.m
+%%% a2_set_default_options.m
 %
 % USAGE
 % Set options used in various core secondlevel scripts included in
@@ -8,6 +8,7 @@
 % 
 % - Always make a study-specific copy of this script in your code subdataset, do NOT edit in the repo!
 % - The below can be considered LaBGAS default options, but decisions will be study-specific!
+% - Various options added by @lukasvo76 spring 21 and May 22
 %
 %__________________________________________________________________________
 %
@@ -15,8 +16,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v1.0
-% last modified: 2022/05/16
+% @(#)% a2_set_default_options.m         v2.0
+% last modified: 2022/05/27
 
 
 %% prep_2_load_image_data_and_save & prep_3_calc_univariate_contrast_maps_and_save options
@@ -25,31 +26,38 @@ dofullplot = true;         % default true  Can set to false to save time
 omit_histograms = false;     % default false Histograms not useful for large samples 
 dozipimages = false;        % default false to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses; lukasvo76: changed from original CANlab default
 
+
 %% prep_3a_run_second_level_regression_and_save options 
 % --------------------------------------------------------------------
-dorobust = true;            % robust statistics [true, false] -- default true
-myscaling_glm = 'raw';          % 'raw' or 'scaled'; @lukasvo76 edited: change to 'scaled' if you want to use z-scored condition images, change to 'scaled_contrasts' if you want to use l2norm scaled contrast images
-design_matrix_type = 'custom';   % 'group' or 'custom'
-                            % Group: use DAT.BETWEENPERSON.group or 
+dorobust = true;            % robust statistics for voxel-based GLM [true, false] -- default true
+myscaling_glm = 'raw';      % 'raw', 'scaled', or 'scaledcontrasts'; 
+                            % 'scaled': use z-scored condition images prior to computing contrasts
+                            % 'scaled_contrasts': l2norm contrasts after computing them
+design_matrix_type = 'onesample';   % 'group', 'custom', or 'onesample'
+                            % 'group': use DAT.BETWEENPERSON.group or 
                             % DAT.BETWEENPERSON.contrasts{c}.group;
-                            % lukasvo76: choose this option if you want to
-                            % compare groups without controlling for
-                            % covariates
-                            % Custom: use all columns of table object 
+                            % @lukasvo76: compare groups without controlling for covariates
+                            % 'custom': use all columns of table object 
                             % DAT.BETWEENPERSON.contrasts{c};
-                            % lukasvo76: choose this option if you have
-                            % covariates to control for in addition to a
-                            % group factor
-                            
-%% c_univariate_contrast_maps & c2a_second_level_regression_options
-%---------------------------------------------------------------------
-maskname_glm = which('gray_matter_mask_sparse.img'); %lukasvo76 edited: default use of sparse gray matter mask; maskdir now defined in a_set_up_paths_always_run_first script; if you do not want to mask, change to []; if you want to use a custom mask, put it in maskdir and change name here.
+                            % @lukasvo76: covariates to control for in addition to a group factor
+                            % 'onesample': use intercept only
+                            % @lukasvo76: no group factor, no covariates -
+                            % one sample t-test with robust option
+                            % (contrary to c_univariate_contrast_maps.m)
+dorobfit_parcelwise = false;  % true runs robust parcelwise regression (CANlab's robfit_parcelwise() function) rather than voxel-based GLM (CANlab's regress() function) % added by @lukasvo76 May 2022
+    % robfit_parcelwise options
+    csf_wm_covs = false; % true adds global wm & csf regressors at second level
+    remove_outliers = false; % true removes outlier images/subjects based on mahalanobis distance 
 
-%% c2e_second_level_robust_parcelwise_regression
-%---------------------------------------------------------------------
-% see prep_3a options above as well as the following
-csf_wm_covs = false; % default false, true adds global wm & csf regressors
-remove_outliers = false; % default false, true removes outlier images/subjects based on mahalanobis distance 
+    
+%% c2a_second_level_regression options
+%--------------------------------------------------------------------------
+% NOTE: the first option also applies to c_univariate_contrast_maps_ scripts, but the
+% use of c2a_second_level_regression is preferred since it has more
+% flexible options for scaling, design specification, and regression method
+maskname_glm = which('gray_matter_mask_sparse.img'); %lukasvo76 edited: default use of sparse gray matter mask; maskdir now defined in a_set_up_paths_always_run_first script; if you do not want to mask, change to []; if you want to use a custom mask, put it in maskdir and change name here.
+save_figures = false; % true saves .svg files of all figures generated by c2a_second_level_regression.m (slow, takes up space) % added by @lukasvo76 May 2022
+
 
 %% prep_3b_run_SVMs_on_contrasts_and_save options 
 % --------------------------------------------------------------------
@@ -60,19 +68,23 @@ dobootstrap = false;        % default false     Takes a lot of time, hence only 
 boot_n = 10000;             % default number of bootstrap samples       Reduce number for quick results
 parallelstr = 'parallel';   % parallel proc for boot.   'parallel' or 'noparallel'
 
+
 %% prep_3c_run_SVMs_on_contrasts_masked options 
 % --------------------------------------------------------------------
 % see prep_3b options above as well as the following:
 maskname_svm = which('gray_matter_mask_sparse.img');
+
 
 %% prep_3d_run_SVMs_betweenperson_contrasts options
 %---------------------------------------------------------------------
 % see prep_3b & prep_3c options above as well as the following:
 myscaling_svm_between = 'raw'; % see above
 
+
 %% prep_4_apply_signatures_and_save options 
 % --------------------------------------------------------------------
 use_scaled_images = false; % @lukasvo76: change to true to use z-scored images - see above
+
 
 %% emosymp_m1_s5_predict_symptom_ratings_lasso_pcr options
 % --------------------------------------------------------------------
@@ -82,6 +94,7 @@ myscaling_pcr = 'raw'; % options are 'raw' or 'scaled'
 dosavepcrstats = true; % see above
 % lukasvo76: this refers to a study-specific script for the emosymp study,
 % need to work on a more generic version
+
 
 %% z_batch_publish_everything, z_batch_publish_analyses options 
 % --------------------------------------------------------------------
