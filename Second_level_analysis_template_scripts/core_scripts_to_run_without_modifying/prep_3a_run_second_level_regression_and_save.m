@@ -47,6 +47,7 @@
 % OPTIONS TO BE SPECIFIED IN THIS SCRIPT
 %
 % -mygroupfieldname: 'contrasts' or 'conditions'
+% -results_suffix: name to add to results file to specify model in case of multiple models, e.g. 'covariate_rating'
 %
 %__________________________________________________________________________
 %
@@ -55,17 +56,18 @@
 %
 %__________________________________________________________________________
 % @(#)% prep_3a_run_second_level_regression_and_save.m         v2.0
-% last modified: 2022/05/27
+% last modified: 2022/05/28
 
 
 %% SETTINGS
 %--------------------------------------------------------------------------
 
-% conditions or contrasts
+% options to be specified here
 
 mygroupnamefield = 'contrasts'; 
+results_suffix = ''; % do not delete, leave empty if not needed
 
-% set in a2_set_default_options
+% options set in a2_set_default_options
 
 options_needed = {'dorobust', 'myscaling_glm', 'design_matrix_type'};
 options_exist = cellfun(@exist, options_needed); 
@@ -131,7 +133,7 @@ switch mygroupnamefield
         
     otherwise
         
-        error('invalid option "%s" defined in mygroupnamefield variable, choose between "contrasts" and "conditions"',mygroupnamefield)
+        error('\ninvalid option "%s" defined in mygroupnamefield variable, choose between "contrasts" and "conditions"\n',mygroupnamefield)
 
 end
 
@@ -170,7 +172,7 @@ for c = 1:kc
                 X = group;
                 imgs_nan = [];
             else
-                error('Group not defined in DAT.BETWEENPERSON.group, which is required for option "%s" defined in design_matrix_type', design_matrix_type);
+                error('\nGroup not defined in DAT.BETWEENPERSON.group, which is required for option "%s" defined in design_matrix_type\n', design_matrix_type);
             end
 
         case 'onesample'
@@ -184,7 +186,7 @@ for c = 1:kc
             
         otherwise
             
-            error('invalid option "%s" defined in design_matrix_type variable, choose between "group", "custom", or "onesample"', design_matrix_type);
+            error('\ninvalid option "%s" defined in design_matrix_type variable, choose between "group", "custom", or "onesample"\n', design_matrix_type);
             
     end
 
@@ -209,7 +211,7 @@ for c = 1:kc
             switch myscaling_glm
 
                 case 'raw'
-                    printstr('contrast calculated on raw (unscaled) condition images used in second-level GLM');
+                    fprintf('\ncontrast calculated on raw (unscaled) condition images used in second-level GLM\n\n');
                     scaling_string = 'no_scaling';
                     cat_obj = DATA_OBJ_CON{c};
                     if imgs_nan
@@ -217,7 +219,7 @@ for c = 1:kc
                     end
 
                 case 'scaled'
-                    printstr('contrast calculated on z-scored condition images used in second-level GLM');
+                    fprintf('\ncontrast calculated on z-scored condition images used in second-level GLM\n\n');
                     scaling_string = 'scaling_z_score_conditions';
                     cat_obj = DATA_OBJ_CONsc{c};
                     if imgs_nan
@@ -225,7 +227,7 @@ for c = 1:kc
                     end
 
                 case 'scaled_contrasts'
-                    printstr('l2norm scaled contrast images used in second-level GLM');
+                    fprintf('\nl2norm scaled contrast images used in second-level GLM\n\n');
                     scaling_string = 'scaling_l2norm_contrasts';
                     cat_obj = DATA_OBJ_CONscc{c};
                     if imgs_nan
@@ -233,7 +235,7 @@ for c = 1:kc
                     end
 
                 otherwise
-                    error('invalid option "%s" defined in myscaling_glm variable in a2_set_default_options script, choose between "raw", "scaled", or "scaled_constrast" given option "%s" defined in mygroupnamefield variable', myscaling_glm, mygroupnamefield);
+                    error('\ninvalid option "%s" defined in myscaling_glm variable in a2_set_default_options script, choose between "raw", "scaled", or "scaled_constrast" given option "%s" defined in mygroupnamefield variable\n', myscaling_glm, mygroupnamefield);
 
             end
             
@@ -242,7 +244,7 @@ for c = 1:kc
             switch myscaling_glm
 
                 case 'raw'
-                    printstr('Raw (unscaled) condition images used in second-level GLM');
+                    fprintf('\nRaw (unscaled) condition images used in second-level GLM\n\n');
                     scaling_string = 'no_scaling';
                     cat_obj = DATA_OBJ{c};
                     if imgs_nan
@@ -250,7 +252,7 @@ for c = 1:kc
                     end
 
                 case 'scaled'
-                    printstr('Z-scored condition images used in second-level GLM');
+                    fprintf('\nZ-scored condition images used in second-level GLM\n\n');
                     scaling_string = 'scaling_z_score_conditions';
                     cat_obj = DATA_OBJsc{c};
                     if imgs_nan
@@ -258,14 +260,14 @@ for c = 1:kc
                     end
 
                 case 'scaled_contrasts'
-                    error('invalid combination of option "%s" defined in myscaling_glm_variable in a2_set_default_options script and option "%s" defined in mygroupnamefield variable, choose between "raw" and "scaled" options',myscaling_glm,mygroupnamefield);
+                    error('\ninvalid combination of option "%s" defined in myscaling_glm_variable in a2_set_default_options script and option "%s" defined in mygroupnamefield variable, choose between "raw" and "scaled" options\n',myscaling_glm,mygroupnamefield);
 
                 otherwise
-                    error('invalid option "%s" defined in myscaling_glm variable in a2_set_default_options script, choose between "raw",  and "scaled", given option "%s" defined in mygroupnamefield variable', myscaling_glm, mygroupnamefield);
+                    error('\ninvalid option "%s" defined in myscaling_glm variable in a2_set_default_options script, choose between "raw",  and "scaled", given option "%s" defined in mygroupnamefield variable\n', myscaling_glm, mygroupnamefield);
 
             end
             
-    end
+    end % switch mygroupnamefield - contrasts or conditions
     
   
     % FORMAT AND ATTACH DESIGN MATRIX
@@ -280,8 +282,12 @@ for c = 1:kc
         vifs = getvif(X);
 
         if any(isconstant)
-            disp('An intercept appears to be added manually. Do not include an intercept - it will be added automatically.');
-            disp('Skipping this contrast.')
+            
+            fprintf('\n');
+            warning('An intercept appears to be added manually. Do not include an intercept - it will be added automatically.');
+            warning('Skipping this contrast.');
+            fprintf('\n');
+            
             continue
         end
 
@@ -296,18 +302,20 @@ for c = 1:kc
         disp(' ');
 
         if any(~meancentered & ~effectscoded)
-            disp('Warning: some columns are not mean-centered or effects coded. \nIntercept may not be interpretable.\n');
-            fprintf('Columns: ')
-            fprintf('%d ', find(~meancentered & ~effectscoded));
             fprintf('\n');
+            warning('Some columns are not mean-centered or effects coded. \nIntercept may not be interpretable');
+            fprintf('\nColumns: ')
+            fprintf('%d \n', find(~meancentered & ~effectscoded));
         else
-            disp('Checked OK: All columns mean-centered or are effects-coded [1 -1 0]');
+            fprintf('\nChecked OK: All columns mean-centered or are effects-coded [1 -1 0]\n\n');
         end
 
         if any(vifs > 2)
-            disp('Some regressors have high variance inflation factors: Parameters might be poorly estimated or uninterpretable.');
+            fprintf('\n');
+            warning('Some regressors have high variance inflation factors: Parameters might be poorly estimated or uninterpretable.');
+            fprintf('\n');
         else
-            disp('Checked OK: VIFs for all columns are < 2');
+            fprintf('\nChecked OK: VIFs for all columns are < 2\n\n');
         end
     
     else
@@ -315,7 +323,7 @@ for c = 1:kc
         design_table.Mean = mean(X)';
         design_table.Var = var(X)';
         
-    end
+    end % if loop design_matrix_type
     
     cat_obj.X = X;
     
@@ -327,16 +335,21 @@ for c = 1:kc
         if all(cat_obj.X > 0) || all(cat_obj.X < 0)
             % Only positive or negative weights - nothing to compare
 
-            printhdr(' Only positive or negative regressor values - bad design, please check');
-
+            fprintf('\n');
+            warning('Only positive or negative regressor values - bad design, please check');
+            fprintf('\n');
+            
             continue
         end
         
     end
 
-    % RUN VOXEL-WISE REGRESSION MODEL
+    % RUN GLM MODEL
     % ---------------------------------------------------------------------
-    if ~dorobfit_parcelwise % voxelwise
+    
+    % VOXEL-WISE
+    
+    if ~dorobfit_parcelwise
         
         if dorobust
             robuststring = 'robust';
@@ -392,6 +405,8 @@ for c = 1:kc
         % PLOT ORTHVIEWS (MASKED IF SPECIFIED IN MASKNAME_GLM OPTION)
         % --------------------------------------------------------------------
         
+        fprintf ('\nShowing results at p uncor < 0.05: %s\nEffect: %s\n\n', regression_stats.analysis_name, mask_string);
+        
         t = regression_stats.t;
             if maskname_glm
                 t = apply_mask(t,maskname_glm);
@@ -413,10 +428,12 @@ for c = 1:kc
         regression_stats_results{c} = regression_stats;
 
         if dorobust
-            disp('Cumulative run time:'), toc(regresstime); 
+            fprintf('\nCumulative run time:'), toc(regresstime); 
         end
         
-    else % parcelwise
+    % PARCEL-WISE    
+        
+    else
         
         if csf_wm_covs && remove_outliers
             parcelwise_stats = robfit_parcelwise(cat_obj,'names', groupnames,'csf_wm_covs',true,'remove_outliers',true,'doplot',false);
@@ -499,11 +516,11 @@ for c = 1:kc
         % PLOT MONTAGE (MASKED IF SPECIFIED IN MASKNAME_GLM OPTION)
         % ---------------------------------------------------------------------
         num_effects = size(parcelwise_stats.t_obj.dat, 2); % number of regressors
-        o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
+        o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
         for j = 1:num_effects
 
-            fprintf ('\nShowing results at FDR q < 0.05: %s\nEffect: %s, %s\n\n', parcelwise_stats.analysis_name, parcelwise_stats.variable_names{j}, mask_string);
+            fprintf ('\nShowing results at p uncor < 0.05: %s\nEffect: %s, %s\n\n', parcelwise_stats.analysis_name, parcelwise_stats.variable_names{j}, mask_string);
 
             tj = get_wh_image(parcelwise_stats.t_obj, j);
                 if maskname_glm
@@ -531,20 +548,20 @@ for c = 1:kc
         
     end % if loop voxel- versus parcelwise
     
-end  % loop over contrasts or conditions
+end  % for loop over contrasts or conditions
 
 
 %% SAVE RESULTS
 % -------------------------------------------------------------------------
 if ~dorobfit_parcelwise
-    savefilenamedata = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string,'.mat']);
+    savefilenamedata = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
     save(savefilenamedata, 'regression_stats_results', '-v7.3');
-    fprintf('Saved regression_stats_results for %s\n', mygroupnamefield);
+    fprintf('\nSaved regression_stats_results for %s\n', mygroupnamefield);
 else
-    savefilenamedata = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string,'.mat']);
+    savefilenamedata = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
     save(savefilenamedata, 'parcelwise_stats_results', '-v7.3');
-    fprintf('Saved parcelwise_stats_results for %s\n', mygroupnamefield);
+    fprintf('\nSaved parcelwise_stats_results for %s\n', mygroupnamefield);
 end
 
-fprintf('Filename: %s\n', savefilenamedata);
+fprintf('\nFilename: %s\n', savefilenamedata);
 
