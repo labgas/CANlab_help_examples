@@ -1,17 +1,30 @@
-% THIS SCRIPT RUNS BETWEEN-PERSON (2nd-level) Regression analyses
-% for each within-person CONTRAST registered in the analysis
+%%% prep_3a_run_second_level_regression_and_save.m
+
+% USAGE
+%
+% This script 
+% 1) runs second⁻level (i.e. across subjects) regression analyses
+% for each within-subject CONTRAST or CONDITION registered in the DAT
+% structure, either
+%   a) voxel-wise, calling CANlab's regress() function under the hood,
+%   including its robust regression option if specified
+%   b) parcel-wise, calling CANlab's robfit_parcelwise() function under the
+%   hood, which is robust by default
+% 2) saves the results using standard naming and location
 % 
 % - To specify analysis options, run a2_set_default_options
-% - prep_3a_run_second_level_regression_and_save runs regressions and saves
-% results in a standard location and format
+% - To choose between conditions and contrasts, set option below
 % - To get results reports, see c2a_second_level_regression
 %
-% Analysis options include:
+% OPTIONS SPECIFIED IN a2_set_default_options
+%
 % - dorobust : robust regression or OLS (true/false)
-% - myscaling: 'raw' or 'scaled' (image scaling done in prep_2_... data load)
-% - design_matrix_type: 'group' or 'custom'
+% - dorobfit_parcelwise: voxel- or parcelwise regression (true/false) - % OPTION ADDED BY @LUKASVO76 MAY 2022
+% - myscaling: 'raw', 'scaled', or 'scaled_contrasts' (defined in a2_set_..., image scaling done in prep_2_... and prep_3_... data load)
+% - design_matrix_type: 'group', 'custom', or 'onesample'
 %                       Group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group;
 %                       Custom: use all columns of table object DAT.BETWEENPERSON.contrasts{c};
+%                       Onesample: use constant (i.e. intercept) only
 %
 % 'group' option 
 % Assuming that groups are concatenated in contrast image lists, and
@@ -23,69 +36,118 @@
 % Can enter a multi-column design matrix for each contrast
 % Design matrix can be different for each contrast
 %
+% 'onesample' option:
+% Only adds intercept, hence performs a one-sample t-test on contrast
+% images across all subjects, similarly to c_univariate_contrast_maps_
+% scripts, but with more flexible options including scaling and robustfit
+% OPTION ADDED BY @LUKASVO76 MAY 2022
+%
 % To set up group and custom variables, see prep_1b_prep_behavioral_data
+%
+% OPTIONS TO BE SPECIFIED IN THIS SCRIPT
+%
+% -mygroupfieldname: 'contrasts' or 'conditions'
+%
+%__________________________________________________________________________
+%
+% revamped by: Lukas Van Oudenhove
+% date:   Dartmouth, May, 2022
+%
+%__________________________________________________________________________
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v2.0
+% last modified: 2022/05/27
 
-% --------------------------------------------------------------------
 
-% USER OPTIONS
-% This is a standard block of code that can be used in multiple scripts.
-% Each script will have its own options needed and default values for
-% these.
-% The code: 
-% (1) Checks whether the option variables exist
-% (2) Runs a2_set_default_options if any are missing
-% (3) Checks again and uses the default options if they are still missing
-% (e.g., not specified in an older/incomplete copy of a2_set_default_options)
-
-%% Settings
+%% SETTINGS
 %--------------------------------------------------------------------------
 
-% Now set in a2_set_default_options
-options_needed = {'dorobust', 'myscaling_glm', 'design_matrix_type'}; % options we are looking for. Set in a2_set_default_options % @lukasvo76: or in study-specific version of that script
+% conditions or contrasts
+
+mygroupnamefield = 'contrasts'; 
+
+% set in a2_set_default_options
+
+options_needed = {'dorobust', 'myscaling_glm', 'design_matrix_type'};
 options_exist = cellfun(@exist, options_needed); 
 
-option_default_values = {true, 'raw', 'group'}; % defaults if we cannot find info in a2_set_default_options at all ; @lukasvo76: changed the defaults to align with a2_emosymp_m1_s1_set_default_options
+option_default_values = {true, 'raw', 'onesample'}; % defaults if we cannot find info in a2_set_default_options at all ; @lukasvo76: changed the defaults to align with a2_set_default_options
 
 plugin_get_options_for_analysis_script
 
 
-%% Check for required DAT fields
+%% CHECK REQUIRED DAT FIELDS
 % -------------------------------------------------------------------------
 
-% List required fields in DAT, in cell array:
-required_fields = {'BETWEENPERSON', 'contrastnames', 'contrasts' 'contrastcolors'};
+% List required fields in DAT, in cell array
 
-ok_to_run = plugin_check_required_fields(DAT, required_fields); % Checks and prints warnings
-if ~ok_to_run
-    return
+if ~strcmpi(design_matrix_type,'onesample')
+    
+    required_fields = {'BETWEENPERSON', 'contrastnames', 'contrasts' 'contrastcolors', 'conditions', 'colors'};
+
+    ok_to_run = plugin_check_required_fields(DAT, required_fields); % Checks and prints warnings
+    if ~ok_to_run
+        return
+    end
+    
+else
+    
+    required_fields = {'contrastnames', 'contrasts' 'contrastcolors', 'conditions', 'colors'};
+
+    ok_to_run = plugin_check_required_fields(DAT, required_fields); % Checks and prints warnings
+    if ~ok_to_run
+        return
+    end
+    
 end
 
 
-%% Initialize fmridisplay slice display if needed, or clear existing display
+%% MASKING
+%--------------------------------------------------------------------------
+
+if exist(maskname_glm, 'file')
+    [~,maskname_short] = fileparts(maskname_glm);
+    mask_string = sprintf('within mask %s', maskname_short);
+else
+    mask_string = sprintf('without masking');
+end  
+
+
+%% RUN SECOND LEVEL REGRESSION FOR EACH CONTRAST
 % -------------------------------------------------------------------------
 
-% Specify which montage to add title to. This is fixed for a given slice display
-% whmontage = 5; 
-% plugin_check_or_create_slice_display; % script, checks for o2 and uses whmontage
+switch mygroupnamefield
+    
+    case 'contrasts'
 
+        kc = size(DAT.contrasts, 1);
+        
+        printhdr('running second-level regressions on first-level contrasts');
+        
+    case 'conditions'
+        
+        kc = size(DAT.conditions, 2);
+        
+        printhdr('running second-level regressions on first-level conditions');
+        
+    otherwise
+        
+        error('invalid option "%s" defined in mygroupnamefield variable, choose between "contrasts" and "conditions"',mygroupnamefield)
 
-%% Run between-person Second-level regression for each contrast
-% -------------------------------------------------------------------------
+end
 
-printhdr('Second-level regressions discriminate between-person contrasts');
-
-kc = size(DAT.contrasts, 1);
-
-regression_stats_results = cell(1, kc);
+if ~dorobfit_parcelwise
+    regression_stats_results = cell(1, kc);
+else
+    parcelwise_stats_results = cell(1,kc);
+end
 
 for c = 1:kc
     
-    % Get design matrix for this contrast
+    % GET DESIGN MATRIX FOR THIS CONTRAST OR CONDITION
     % ---------------------------------------------------------------------
     
-    mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
-    
     switch design_matrix_type
+        
         case 'custom'
             
             % Define design matrix X "design_matrix"
@@ -95,213 +157,394 @@ for c = 1:kc
             X = table2array(table_obj);
             idx_nan = ~isnan(X);
             idx_nan = ~(sum(idx_nan,2) < size(idx_nan,2)); % at least one column of X contains NaN
-            imgs_nan = [1:size(X,1)];
+            imgs_nan = 1:size(X,1);
             imgs_nan = imgs_nan(idx_nan');
             X = X(idx_nan,:);
             
         case 'group'
             
             % Use 'groups' single regressor
-            group = DAT.BETWEENPERSON.(mygroupnamefield){c}.group;
-            groupnames = {'group'};
-            X = group;
-            imgs_nan = [];
-            
-            if isempty(group)
-                fprintf('Group not defined for contrast %s. Skipping.\n', DAT.contrastnames{c});
-                continue
+            if ~isempty(DAT.BETWEENPERSON.group)
+                group = DAT.BETWEENPERSON.group;
+                groupnames = {'group'};
+                X = group;
+                imgs_nan = [];
+            else
+                error('Group not defined in DAT.BETWEENPERSON.group, which is required for option "%s" defined in design_matrix_type', design_matrix_type);
             end
+
+        case 'onesample'
             
-        otherwise error('Incorrect option specified for design_matrix_type');
-    end
-    
-    printstr(DAT.contrastnames{c});
-    printstr(dashes)
-    
-    mycontrast = DAT.contrasts(c, :);
-    wh = find(mycontrast);
-    
-    % Select data for this contrast
-    % ---------------------------------------------------------------------
-    
-    switch myscaling_glm
-        case 'raw'
-            printstr('Raw (unscaled) images used in between-person GLM');
-            scaling_string = 'no_scaling';
-            cat_obj = DATA_OBJ_CON{c};
-            if imgs_nan
-                cat_obj = cat_obj.get_wh_image(imgs_nan);
-            end
-            
-        case 'scaled'
-            printstr('Z-scored images used in between-person GLM');
-            scaling_string = 'scaling_z_score_conditions';
-            cat_obj = DATA_OBJ_CONsc{c};
-            if imgs_nan
-                cat_obj = cat_obj.get_wh_image(imgs_nan);
-            end
-            
-        case 'scaled_contrasts'
-            printstr('l2norm scaled contrast images used in between-person GLM');
-            scaling_string = 'scaling_l2norm_contrasts';
-            cat_obj = DATA_OBJ_CONscc{c};
-            if imgs_nan
-                cat_obj = cat_obj.get_wh_image(imgs_nan);
-            end
+%             if ~dorobfit_parcelwise % voxel-wise
+                % Use intercept only
+                X = ones((size(DAT.imgs{c},1)),1);
+                groupnames = {'intercept'};
+%             end
+                imgs_nan = [];
             
         otherwise
-            error('myscaling must be ''raw'' or ''scaled'' or ''scaled_contrasts''');
+            
+            error('invalid option "%s" defined in design_matrix_type variable, choose between "group", "custom", or "onesample"', design_matrix_type);
+            
+    end
+
+    switch mygroupnamefield
+        
+        case 'contrasts'
+            printstr(DAT.contrastnames{c});
+            printstr(dashes)
+        case 'conditions'
+            printstr(DAT.conditions{c});
+            printstr(dashes)
+    
+    end
+
+    
+    % SELECT DATA FOR THIS CONTRAST/CONDITION
+    % ---------------------------------------------------------------------
+    switch mygroupnamefield
+        
+        case 'contrasts'
+            
+            switch myscaling_glm
+
+                case 'raw'
+                    printstr('contrast calculated on raw (unscaled) condition images used in second-level GLM');
+                    scaling_string = 'no_scaling';
+                    cat_obj = DATA_OBJ_CON{c};
+                    if imgs_nan
+                        cat_obj = cat_obj.get_wh_image(imgs_nan);
+                    end
+
+                case 'scaled'
+                    printstr('contrast calculated on z-scored condition images used in second-level GLM');
+                    scaling_string = 'scaling_z_score_conditions';
+                    cat_obj = DATA_OBJ_CONsc{c};
+                    if imgs_nan
+                        cat_obj = cat_obj.get_wh_image(imgs_nan);
+                    end
+
+                case 'scaled_contrasts'
+                    printstr('l2norm scaled contrast images used in second-level GLM');
+                    scaling_string = 'scaling_l2norm_contrasts';
+                    cat_obj = DATA_OBJ_CONscc{c};
+                    if imgs_nan
+                        cat_obj = cat_obj.get_wh_image(imgs_nan);
+                    end
+
+                otherwise
+                    error('invalid option "%s" defined in myscaling_glm variable in a2_set_default_options script, choose between "raw", "scaled", or "scaled_constrast" given option "%s" defined in mygroupnamefield variable', myscaling_glm, mygroupnamefield);
+
+            end
+            
+        case 'conditions'
+            
+            switch myscaling_glm
+
+                case 'raw'
+                    printstr('Raw (unscaled) condition images used in second-level GLM');
+                    scaling_string = 'no_scaling';
+                    cat_obj = DATA_OBJ{c};
+                    if imgs_nan
+                        cat_obj = cat_obj.get_wh_image(imgs_nan);
+                    end
+
+                case 'scaled'
+                    printstr('Z-scored condition images used in second-level GLM');
+                    scaling_string = 'scaling_z_score_conditions';
+                    cat_obj = DATA_OBJsc{c};
+                    if imgs_nan
+                        cat_obj = cat_obj.get_wh_image(imgs_nan);
+                    end
+
+                case 'scaled_contrasts'
+                    error('invalid combination of option "%s" defined in myscaling_glm_variable in a2_set_default_options script and option "%s" defined in mygroupnamefield variable, choose between "raw" and "scaled" options',myscaling_glm,mygroupnamefield);
+
+                otherwise
+                    error('invalid option "%s" defined in myscaling_glm variable in a2_set_default_options script, choose between "raw",  and "scaled", given option "%s" defined in mygroupnamefield variable', myscaling_glm, mygroupnamefield);
+
+            end
+            
     end
     
   
-    
-    % Format and attach outcomes: 1, -1 group variable FOR NOW
+    % FORMAT AND ATTACH DESIGN MATRIX
     % ---------------------------------------------------------------------
     
-    % Confirm design_matrix is 1, -1, or mean-centered
-    meancentered = ~(abs(mean(X)) > 1000 * eps);
-    effectscoded = all(X == 1 | X == -1 | X == 0, 1);
-    isconstant = all(X == mean(X, 1), 1);
-    vifs = getvif(X);
-    
-    if any(isconstant)
-        disp('An intercept appears to be added manually. Do not include an intercept - it will be added automatically.');
-        disp('Skipping this contrast.')
-        continue
-    end
+    if ~strcmpi(design_matrix_type,'onesample')
+        
+        % Confirm design_matrix is 1, -1, or mean-centered
+        meancentered = ~(abs(mean(X)) > 1000 * eps);
+        effectscoded = all(X == 1 | X == -1 | X == 0, 1);
+        isconstant = all(X == mean(X, 1), 1);
+        vifs = getvif(X);
 
-    % Report
-    design_table = table;
-    design_table.Mean = mean(X)';
-    design_table.Var = var(X)';
-    design_table.EffectsCode = effectscoded';
-    design_table.VIF = vifs';
-    design_table.Properties.RowNames = groupnames';
-    disp(design_table)
-    disp(' ');
-    
-    if any(~meancentered & ~effectscoded)
-        disp('Warning: some columns are not mean-centered or effects coded. \nIntercept may not be interpretable.\n');
-        fprintf('Columns: ')
-        fprintf('%d ', find(~meancentered & ~effectscoded));
-        fprintf('\n');
-    else
-        disp('Checked OK: All columns mean-centered or are effects-coded [1 -1 0]');
-    end
-    
-    if any(vifs > 2)
-        disp('Some regressors have high variance inflation factors: Parameters might be poorly estimated or uninterpretable.');
-    else
-        disp('Checked OK: VIFs for all columns are < 2');
-    end
+        if any(isconstant)
+            disp('An intercept appears to be added manually. Do not include an intercept - it will be added automatically.');
+            disp('Skipping this contrast.')
+            continue
+        end
 
+        % Report
+        design_table = table;
+        design_table.Mean = mean(X)';
+        design_table.Var = var(X)';
+        design_table.EffectsCode = effectscoded';
+        design_table.VIF = vifs';
+        design_table.Properties.RowNames = groupnames';
+        disp(design_table)
+        disp(' ');
+
+        if any(~meancentered & ~effectscoded)
+            disp('Warning: some columns are not mean-centered or effects coded. \nIntercept may not be interpretable.\n');
+            fprintf('Columns: ')
+            fprintf('%d ', find(~meancentered & ~effectscoded));
+            fprintf('\n');
+        else
+            disp('Checked OK: All columns mean-centered or are effects-coded [1 -1 0]');
+        end
+
+        if any(vifs > 2)
+            disp('Some regressors have high variance inflation factors: Parameters might be poorly estimated or uninterpretable.');
+        else
+            disp('Checked OK: VIFs for all columns are < 2');
+        end
+    
+    else
+        design_table = table;
+        design_table.Mean = mean(X)';
+        design_table.Var = var(X)';
+        
+    end
     
     cat_obj.X = X;
     
-    % Skip if necessary
+    % SANITY CHECK ON REGRESSORS, SKIP CONTRAST IF NEEDED
     % ---------------------------------------------------------------------
     
-    if all(cat_obj.X > 0) | all(cat_obj.X < 0)
-        % Only positive or negative weights - nothing to compare
-        
-        printhdr(' Only positive or negative regressor values - bad design');
-        
-        continue
-    end
+    if ~strcmpi(design_matrix_type,'onesample')
     
-    % Run voxel-wise regression model
+        if all(cat_obj.X > 0) || all(cat_obj.X < 0)
+            % Only positive or negative weights - nothing to compare
+
+            printhdr(' Only positive or negative regressor values - bad design, please check');
+
+            continue
+        end
+        
+    end
+
+    % RUN VOXEL-WISE REGRESSION MODEL
     % ---------------------------------------------------------------------
-    
-    if dorobust
-        robuststring = 'robust';
-        regresstime = tic;
-    else
-        robuststring = 'norobust';
-    end
-    
-    % out.t has t maps for all regressors, intercept is last
-    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nodisplay');
-    
-
-    % Make sure variable types are right data formats
-    regression_stats.design_table = design_table;
-    regression_stats.t = enforce_variable_types(regression_stats.t);
-    regression_stats.b = enforce_variable_types(regression_stats.b);
-    regression_stats.df = enforce_variable_types(regression_stats.df);
-    regression_stats.sigma = enforce_variable_types(regression_stats.sigma);
-
-    % add regressor names and other meta-data
-    regression_stats.contrastname = DAT.contrastnames{c};
-    regression_stats.contrast = DAT.contrasts(c, :);
-    
-    % add names for analyses and variables: 
-    regression_stats.analysis_name = DAT.contrastnames{c};
-    regression_stats.variable_names = [groupnames {'Intercept'}];
-    
-    % print output - name axis % @lukasvo76: changed original code to
-    % include unthreshold orthviews for each contrast in html output
-    orthviews(regression_stats.t);
-    for kk = 1:length(regression_stats.variable_names)
-        spm_orthviews_name_axis(regression_stats.variable_names{kk}, kk);
-    end
-    drawnow;snapnow;
-    
-    % Save stats objects for results later
-    % ---------------------------------------------------------------------
-
-    regression_stats_results{c} = regression_stats;
+    if ~dorobfit_parcelwise % voxelwise
         
-    if dorobust, disp('Cumulative run time:'), toc(regresstime); end
-    
-    
-end  % between-person contrast
+        if dorobust
+            robuststring = 'robust';
+            regresstime = tic;
+        else
+            robuststring = 'norobust';
+        end
 
-%% Save
+        if ~strcmpi(design_matrix_type,'onesample')
+            % out.t has t maps for all regressors, intercept is last
+            switch mygroupnamefield
+                case 'contrasts'
+                    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nodisplay');
+                case 'conditions'
+                    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.conditions{c}, 'variable_names', groupnames, 'nodisplay');
+            end
+        else
+            % out.t has t maps for intercept only
+            switch mygroupnamefield
+                case 'contrasts'
+                    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nointercept', 'nodisplay');
+                case 'conditions'
+                    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.conditions{c}, 'variable_names', groupnames, 'nointercept', 'nodisplay');
+            end
+        end
+
+        % Make sure variable types are right data formats
+        regression_stats.design_table = design_table;
+        regression_stats.t = enforce_variable_types(regression_stats.t);
+        regression_stats.b = enforce_variable_types(regression_stats.b);
+        regression_stats.df = enforce_variable_types(regression_stats.df);
+        regression_stats.sigma = enforce_variable_types(regression_stats.sigma);
+
+        % add analysis name, regressor names and other meta-data
+        switch mygroupnamefield
+            case 'contrasts'
+                regression_stats.contrastname = DAT.contrastnames{c};
+                regression_stats.contrast = DAT.contrasts(c, :);
+                regression_stats.analysis_name = DAT.contrastnames{c};
+            case 'conditions'
+                regression_stats.contrastname = DAT.conditions{c};
+                regression_stats.contrast = 1;
+                regression_stats.analysis_name = DAT.conditions{c};
+        end
+
+        % add names for variables 
+        if ~strcmpi(design_matrix_type,'onesample')
+            regression_stats.variable_names = [groupnames {'intercept'}];
+        else
+            regression_stats.variable_names = groupnames;
+        end
+
+        % PLOT ORTHVIEWS (MASKED IF SPECIFIED IN MASKNAME_GLM OPTION)
+        % --------------------------------------------------------------------
+        
+        t = regression_stats.t;
+            if maskname_glm
+                t = apply_mask(t,maskname_glm);
+            end
+        orthviews(t);
+            for kk = 1:length(regression_stats.variable_names)
+                switch mygroupnamefield
+                    case 'contrasts'
+                        spm_orthviews_name_axis([regression_stats.variable_names{kk},' ',DAT.contrastnames{c}], kk);
+                    case 'conditions'
+                        spm_orthviews_name_axis([regression_stats.variable_names{kk},' ',DAT.conditions{c}], kk);
+                end
+            end
+        drawnow;snapnow;
+
+        % KEEP RESULTS OBJECTS IN CELL ARRAY FOR SAVING
+        % ---------------------------------------------------------------------
+
+        regression_stats_results{c} = regression_stats;
+
+        if dorobust
+            disp('Cumulative run time:'), toc(regresstime); 
+        end
+        
+    else % parcelwise
+        
+        if csf_wm_covs && remove_outliers
+            parcelwise_stats = robfit_parcelwise(cat_obj,'names', groupnames,'csf_wm_covs',true,'remove_outliers',true,'doplot',false);
+        elseif csf_wm_covs && ~remove_outliers
+            parcelwise_stats = robfit_parcelwise(cat_obj,'names', groupnames,'csf_wm_covs',true,'remove_outliers',false,'doplot',false);
+        elseif ~csf_wm_covs && remove_outliers
+            parcelwise_stats = robfit_parcelwise(cat_obj,'names', groupnames,'csf_wm_covs',false,'remove_outliers',true,'doplot',false);
+        else
+            parcelwise_stats = robfit_parcelwise(cat_obj,'names', groupnames,'doplot',false);
+        end
+            
+
+        % add design table
+        parcelwise_stats.design_table = design_table;
+
+        % add analysis name, regressor names, and other meta-data
+        switch mygroupnamefield
+            case 'contrasts'
+                parcelwise_stats.contrastname = DAT.contrastnames{c};
+                parcelwise_stats.contrast = DAT.contrasts(c, :);
+                parcelwise_stats.analysis_name = DAT.contrastnames{c};
+            case 'conditions'
+                parcelwise_stats.contrastname = DAT.conditions{c};
+                parcelwise_stats.contrast = 1;
+                parcelwise_stats.analysis_name = DAT.conditions{c};
+        end
+
+        % add names for variables 
+        if ~strcmpi(design_matrix_type,'onesample')
+            parcelwise_stats.variable_names = [groupnames {'Intercept'}];
+        else
+            parcelwise_stats.variable_names = groupnames;
+        end
+        
+        % PLOT PARCELWISE SPECIFIC WEIGHTS AND DIAGNOSTICS
+        % --------------------------------------------------------------------
+        create_figure('parcelwise weights and metrics', 2, 2);
+        set(gcf, 'WindowState','maximized');
+        xlabel('Image'); ylabel('Weights');
+        errorbar(mean(parcelwise_stats.weights), std(parcelwise_stats.weights), 'bo', 'MarkerFaceColor', [0 0 .5])
+        title('Mean weights across parcels (s.d. error bars) per image');
+        axis tight; 
+
+        subplot(2, 2, 2);
+        imagesc(parcelwise_stats.weights);
+        xlabel('Image'); ylabel('Parcel');
+        title('Weights by parcel');
+        colorbar;
+        axis tight; set(gca, 'YDir', 'Reverse');
+
+        subplot(2, 2, 3);
+        xlabel('Image'); ylabel('Z(Weights)');
+        errorbar(zscore(mean(parcelwise_stats.weights)), ste(parcelwise_stats.weights), 'bo-', 'MarkerFaceColor', [0 0 .5], 'LineWidth', 2)
+        title('Mean weights (s.e. error bars) and quality metrics');
+        plot(zscore(parcelwise_stats.individual_metrics.gm_L1norm), 'LineWidth', 2);
+        plot(zscore(parcelwise_stats.individual_metrics.csf_L1norm), 'LineWidth', 2);
+        plot(zscore(parcelwise_stats.ind_quality_dat.Mahal_corr), 'LineWidth', 2);
+        plot(zscore(parcelwise_stats.ind_quality_dat.Mahal_cov), 'LineWidth', 2);
+        legend({'Z(Weights)' 'Z(GM L1 norm)' 'Z(CSF L1 norm)' 'Mahal corr dist' 'Mahal cov dist'});
+        axis tight; 
+
+        % mark off who are outliers
+        wh_out = find(parcelwise_stats.outliers_uncorr);
+        for i = 1:length(wh_out)
+
+            hh = plot_vertical_line(wh_out(i));
+            set(hh, 'Color', 'r', 'LineStyle', '--');
+
+            if i == 1
+                    legend({'Z(Weights)' 'Z(GM L1 norm)' 'Z(CSF L1 norm)' 'Mahal corr dist' 'Mahal cov dist' 'Mah. outliers p<.05 uncor'});
+            end
+        end
+
+        subplot(2, 2, 4)
+        plot_correlation_matrix(parcelwise_stats.datmatrix, 'dofigure', false);
+        title('inter-parcel correlations across images');
+        drawnow, snapnow;
+        
+
+        % PLOT MONTAGE (MASKED IF SPECIFIED IN MASKNAME_GLM OPTION)
+        % ---------------------------------------------------------------------
+        num_effects = size(parcelwise_stats.t_obj.dat, 2); % number of regressors
+        o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
+
+        for j = 1:num_effects
+
+            fprintf ('\nShowing results at FDR q < 0.05: %s\nEffect: %s, %s\n\n', parcelwise_stats.analysis_name, parcelwise_stats.variable_names{j}, mask_string);
+
+            tj = get_wh_image(parcelwise_stats.t_obj, j);
+                if maskname_glm
+                    tj = apply_mask(tj, maskname_glm);
+                end
+            tj = threshold(tj, .05, 'unc'); 
+
+            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j);
+            o2 = title_montage(o2, 2*j, [parcelwise_stats.analysis_name ' ' parcelwise_stats.variable_names{j}]);
+
+        end
+
+        figtitle = sprintf('%s_05_unc_montage_%s_%s', parcelwise_stats.analysis_name, scaling_string, mask_string);
+        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        drawnow, snapnow;
+            if save_figures
+                plugin_save_figure;
+            end
+        clear o2, clear figtitle
+
+        % KEEP RESULTS OBJECTS IN CELL ARRAY FOR SAVING
+        % ---------------------------------------------------------------------
+
+        parcelwise_stats_results{c} = parcelwise_stats;
+        
+    end % if loop voxel- versus parcelwise
+    
+end  % loop over contrasts or conditions
+
+
+%% SAVE RESULTS
 % -------------------------------------------------------------------------
-savefilenamedata = fullfile(resultsdir, ['regression_stats_and_maps_',scaling_string,'.mat']);
+if ~dorobfit_parcelwise
+    savefilenamedata = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string,'.mat']);
+    save(savefilenamedata, 'regression_stats_results', '-v7.3');
+    fprintf('Saved regression_stats_results for %s\n', mygroupnamefield);
+else
+    savefilenamedata = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string,'.mat']);
+    save(savefilenamedata, 'parcelwise_stats_results', '-v7.3');
+    fprintf('Saved parcelwise_stats_results for %s\n', mygroupnamefield);
+end
 
-save(savefilenamedata, 'regression_stats_results', '-v7.3');
-printhdr('Saved regression_stats_results for contrasts');
 fprintf('Filename: %s\n', savefilenamedata);
 
-
-
-% @lukasvo76: this subfunction may be redundant as there is a standalone
-% CANlab function with the same name
-function [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i)
-
-group = []; groupnames = []; groupcolors = [];
-
-if isfield(DAT, 'BETWEENPERSON') && ...
-        isfield(DAT.BETWEENPERSON, mygroupnamefield) && ...
-        iscell(DAT.BETWEENPERSON.(mygroupnamefield)) && ...
-        length(DAT.BETWEENPERSON.(mygroupnamefield)) >= i && ...
-        ~isempty(DAT.BETWEENPERSON.(mygroupnamefield){i})
-    
-    group = DAT.BETWEENPERSON.(mygroupnamefield){i};
-    
-elseif isfield(DAT, 'BETWEENPERSON') && ...
-        isfield(DAT.BETWEENPERSON, 'group') && ...
-        ~isempty(DAT.BETWEENPERSON.group)
-    
-    group = DAT.BETWEENPERSON.group;
-
-end
-
-if isfield(DAT, 'BETWEENPERSON') && isfield(DAT.BETWEENPERSON, 'groupnames')
-    groupnames = DAT.BETWEENPERSON.groupnames;
-elseif istable(group)
-    groupnames = group.Properties.VariableNames(1);
-else
-    groupnames = {'Group-Pos' 'Group-neg'};
-end
-
-if isfield(DAT, 'BETWEENPERSON') && isfield(DAT.BETWEENPERSON, 'groupcolors')
-    groupcolors = DAT.BETWEENPERSON.groupcolors;
-else
-    groupcolors = seaborn_colors(2);
-end
-
-if istable(group), group = table2array(group); end
-
-end
