@@ -28,12 +28,6 @@
 % - If you have no binary group variable,  it is OK to leave the .group
 % field empty. 
 %
-% - If you have continuous variable(s) instead of a binary group variable,
-% you can enter a continuous variable in .group (for now!) -- this script
-% uses that continuous variable:  (it may cause problems with other scripts
-% that assume binary .group data, and may be changed in future versions):
-% prep_3a_run_second_level_regression_and_save
-%
 % - Instead of a single .group variable to be tested with all
 % conditions/contrasts, you can also enter different variables for each
 % condition and/or contrast.  This is useful if you want to correlate each
