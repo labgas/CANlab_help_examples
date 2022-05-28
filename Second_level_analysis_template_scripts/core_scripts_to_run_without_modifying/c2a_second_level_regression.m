@@ -17,65 +17,69 @@
 %
 %__________________________________________________________________________
 % @(#)% c2a_second_level_regression.m         v2.0
-% last modified: 2022/05/27
+% last modified: 2022/05/28
 
 
 %% LOAD REGRESSION RESULTS IF NEEDED
 %--------------------------------------------------------------------------
 
-% conditions or contrasts
+% options (from corresponding prep_3a script)
 
-mygroupnamefield = 'contrasts'; 
+mygroupnamefield = 'contrasts';
+results_suffix = '';
 
 % check scaling
 
 switch myscaling_glm
 
     case 'raw'
-        printstr('contrast calculated on raw (unscaled) condition images used in second-level GLM');
+        fprintf('\ncontrast calculated on raw (unscaled) condition images used in second-level GLM\n\n');
         scaling_string = 'no_scaling';
-        cat_obj = DATA_OBJ_CON{c};
-        if imgs_nan
-            cat_obj = cat_obj.get_wh_image(imgs_nan);
-        end
 
     case 'scaled'
-        printstr('contrast calculated on z-scored condition images used in second-level GLM');
+        fprintf('\ncontrast calculated on z-scored condition images used in second-level GLM\n\n');
         scaling_string = 'scaling_z_score_conditions';
-        cat_obj = DATA_OBJ_CONsc{c};
-        if imgs_nan
-            cat_obj = cat_obj.get_wh_image(imgs_nan);
-        end
 
     case 'scaled_contrasts'
-        printstr('l2norm scaled contrast images used in second-level GLM');
+        fprintf('\nl2norm scaled contrast images used in second-level GLM\n\n');
         scaling_string = 'scaling_l2norm_contrasts';
-        cat_obj = DATA_OBJ_CONscc{c};
-        if imgs_nan
-            cat_obj = cat_obj.get_wh_image(imgs_nan);
-        end
 
     otherwise
-        error('invalid option "%s" defined in myscaling_glm variable in a2_set_default_options script, choose between "raw", "scaled", or "scaled_contrast" given option "%s" defined in mygroupnamefield variable', myscaling_glm, mygroupnamefield);
+        error('\ninvalid option "%s" defined in myscaling_glm variable in a2_set_default_options script, choose between "raw", "scaled", or "scaled_contrast" given option "%s" defined in mygroupnamefield variable\n', myscaling_glm, mygroupnamefield);
 
 end
 
 % check whether results are available, load if needed
 
-if ~exist('regression_stats_results', 'var')
-    savefilenamedata = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string,'.mat']);
+if ~dorobfit_parcelwise
+    resultsvarname = 'regression_stats_results';
+    resultsstring = 'regression_stats_and_maps_';
+    analysis_type = 'voxel-wise';
+else
+    resultsvarname = 'parcelwise_stats_results';
+    resultsstring = 'parcelwise_stats_and_maps';
+    analysis_type = 'parcel-wise';
+end
+    
+if ~exist(resultsvarname, 'var')
+    savefilenamedata = fullfile(resultsdir, [resultsstring, mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
         if exist(savefilenamedata,'file')
-            fprintf('\nLoading regression results and maps from %s\n\n', savefilenamedata);
-            load(savefilenamedata,'regression_stats_results');
+            fprintf('\nLoading %s regression results and maps from %s\n\n', analysis_type, savefilenamedata);
+            load(savefilenamedata, resultsvarname);
         else
             fprintf('\nNo saved results file %s. Skipping this analysis.', savefilenamedata)
-            fprintf('\nRun prep_3a_run_second_level_regression_and_save.m to get regression results.'); 
+            fprintf('\nRun prep_3a_run_second_level_regression_and_save.m to get %s regression results first.\n', analysis_type); 
             return
         end
 else
-    fprintf('\nregression_stats_results found, displaying results');
+    fprintf('\n%s %s found, displaying results\n\n', resultsvarname, analysis_type);
 end
 
+if ~dorobfit_parcelwise
+    results = regression_stats_results;
+else
+    results = parcelwise_stats_results;
+end
 
 
 %% MASKING
@@ -84,159 +88,175 @@ end
 if exist(maskname_glm, 'file')
     apply_mask_before_fdr = true;
     [~,maskname_short] = fileparts(maskname_glm);
-    mask_string = sprintf('within mask %s', maskname_short);
+    mask_string = sprintf('within_%s', maskname_short);
     mask = fmri_data_st(maskname_glm, 'noverbose'); 
 else
     apply_mask_before_fdr = false;
-    mask_string = sprintf('without masking');
+    mask_string = sprintf('without_masking');
 end  
 
 
-%% MASS UNIVARIATE CONTRASTS WHOLE BRAIN
+%% RUN MASS UNIVARIATE GLM
 %--------------------------------------------------------------------------
 
-for c = 1:size(regression_stats_results, 2) % number of contrasts or conditions
+for c = 1:size(results, 2) % number of contrasts or conditions
 
-    analysisname = regression_stats_results{c}.analysis_name;
-    names = regression_stats_results{c}.variable_names;
-    t = regression_stats_results{c}.t;
+    analysisname = results{c}.analysis_name;
+    names = results{c}.variable_names;
+    
+        if ~dorobfit_parcelwise
+            t = results{c}.t;
+        else
+            t = results{c}.t_obj;
+        end
     
     printhdr(analysisname)
     disp('Regressors: ')
     disp(names)
     
-    if isfield(regression_stats_results{c}, 'design_table')
-        disp(regression_stats_results{c}.design_table);
-    end
+        if isfield(results{c}, 'design_table')
+            disp(results{c}.design_table);
+        end
     
     num_effects = size(t.dat, 2); % number of regressors
     
-    % BETWEEN-SUBJECT REGRESSORS & INTERCEPT: montage at 0.05 FDR corrected
+    % BETWEEN-SUBJECT REGRESSORS & INTERCEPT: FDR corrected
     % ---------------------------------------------------------------------
-    o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
+    o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
     
-    for j = 1:num_effects
-        
-        fprintf ('\nShowing results at FDR q < 0.05: %s\nEffect: %s, %s\n\n', analysisname, names{j}, mask_string);
-        
-        tj = get_wh_image(t, j);
-            if apply_mask_before_fdr
-                tj = apply_mask(tj, mask);
-            end
-        tj = threshold(tj, .05, 'fdr'); 
-        
-        o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j);
-        o2 = title_montage(o2, 2*j, [analysisname ' ' names{j}]);
-        
-    end
+        for j = 1:num_effects
+
+            fprintf ('\nShowing results at FDR q < %1.4f: %s\nEffect: %s, %s\n\n', q_threshold, analysisname, names{j}, mask_string);
+
+            tj = get_wh_image(t, j);
+                if apply_mask_before_fdr
+                    tj = apply_mask(tj, mask);
+                end
+            tj = threshold(tj, q_threshold, 'fdr', 'k', k_threshold); 
+
+            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j);
+            o2 = title_montage(o2, 2*j, [analysisname ' FDR ' num2str(q_threshold) ' ' names{j} ' ' mask_string]);
+
+        end % for loop over regressors in model
     
-    figtitle = sprintf('%s_05_FDR_montage_%s_%s', analysisname, scaling_string, mask_string);
-    set(gcf, 'Tag', figtitle);
+    figtitle = sprintf('%s_%s_%1.4f_FDR_montage_%s_%s', analysisname, results_suffix, q_threshold, scaling_string, mask_string);
+    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
     drawnow, snapnow;
+    
         if save_figures
             plugin_save_figure;
         end
+        
     clear o2, clear figtitle
     
-    for j = 1:num_effects
-        
-        fprintf('\n\nTable of results for clusters >= 5 contiguous voxels.');
-        
-        tj = get_wh_image(t, j);
-            if apply_mask_before_fdr
-                tj = apply_mask(tj, mask);
-            end
-        tj = threshold(tj, .05, 'fdr'); 
-        
-        r = region(tj, 'noverbose');
-        r(cat(1, r.numVox) < 5) = [];                   % r = extent_threshold(r);
-        [rpos, rneg] = table(r);       % add labels
-        r = [rpos rneg];               % re-concatenate labeled regions
+        for j = 1:num_effects
 
-        % Montage of regions in table (plot and save)
-        if ~isempty(r)
-            o3 = montage(r, 'colormap', 'regioncenters');
+            fprintf('\n\nTable of results for clusters %d contiguous voxels.\n', k_threshold);
 
-            % Activate, name, and save figure - then close
-            figtitle = sprintf('%s_05_FDR_regions_%s_%s_%s', analysisname, names{j}, scaling_string, mask_string);
-            region_fig_han = activate_figures(o3);
-            if ~isempty(region_fig_han)
-                set(region_fig_han{1}, 'Tag', figtitle);
-                drawnow, snapnow;
-                    if save_figures
-                        plugin_save_figure;
+            tj = get_wh_image(t, j);
+                if apply_mask_before_fdr
+                    tj = apply_mask(tj, mask);
+                end
+            tj = threshold(tj, q_threshold, 'fdr', 'k', k_threshold); 
+
+            r = region(tj, 'noverbose');
+            r(cat(1, r.numVox) < k_threshold) = [];
+            [rpos, rneg] = table(r);       % add labels
+            r = [rpos rneg];               % re-concatenate labeled regions
+
+            % Montage of regions in table (plot and save)
+            if ~isempty(r)
+                o3 = montage(r, 'colormap', 'regioncenters', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+
+                % Activate, name, and save figure - then close
+                figtitle = sprintf('%s_%s_%1.4f_FDR_regions_%s_%s_%s', analysisname, results_suffix, q_threshold, names{j}, scaling_string, mask_string);
+                region_fig_han = activate_figures(o3);
+                
+                    if ~isempty(region_fig_han)
+                        set(region_fig_han(1), 'Tag', figtitle, 'WindowState','maximized');
+                        drawnow, snapnow;
+                            if save_figures
+                                plugin_save_figure;
+                            end
+                        close(region_fig_han(1)), clear o3, clear figtitle
+                    else
+                        fprintf('\n');
+                        warning('Cannot find figure - Tag field was not set or figure was closed. Skipping save operation.');
+                        fprintf('\n');
                     end
-                close(region_fig_han{1}), clear o3, clear figtitle
-            else
-                disp('Cannot find figure - Tag field was not set or figure was closed. Skipping save operation.');
-            end
 
-        end % end conditional montage plot if there are regions to show
-    end
+            end % conditional montage plot if there are regions to show
+            
+        end % for loop over regressors in model
 
     
-    % BETWEEN-SUBJECT REGRESSORS & INTERCEPT: montage at 0.01 uncorrected
+    % BETWEEN-SUBJECT REGRESSORS & INTERCEPT: uncorrected
     % ---------------------------------------------------------------------    
-    o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
+    o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
     
-    for j = 1:num_effects
+        for j = 1:num_effects
+
+            fprintf ('\nShowing results at uncorrected p < %1.4f: %s\nEffect: %s, %s\n\n', p_threshold, analysisname, names{j}, mask_string);
+
+            tj = get_wh_image(t, j);
+                if apply_mask_before_fdr
+                    tj = apply_mask(tj, mask);
+                end
+            tj = threshold(tj, p_threshold, 'unc', 'k', k_threshold); 
+
+            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j);
+            o2 = title_montage(o2, 2*j, [analysisname ' unc ' num2str(q_threshold) ' ' names{j} ' ' mask_string]);
         
-        fprintf ('\nShowing results at uncorrected p < 0.01: %s\nEffect: %s, %s\n\n', analysisname, names{j}, mask_string);
-        
-        tj = get_wh_image(t, j);
-            if apply_mask_before_fdr
-                tj = apply_mask(tj, mask);
-            end
-        tj = threshold(tj, .01, 'unc'); 
-        
-        o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j);
-        o2 = title_montage(o2, 2*j, [analysisname ' ' names{j}]);
-    end
+        end % for loop over regressors in model
     
-    figtitle = sprintf('%s_01_unc_montage_%s_%s', analysisname, scaling_string, mask_string);
-    set(gcf, 'Tag', figtitle);
+    figtitle = sprintf('%s_%s_%1.4f_unc_montage_%s_%s', analysisname, results_suffix, p_threshold, scaling_string, mask_string);
+    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
     drawnow, snapnow;
+    
         if save_figures
             plugin_save_figure;
         end
+        
     clear o2, clear figtitle
         
-    for j = 1:num_effects
-        
-        fprintf('\n\nTable of results for clusters >= 10 contiguous voxels.');
-        
-        tj = get_wh_image(t, j);
-            if apply_mask_before_fdr
-                tj = apply_mask(tj, mask);
-            end
-        tj = threshold(tj, .01, 'unc'); 
-        
-        r = region(tj, 'noverbose');
-        r(cat(1, r.numVox) < 10) = [];                   % r = extent_threshold(r);
-        [rpos, rneg] = table(r);       % add labels
-        r = [rpos rneg];               % re-concatenate labeled regions
+        for j = 1:num_effects
 
-        % Montage of regions in table (plot and save)
-        if ~isempty(r)
-            o3 = montage(r, 'colormap', 'regioncenters');
+            fprintf('\n\nTable of results for clusters >= %d contiguous voxels.\n', k_threshold);
 
-            % Activate, name, and save figure - then close
-            figtitle = sprintf('%s_01_unc_regions_%s_%s_%s', analysisname, names{j}, scaling_string, mask_string);
-            region_fig_han = activate_figures(o3);
-            if ~isempty(region_fig_han)
-                set(region_fig_han{1}, 'Tag', figtitle);
-                drawnow, snapnow;
-                    if save_figures
-                        plugin_save_figure;
+            tj = get_wh_image(t, j);
+                if apply_mask_before_fdr
+                    tj = apply_mask(tj, mask);
+                end
+            tj = threshold(tj, p_threshold, 'unc', 'k', k_threshold); 
+
+            r = region(tj, 'noverbose');
+            r(cat(1, r.numVox) < k_threshold) = [];
+            [rpos, rneg] = table(r);       % add labels
+            r = [rpos rneg];               % re-concatenate labeled regions
+
+            % Montage of regions in table (plot and save)
+            if ~isempty(r)
+                o3 = montage(r, 'colormap', 'regioncenters', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+
+                % Activate, name, and save figure - then close
+                figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s_%s', analysisname, results_suffix, p_threshold, names{j}, scaling_string, mask_string);
+                region_fig_han = activate_figures(o3);
+                
+                    if ~isempty(region_fig_han)
+                        set(region_fig_han(1), 'Tag', figtitle, 'WindowState','maximized');
+                        drawnow, snapnow;
+                            if save_figures
+                                plugin_save_figure;
+                            end
+                        close(region_fig_han(1)), clear o3, clear figtitle
+                    else
+                        fprintf('\n');
+                        warning('Cannot find figure - Tag field was not set or figure was closed. Skipping save operation.');
+                        fprintf('\n');
                     end
-                close(region_fig_han{1}), clear o3, clear figtitle
-            else
-                disp('Cannot find figure - Tag field was not set or figure was closed. Skipping save operation.');
-            end
 
-        end % loop over regions in results
+            end % loop over regions in results
         
-    end % loop over regressors
+        end % loop over regressors
    
 end % loop over contrasts/conditions
-
