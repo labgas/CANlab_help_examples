@@ -104,6 +104,8 @@ use_scaled_images = false; % @lukasvo76: change to true to use z-scored images -
 
 
 %% LaBGASCORE_SECONDLEVEL_CREATE_SINGLE_TRIAL_FMRI_DATA_ST_OBJ & LaBGASCORE_SECONDLEVEL_RUN_MVPA_REGRESSION_SINGLE_TRIAL
+%-----------------------------------------------------------------------------------------------------------------------
+zscore_outcome = true; % zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
 maskname_mvpa_reg_st = which('gray_matter_mask_sparse.img'); % see above
 myscaling_mvpa_reg_st = 'raw'; % options are 'raw', 'centerimages', 'zscoreimages', 'l2norm_images'
 dosavemvparegstats = true; % see above
