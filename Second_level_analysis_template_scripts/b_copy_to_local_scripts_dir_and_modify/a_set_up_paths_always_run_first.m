@@ -58,7 +58,7 @@ end
 
 if ~exist('DSGN','var')
     warning('\nDSGN variable not found in Matlab workspace, running LaBGAScore_firstlevel_s1_options_dsgn_struct.m before proceeding')
-    ery_4a_firstlevel_m2_s1_options_dsgn_struct;
+    ery_4a_firstlevel_m5_s1_options_dsgn_struct;
 end
 
 [~,modelname] = fileparts(DSGN.modeldir); 
