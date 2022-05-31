@@ -93,14 +93,20 @@ myscaling_svm_between = 'raw'; % see above
 use_scaled_images = false; % @lukasvo76: change to true to use z-scored images - see above
 
 
-%% emosymp_m1_s5_predict_symptom_ratings_lasso_pcr options & LaBGASCORE_SECONDLEVEL_CREATE_SINGLE_TRIAL_FMRI_DATA_ST_OBJ & LaBGASCORE_SECONDLEVEL_RUN_MVPA_REGRESSION_SINGLE_TRIAL
+%% emosymp_m1_s5_predict_symptom_ratings_lasso_pcr options
 % --------------------------------------------------------------------
-% see prep_3b options above as well as the following:
-maskname_pcr = which('gray_matter_mask_sparse.img'); % see above
-myscaling_pcr = 'raw'; % options are 'raw' or 'scaled'
-dosavepcrstats = true; % see above
-% lukasvo76: this refers to a study-specific script for the emosymp study,
-% need to work on a more generic version
+% % see prep_3b options above as well as the following:
+% maskname_pcr = which('gray_matter_mask_sparse.img'); % see above
+% myscaling_pcr = 'raw'; % options are 'raw' or 'scaled'
+% dosavepcrstats = true; % see above
+% % lukasvo76: this refers to a study-specific script for the emosymp study,
+% % need to work on a more generic version
+
+
+%% LaBGASCORE_SECONDLEVEL_CREATE_SINGLE_TRIAL_FMRI_DATA_ST_OBJ & LaBGASCORE_SECONDLEVEL_RUN_MVPA_REGRESSION_SINGLE_TRIAL
+maskname_mvpa_reg_st = which('gray_matter_mask_sparse.img'); % see above
+myscaling_mvpa_reg_st = 'raw'; % options are 'raw', 'centerimages', 'zscoreimages', 'l2norm_images'
+dosavemvparegstats = true; % see above
 
 
 %% z_batch_publish_everything, z_batch_publish_analyses options 
