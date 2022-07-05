@@ -205,7 +205,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             tj = threshold(tj, p_threshold, 'unc', 'k', k_threshold); 
 
             o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j);
-            o2 = title_montage(o2, 2*j, [analysisname ' unc ' num2str(q_threshold) ' ' names{j} ' ' mask_string]);
+            o2 = title_montage(o2, 2*j, [analysisname ' unc ' num2str(p_threshold) ' ' names{j} ' ' mask_string]);
         
         end % for loop over regressors in model
     
@@ -243,12 +243,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 region_fig_han = activate_figures(o3);
                 
                     if ~isempty(region_fig_han)
-                        set(region_fig_han(1), 'Tag', figtitle, 'WindowState','maximized');
+                        set(region_fig_han{1}, 'Tag', figtitle, 'WindowState','maximized');
                         drawnow, snapnow;
                             if save_figures
                                 plugin_save_figure;
                             end
-                        close(region_fig_han(1)), clear o3, clear figtitle
+                        close(region_fig_han{1}), clear o3, clear figtitle
                     else
                         fprintf('\n');
                         warning('Cannot find figure - Tag field was not set or figure was closed. Skipping save operation.');
