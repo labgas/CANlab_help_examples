@@ -57,7 +57,7 @@ if ~dorobfit_parcelwise
     analysis_type = 'voxel-wise';
 else
     resultsvarname = 'parcelwise_stats_results';
-    resultsstring = 'parcelwise_stats_and_maps';
+    resultsstring = 'parcelwise_stats_and_maps_';
     analysis_type = 'parcel-wise';
 end
     
