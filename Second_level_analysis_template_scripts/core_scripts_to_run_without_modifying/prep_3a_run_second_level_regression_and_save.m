@@ -179,7 +179,12 @@ for c = 1:kc
             
 %             if ~dorobfit_parcelwise % voxel-wise
                 % Use intercept only
-                X = ones((size(DAT.imgs{c},1)),1);
+                switch mygroupnamefield
+                    case 'conditions'
+                        X = ones((size(DAT.imgs{c},1)),1);
+                    case 'contrasts'
+                        X = ones((size(DAT.gray_white_csf_contrasts{c},1)),1);
+                end
                 groupnames = {'intercept'};
 %             end
                 imgs_nan = [];
