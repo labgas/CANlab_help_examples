@@ -252,7 +252,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                             if save_figures
                                 plugin_save_figure;
                             end
-                        close(region_fig_han{1}), clear o3, clear figtitle
+                        clear o3, clear figtitle
                     else
                         fprintf('\n');
                         warning('Cannot find figure - Tag field was not set or figure was closed. Skipping save operation.');
