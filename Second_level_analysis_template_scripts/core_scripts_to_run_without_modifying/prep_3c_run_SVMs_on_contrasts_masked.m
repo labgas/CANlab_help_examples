@@ -244,7 +244,7 @@ end  % Contrasts - run
 %--------------------------------------------------------------------------
 
 if dosavesvmstats
-    savefilenamedata = fullfile(resultsdir, 'svm_stats_results_contrasts_', scaling_string, '_', results_suffix,'.mat');
+    savefilenamedata = fullfile(resultsdir, ['svm_stats_results_contrasts_', scaling_string, '_', results_suffix,'.mat']);
     save(savefilenamedata, 'svm_stats_results', '-v7.3');
     fprintf('\nSaved svm_stats_results for contrasts\n');
     
