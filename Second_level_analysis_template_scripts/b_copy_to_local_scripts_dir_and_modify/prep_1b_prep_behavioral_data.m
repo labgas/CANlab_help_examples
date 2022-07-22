@@ -304,12 +304,12 @@ end
 %
 %% CANLAB EXAMPLE #2
 %
-% see 
+% see "mastergithubrepo"/CANlab_help_examples/Second_level_analysis_template_scripts/b_copy_to_local_scripts_dir_and_modify/prep_1b_prep_behavioral_data_example2.m
 %
 %
-%% LABGAS EXAMPLE
+%% LABGAS EXAMPLES
 %
-% see 
+% see github.com/labgas
 
 %% Check DAT, print warnings, save DAT structure
 

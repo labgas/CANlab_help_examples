@@ -14,7 +14,7 @@
 % 
 % - To specify analysis options, run a2_set_default_options
 % - To choose between conditions and contrasts, set option below
-% - To get results reports, see c2a_second_level_regression
+% - To get results reports, run c2a_second_level_regression
 %
 % OPTIONS SPECIFIED IN a2_set_default_options
 %
@@ -55,8 +55,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3a_run_second_level_regression_and_save.m         v2.0
-% last modified: 2022/05/28
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v2.1
+% last modified: 2022/07/20
 
 
 %% SETTINGS
@@ -177,7 +177,6 @@ for c = 1:kc
 
         case 'onesample'
             
-%             if ~dorobfit_parcelwise % voxel-wise
                 % Use intercept only
                 switch mygroupnamefield
                     case 'conditions'
@@ -186,7 +185,6 @@ for c = 1:kc
                         X = ones((size(DAT.gray_white_csf_contrasts{c},1)),1);
                 end
                 groupnames = {'intercept'};
-%             end
                 imgs_nan = [];
             
         otherwise
