@@ -5,8 +5,13 @@
 % whole subject out (all images from subject across all conditions)
 % 'leave_one_subject_out' : leave one whole subject out
 
-holdout_set_type = 'fivefold_leave_whole_subject_out';
-nfolds = 5;
+% holdout_set_type = 'fivefold_leave_whole_subject_out';
+% nfolds = 5;
+
+% @lukasvo76, July 2022
+% removed hard coded options, these are now set in
+% a2_set_default_options.m or prep_3c_run_SVMs_on_contrasts_masked.m for
+% more flexibility
 
 outcome_value = zeros(size(condition_codes));
 holdout_set = {};
@@ -26,11 +31,12 @@ switch holdout_set_type
             
         end
         
-    case 'fivefold_leave_whole_subject_out'
+    case 'kfold'
         
         clear n
         
-        printhdr('Holdout set:  5-fold cross-validation, leaving whole subject out');
+        printhdr('Holdout set:  k-fold cross-validation, leaving whole subject out');
+        fprintf('\nk = %d\n',nfolds);
         
         for i = 1:length(wh) % wh is which conditions have non-zero contrast weights
             
@@ -63,7 +69,9 @@ switch holdout_set_type
         end
         
     otherwise
-        error('illegal holdout set keyword option');
+        
+        error('\ninvalid option "%s" defined in holdout_set_type variable, choose between "kfold" and "leave_one_subject_out"\n',holdout_set_type);
+
 end
 
 
