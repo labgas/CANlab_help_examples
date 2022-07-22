@@ -16,8 +16,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v2.0
-% last modified: 2022/05/28
+% @(#)% a2_set_default_options.m         v2.1
+% last modified: 2022/07/20
 
 
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -28,7 +28,7 @@ omit_histograms = false;     % default false Histograms not useful for large sam
 dozipimages = false;        % default false to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses; lukasvo76: changed from original CANlab default
 
 
-%% PREP_3_RUN_SECOND_LEVEL_REGRESSION_AND_SAVE
+%% PREP_3A_RUN_SECOND_LEVEL_REGRESSION_AND_SAVE
 % --------------------------------------------
 
 dorobust = false;            % robust statistics for voxel-based GLM [true, false] -- default true
@@ -66,20 +66,29 @@ p_threshold = .005; % threshold for uncorrected display items
 k_threshold = 10; % extent threshold for both corrected and uncorrected display items
 
 
-%% prep_3b_run_SVMs_on_contrasts_and_save options 
+%% PREP_3C_RUN_SVMs_ON_CONTRASTS_MASKED 
 % --------------------------------------------------------------------
-dosubjectnorm = false;      % default false     normalize_each_subject_by_l2norm; can help with numerical scaling and inter-subject scaling diffs
-dozscoreimages = false;     % default false     Z-score each input image, removing image mean and forcing std to 1. Removes overall effects of image intensity and scale. Can be useful across studies but also removes information. Use judiciously.
+
+% NOTE: these options (except for the first two) also applies to prep_3b_run_svms_on_contrasts_and save, but the
+% use of prep_3c is preferred since it is revamped and has built in masking option
+
+holdout_set_method = 'onesample';   % 'group', or 'onesample'
+                            % 'group': use DAT.BETWEENPERSON.group or 
+                            % DAT.BETWEENPERSON.contrasts{c}.group;
+                            % @lukasvo76: balances holdout sets over groups
+                            % 'onesample': use subject id only
+                            % @lukasvo76: no group factor, stratifies by
+                            % subject (i.e. leave whole subject out)
+holdout_set_type = 'kfold';        % default kfold     cross-validation method: 'kfold' or 'leave_one_subject_out' - the latter is not recommended
+nfolds = 5;                 % default 5         number of cross-validation folds for kfold
+maskname_svm = which('gray_matter_mask_sparse.img'); %lukasvo76 edited: default use of sparse gray matter mask; maskdir now defined in a_set_up_paths_always_run_first script; if you do not want to mask, change to []; if you want to use a custom mask, put it in maskdir and change name here.
+dosubjectnorm = false;      % default false     normalize_each_subject_by_l2norm; normalizes images for each subject by L2 norm of Condition 1 image; can help with numerical scaling and inter-subject scaling diffs
+doimagenorm = false;        % default false     normalize_images_by_l2norm; normalizes each image separately, not each subject/pair
+dozscoreimages = false;     % default false     Z-score each input image, removing image mean and forcing std to 1. Removes overall effects of image intensity and scale. Can be useful across studies but also removes information. Use judiciously. lukasvo76: corresponds to 'scaled' in myscaling_glm option in prep_3a
 dosavesvmstats = true;      % default true      Save statistics and weight map objects for SVM contrasts
 dobootstrap = false;        % default false     Takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to the default 10k samples
 boot_n = 10000;             % default number of bootstrap samples       Reduce number for quick results
 parallelstr = 'parallel';   % parallel proc for boot.   'parallel' or 'noparallel'
-
-
-%% prep_3c_run_SVMs_on_contrasts_masked options 
-% --------------------------------------------------------------------
-% see prep_3b options above as well as the following:
-maskname_svm = which('gray_matter_mask_sparse.img');
 
 
 %% prep_3d_run_SVMs_betweenperson_contrasts options
