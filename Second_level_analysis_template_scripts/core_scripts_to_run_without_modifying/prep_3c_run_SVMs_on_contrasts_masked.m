@@ -5,7 +5,8 @@
 % This script 
 % 1) runs second⁻level (i.e. across subjects) support vector machines
 % for each within-subject CONTRAST registered in DAT.contrasts
-% 2) saves the results using standard naming and location
+% 2) plots montages of the uncorrected results
+% 3) saves the results using standard naming and location
 %
 % - To specify analysis options, run a2_set_default_options
 % - To get results reports, run c2a_second_level_regression
@@ -45,7 +46,7 @@
 % 
 % OPTIONS TO BE SPECIFIED IN THIS SCRIPT
 %
-% -results_suffix: name to add to results file to specify model in case of multiple models, e.g. 'zscore_images'
+% -results_suffix: name to add to results file to specify model in case of multiple models, e.g. 'masked_gray_matter'
 %
 %__________________________________________________________________________
 %
@@ -53,8 +54,8 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v2.0
-% last modified: 2022/07/20
+% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v2.1
+% last modified: 2022/07/26
 
 
 %% SETTINGS
@@ -72,6 +73,10 @@ options_exist = cellfun(@exist, options_needed);
 option_default_values = {true false 5000 'onesample' 'kfold' 5};          % defaults if we cannot find info in a2_set_default_options at all 
 
 plugin_get_options_for_analysis_script
+
+% specify which montage to add title to
+
+whmontage = 5; % see region.montage docs
 
 
 %% CHECK SPIDER TOOLBOX AND START CLOCK
@@ -110,8 +115,8 @@ svm_stats_results = cell(1, kc);
 
 for c = 1:kc
     
-    printstr(DAT.contrastnames{c});
-    printstr(dashes)
+    analysisname = DAT.contrastnames{c};
+    printhdr(analysisname);
     
     mycontrast = DAT.contrasts(c, :);
     wh = find(mycontrast); % wh is which conditions have non-zero contrast weights
@@ -219,6 +224,25 @@ for c = 1:kc
     
     end
     
+    % PLOT MONTAGE OF UNTHRESHOLDED RESULTS
+    % ---------------------------------------------------------------------
+
+    fprintf ('\nShowing unthresholded SVM results, : %s\nEffect: %s\n\n', analysisname, mask_string);
+    
+    r = region(stats.weight_obj);
+    
+    o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+    o2 = title_montage(o2, whmontage, [analysisname ' unthresholded ' mask_string]);
+
+    figtitle = sprintf('%s_unthresholded_montage_%s_%s', analysisname, scaling_string, mask_string);
+    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+    drawnow, snapnow;
+        if save_figures
+            plugin_save_figure;
+        end
+    clear o2, clear figtitle
+    
+    
     % STORE STATISTIC OBJECTS IN CELL ARRAY
     % --------------------------------------------------------------------
     
@@ -228,7 +252,6 @@ for c = 1:kc
     if exist('svmmask', 'var')
         svm_stats_results{c}.mask = svmmask;
         svm_stats_results{c}.maskname = maskname_svm;
-    
     end
     
     if dobootstrap
@@ -237,7 +260,7 @@ for c = 1:kc
     
     end
 
-end  % Contrasts - run
+end  % loop over contrasts
 
 
 %% SAVE RESULTS
@@ -246,7 +269,7 @@ end  % Contrasts - run
 if dosavesvmstats
     savefilenamedata = fullfile(resultsdir, ['svm_stats_results_contrasts_', scaling_string, '_', results_suffix,'.mat']);
     save(savefilenamedata, 'svm_stats_results', '-v7.3');
-    fprintf('\nSaved svm_stats_results for contrasts\n');
+    fprintf('\nSaved svm_stats_results_contrasts\n');
     
 end
 
