@@ -55,8 +55,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3a_run_second_level_regression_and_save.m         v2.1
-% last modified: 2022/07/20
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v2.2
+% last modified: 2022/07/26
 
 
 %% SETTINGS
@@ -429,7 +429,11 @@ for c = 1:kc
         % ---------------------------------------------------------------------
 
         regression_stats_results{c} = regression_stats;
-
+        
+        if exist(maskname_glm,'file')
+            regression_stats_results{c}.maskname = maskname_glm;
+        end
+        
         if dorobust
             fprintf('\nCumulative run time:'), toc(regresstime); 
         end
@@ -523,7 +527,7 @@ for c = 1:kc
 
         for j = 1:num_effects
 
-            fprintf ('\nShowing results at p uncor < 0.05: %s\nEffect: %s, %s\n\n', parcelwise_stats.analysis_name, parcelwise_stats.variable_names{j}, mask_string);
+            fprintf ('\nShowing GLM results at p uncor < 0.05: %s\nEffect: %s, %s\n\n', parcelwise_stats.analysis_name, parcelwise_stats.variable_names{j}, mask_string);
 
             tj = get_wh_image(parcelwise_stats.t_obj, j);
                 if maskname_glm
@@ -542,12 +546,16 @@ for c = 1:kc
             if save_figures
                 plugin_save_figure;
             end
-        clear o2, clear figtitle
+        clear o2, clear figtitle, clear j, clear tj
 
         % KEEP RESULTS OBJECTS IN CELL ARRAY FOR SAVING
         % ---------------------------------------------------------------------
 
         parcelwise_stats_results{c} = parcelwise_stats;
+        
+        if exist(maskname_glm,'file')
+            parcelwise_stats_results{c}.maskname = maskname_glm;
+        end
         
     end % if loop voxel- versus parcelwise
     

@@ -16,8 +16,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% c2a_second_level_regression.m         v2.2
-% last modified: 2022/07/06
+% @(#)% c2a_second_level_regression.m         v2.3
+% last modified: 2022/07/26
 
 
 %% LOAD REGRESSION RESULTS IF NEEDED
@@ -67,7 +67,7 @@ if ~exist(resultsvarname, 'var')
             fprintf('\nLoading %s regression results and maps from %s\n\n', analysis_type, savefilenamedata);
             load(savefilenamedata, resultsvarname);
         else
-            fprintf('\nNo saved results file %s. Skipping this analysis.', savefilenamedata)
+            fprintf('\nNo saved results file %s. Skipping this analysis.', savefilenamedata);
             fprintf('\nRun prep_3a_run_second_level_regression_and_save.m to get %s regression results first.\n', analysis_type); 
             return
         end
@@ -96,7 +96,7 @@ else
 end  
 
 
-%% RUN MASS UNIVARIATE GLM
+%% DISPLAY MASS UNIVARIATE GLM
 %--------------------------------------------------------------------------
 
 for c = 1:size(results, 2) % number of contrasts or conditions
@@ -166,7 +166,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             % Montage of regions in table (plot and save)
             if ~isempty(r)
-                o3 = montage(r, 'colormap', 'regioncenters', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
 
                 % Activate, name, and save figure
                 figtitle = sprintf('%s_%s_%1.4f_FDR_regions_%s_%s_%s', analysisname, results_suffix, q_threshold, names{j}, scaling_string, mask_string);
@@ -184,7 +184,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     
     % BETWEEN-SUBJECT REGRESSORS & INTERCEPT: uncorrected
     % ---------------------------------------------------------------------    
-    o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+    o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5,'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
     
         for j = 1:num_effects
 
