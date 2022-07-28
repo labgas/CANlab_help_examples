@@ -16,8 +16,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% c2a_second_level_regression.m         v2.3
-% last modified: 2022/07/26
+% @(#)% c2a_second_level_regression.m         v2.4
+% last modified: 2022/07/28
 
 
 %% LOAD REGRESSION RESULTS IF NEEDED
@@ -85,11 +85,11 @@ end
 %% MASKING
 %--------------------------------------------------------------------------
 
-if exist(maskname_glm, 'file')
+if exist('maskname_glm', 'var') && ~isempty(maskname_glm) && exist(maskname_glm, 'file')
     apply_mask_before_fdr = true;
     [~,maskname_short] = fileparts(maskname_glm);
     mask_string = sprintf('within_%s', maskname_short);
-    mask = fmri_data_st(maskname_glm, 'noverbose'); 
+    glmmask = fmri_mask_image(maskname_glm, 'noverbose'); 
 else
     apply_mask_before_fdr = false;
     mask_string = sprintf('without_masking');

@@ -54,8 +54,8 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v2.1
-% last modified: 2022/07/26
+% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v2.2
+% last modified: 2022/07/28
 
 
 %% SETTINGS
@@ -96,7 +96,7 @@ end
 % -------------------------------------------------------------------------
 
 if exist('maskname_svm', 'var') && ~isempty(maskname_svm) 
-    svmmask = fmri_data(maskname_svm, 'noverbose');
+    svmmask = fmri_mask_image(maskname_svm, 'noverbose');
     [~,maskname_short] = fileparts(maskname_svm);
     mask_string = sprintf('within mask %s', maskname_short);
     
@@ -121,12 +121,10 @@ for c = 1:kc
     mycontrast = DAT.contrasts(c, :);
     wh = find(mycontrast); % wh is which conditions have non-zero contrast weights
     
-    
     % CREATE COMBINED DATA OBJECT WITH INPUT IMAGES FOR BOTH CONDITIONS
     % ---------------------------------------------------------------------
     [cat_obj, condition_codes] = cat(DATA_OBJ{wh}); 
     cat_obj = remove_empty(cat_obj); % @lukasvo76: added this as the cat function includes replace_empty on the objects, which causes problems later on with the stats_object output of predict; I also guess we do not want to run the SVMs on these "artificial" zeroes?
-    
     
     % NORMALIZE IF SPECIFIED IN OPTIONS
     % ---------------------------------------------------------------------
@@ -170,6 +168,7 @@ for c = 1:kc
     if exist('svmmask', 'var')
         fprintf('\nMasking data with %s\n',maskname_short);
         cat_obj = apply_mask(cat_obj, svmmask);
+        cat_obj.mask_descrip = maskname_svm;
         
     else
         fprintf('\nNo mask found; using full existing image data\n');
@@ -180,9 +179,10 @@ for c = 1:kc
     % 1, -1 for the two conditions in the contrast
     % DEFINE HOLDOUT SETS:
     % use plugin scripts according to holdout_set_method
+    % --------------------------------------------------------------------
+    
     % NOTE:
     % assume that subjects are in same position in each input file!
-    % --------------------------------------------------------------------
     
     switch holdout_set_method
         
@@ -195,7 +195,7 @@ for c = 1:kc
             cat_obj.Y = outcome_value;
             
         otherwise
-            error('\ninvalid option "%s" defined in holdout_set_method variable, choose between "group" and "onesample"\n',holdout_set_method)
+            error('\ninvalid option "%s" defined in holdout_set_method variable, choose between "group" and "onesample"\n',holdout_set_method);
     
     end
     
@@ -213,14 +213,16 @@ for c = 1:kc
     % RUN PREDICTIVE SVM MODEL
     % --------------------------------------------------------------------
     if dobootstrap
-        [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, 'bootsamples', boot_n, 'error_type', 'mcr', parallelstr);
+        [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, ...
+            'bootsamples', boot_n, 'error_type', 'mcr', parallelstr);
         % Threshold, if possible - can re-threshold later with threshold() method
 %         stats.weight_obj = threshold(stats.weight_obj, .05, 'unc'); %
 %         @lukasvo76: commented out since we want to threshold flexibly at
 %         a later stage in c2_SVM_contrasts_masked
         
     else
-        [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, 'error_type', 'mcr', parallelstr);
+        [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, ...
+            'error_type', 'mcr', parallelstr);
     
     end
     

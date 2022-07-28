@@ -55,8 +55,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3a_run_second_level_regression_and_save.m         v2.2
-% last modified: 2022/07/26
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v2.3
+% last modified: 2022/07/28
 
 
 %% SETTINGS
@@ -106,9 +106,10 @@ end
 %% MASKING
 %--------------------------------------------------------------------------
 
-if exist(maskname_glm, 'file')
+if exist('maskname_glm', 'var') && ~isempty(maskname_glm) && exist(maskname_glm, 'file')
     [~,maskname_short] = fileparts(maskname_glm);
     mask_string = sprintf('within mask %s', maskname_short);
+    glmmask = fmri_mask_image(maskname_glm, 'noverbose'); 
 else
     mask_string = sprintf('without masking');
 end  
@@ -411,8 +412,8 @@ for c = 1:kc
         fprintf ('\nShowing results at p uncor < 0.05: %s\nEffect: %s\n\n', regression_stats.analysis_name, mask_string);
         
         t = regression_stats.t;
-            if maskname_glm
-                t = apply_mask(t,maskname_glm);
+            if maskname_short
+                t = apply_mask(t,glmmask);
             end
         orthviews(t);
             for kk = 1:length(regression_stats.variable_names)
@@ -530,8 +531,8 @@ for c = 1:kc
             fprintf ('\nShowing GLM results at p uncor < 0.05: %s\nEffect: %s, %s\n\n', parcelwise_stats.analysis_name, parcelwise_stats.variable_names{j}, mask_string);
 
             tj = get_wh_image(parcelwise_stats.t_obj, j);
-                if maskname_glm
-                    tj = apply_mask(tj, maskname_glm);
+                if maskname_short
+                    tj = apply_mask(tj, glmmask);
                 end
             tj = threshold(tj, .05, 'unc'); 
 
