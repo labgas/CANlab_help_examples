@@ -8,7 +8,8 @@
 % 
 % - Always make a study-specific copy of this script in your code subdataset, do NOT edit in the repo!
 % - The below can be considered LaBGAS default options, but decisions will be study-specific!
-% - Various options added by @lukasvo76 spring 21 and May 22
+% - Various options added by @lukasvo76 spring 21 and summer 22
+% - If the title of the section below is capitalized, the scripts and their options have been revamped by @lukasvo76 already
 %
 %__________________________________________________________________________
 %
@@ -100,6 +101,17 @@ p_threshold_svm = .005; % threshold for uncorrected display items
 k_threshold_svm = 10; % extent threshold for both corrected and uncorrected display items
 
 
+%% PREP_3F_CREATE_FMRI_DATA_SINGLE_TRIAL_OBJECT
+%----------------------------------------------
+
+cons2exclude = {'water'}; % cell array of conditions to exclude, separated by commas (or blanks)
+behav_outcome = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+subj_identifier = 'participant_id'; % name of subject identifier variable in same table
+cond_identifier = 'trial_type'; % name of condition identifier variable in same table
+% group_identifier = 'group'; % name of group identifier variable in same table; leave commented out if you don't have groups
+vif_threshold = 4; % variance inflation threshold to exclude trials
+
+
 %% prep_3d_run_SVMs_betweenperson_contrasts options
 %---------------------------------------------------------------------
 % see prep_3b & prep_3c options above as well as the following:
@@ -121,7 +133,7 @@ use_scaled_images = false; % @lukasvo76: change to true to use z-scored images -
 % % need to work on a more generic version
 
 
-%% LaBGASCORE_SECONDLEVEL_CREATE_SINGLE_TRIAL_FMRI_DATA_ST_OBJ & LaBGASCORE_SECONDLEVEL_RUN_MVPA_REGRESSION_SINGLE_TRIAL
+%% LaBGASCORE_SECONDLEVEL_RUN_MVPA_REGRESSION_SINGLE_TRIAL
 %-----------------------------------------------------------------------------------------------------------------------
 zscore_outcome = true; % zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
 maskname_mvpa_reg_st = which('gray_matter_mask_sparse.img'); % see above
