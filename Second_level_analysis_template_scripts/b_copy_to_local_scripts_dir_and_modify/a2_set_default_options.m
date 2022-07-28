@@ -101,6 +101,12 @@ p_threshold_svm = .005; % threshold for uncorrected display items
 k_threshold_svm = 10; % extent threshold for both corrected and uncorrected display items
 
 
+%% prep_3d_run_SVMs_betweenperson_contrasts options
+%---------------------------------------------------------------------
+% see prep_3b & prep_3c options above as well as the following:
+myscaling_svm_between = 'raw'; % see above
+
+
 %% PREP_3F_CREATE_FMRI_DATA_SINGLE_TRIAL_OBJECT
 %----------------------------------------------
 
@@ -112,33 +118,18 @@ cond_identifier = 'trial_type'; % name of condition identifier variable in same 
 vif_threshold = 4; % variance inflation threshold to exclude trials
 
 
-%% prep_3d_run_SVMs_betweenperson_contrasts options
-%---------------------------------------------------------------------
-% see prep_3b & prep_3c options above as well as the following:
-myscaling_svm_between = 'raw'; % see above
+%% C2F_RUN_MVPA_REGRESSION_SINGLE_TRIAL
+%-----------------------------------------------------------------------------------------------------------------------
+
+zscore_outcome = true; % zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
+maskname_mvpa_reg_st = which('gray_matter_mask_sparse.img'); % see above
+myscaling_mvpa_reg_st = 'raw'; % options are 'raw', 'centerimages', 'zscoreimages', 'l2norm_images'
+dosavemvparegstats = true; % see above
 
 
 %% prep_4_apply_signatures_and_save options 
 % --------------------------------------------------------------------
 use_scaled_images = false; % @lukasvo76: change to true to use z-scored images - see above
-
-
-%% emosymp_m1_s5_predict_symptom_ratings_lasso_pcr options
-% --------------------------------------------------------------------
-% % see prep_3b options above as well as the following:
-% maskname_pcr = which('gray_matter_mask_sparse.img'); % see above
-% myscaling_pcr = 'raw'; % options are 'raw' or 'scaled'
-% dosavepcrstats = true; % see above
-% % lukasvo76: this refers to a study-specific script for the emosymp study,
-% % need to work on a more generic version
-
-
-%% LaBGASCORE_SECONDLEVEL_RUN_MVPA_REGRESSION_SINGLE_TRIAL
-%-----------------------------------------------------------------------------------------------------------------------
-zscore_outcome = true; % zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
-maskname_mvpa_reg_st = which('gray_matter_mask_sparse.img'); % see above
-myscaling_mvpa_reg_st = 'raw'; % options are 'raw', 'centerimages', 'zscoreimages', 'l2norm_images'
-dosavemvparegstats = true; % see above
 
 
 %% z_batch_publish_everything, z_batch_publish_analyses options 
