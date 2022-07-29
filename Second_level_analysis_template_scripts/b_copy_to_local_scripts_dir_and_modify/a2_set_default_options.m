@@ -121,6 +121,15 @@ vif_threshold = 4; % variance inflation threshold to exclude trials
 %% C2F_RUN_MVPA_REGRESSION_SINGLE_TRIAL
 %-----------------------------------------------------------------------------------------------------------------------
 
+% GENERAL OPTIONS
+%----------------
+ml_method_mvpa_reg_st = 'oofmridataobj';                            % 'oofmridataobj', or 'predict'
+                                                                    % 'oofmridataobj':
+                                                                    % use @bogpetre's object-oriented method
+                                                                    % https://github.com/canlab/ooFmriDataObjML
+                                                                    % 'predict'
+                                                                    % use CANlab's predict function
+                                                                    % https://github.com/canlab/CanlabCore/blob/master/CanlabCore/%40fmri_data/predict.m
 holdout_set_method_mvpa_reg_st = 'onesample';                   % 'group', or 'onesample'
                                                                     % 'group': use DAT.BETWEENPERSON.group or 
                                                                     % DAT.BETWEENPERSON.contrasts{c}.group;
@@ -129,14 +138,21 @@ holdout_set_method_mvpa_reg_st = 'onesample';                   % 'group', or 'o
                                                                     % @lukasvo76: no group factor, stratifies by
                                                                     % subject (i.e. leave whole subject out)
 nfolds_mvpa_reg_st = 5;                                         % default 5; number of cross-validation folds for kfold
-algorithm_mvpa_reg_st = 'cv_lassopcr';                          % default cv_lassopcr, will be passed into predict function, see help predict for options
 zscore_outcome = true;                                          % default true; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
 maskname_mvpa_reg_st = which('gray_matter_mask_sparse.img');    % see above
 myscaling_mvpa_reg_st = 'raw';                                  % options are 'raw', 'centerimages', 'zscoreimages', 'l2norm_images'
-dobootstrap_mvpa_reg_st = false;                                % default false     Takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to the default 10k samples
-boot_n_mvpa_reg_st = 5000;                                      % default 5000      Number of bootstrap samples, reduce number for quick results, increase to 10k for publication
-parallelstr_mvpa_reg_st = 'parallel';                               % parallel proc for boot.   'parallel' or 'noparallel'
+
+% OPTIONS IF ML_METHOD == PREDICT
+%--------------------------------
+algorithm_mvpa_reg_st = 'cv_pcr';                               % default cv_lassopcr, will be passed into predict function, see help predict for options
+dobootstrap_mvpa_reg_st = false;                                % default false     bootstrapping; takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to 10k samples
+boot_n_mvpa_reg_st = 5000;                                      % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
+doperm_mvpa_reg_st = false;                                     % default false     permutation testing; takes a lot of time
+perm_n_mvpa_reg_st = 5000;                                      % default 5000      number of permutations
+parallelstr_mvpa_reg_st = 'parallel';                           % parallel proc for boot.   'parallel' or 'noparallel'
 dosavemvparegstats = true;                                      % see saving options above
+q_threshold_mvpa_reg_st = .05;                                  % default .05       threshold for FDR-corrected display items
+k_threshold_mvpa_reg_st = 10;                                   % default 10        extent threshold for FDR-corrected display items
 
 
 %% prep_4_apply_signatures_and_save options 
