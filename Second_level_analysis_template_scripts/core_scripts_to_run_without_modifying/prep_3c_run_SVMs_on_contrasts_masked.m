@@ -126,6 +126,18 @@ for c = 1:kc
     [cat_obj, condition_codes] = cat(DATA_OBJ{wh}); 
     cat_obj = remove_empty(cat_obj); % @lukasvo76: added this as the cat function includes replace_empty on the objects, which causes problems later on with the stats_object output of predict; I also guess we do not want to run the SVMs on these "artificial" zeroes?
     
+    % APPLY MASK IF SPECIFIED IN OPTIONS
+    %----------------------------------------------------------------------
+    if exist('svmmask', 'var')
+        fprintf('\nMasking data with %s\n',maskname_short);
+        cat_obj = apply_mask(cat_obj, svmmask);
+        cat_obj.mask_descrip = maskname_svm;
+        
+    else
+        fprintf('\nNo mask found; using full existing image data\n');
+        
+    end
+    
     % NORMALIZE IF SPECIFIED IN OPTIONS
     % ---------------------------------------------------------------------
     
@@ -160,18 +172,6 @@ for c = 1:kc
         fprintf('\nZ-scoring each condition image for each subject before SVM\n');
         scaling_string = 'scaling_z_score_conditions';
         cat_obj = rescale(cat_obj, 'zscoreimages');
-        
-    end
-    
-    % APPLY MASK IF SPECIFIED IN OPTIONS
-    %----------------------------------------------------------------------
-    if exist('svmmask', 'var')
-        fprintf('\nMasking data with %s\n',maskname_short);
-        cat_obj = apply_mask(cat_obj, svmmask);
-        cat_obj.mask_descrip = maskname_svm;
-        
-    else
-        fprintf('\nNo mask found; using full existing image data\n');
         
     end
     
