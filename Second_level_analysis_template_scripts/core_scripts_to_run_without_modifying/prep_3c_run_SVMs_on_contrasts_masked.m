@@ -54,8 +54,8 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v2.2
-% last modified: 2022/07/28
+% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v2.3
+% last modified: 2022/07/30
 
 
 %% SETTINGS
@@ -214,7 +214,7 @@ for c = 1:kc
     % --------------------------------------------------------------------
     if dobootstrap
         [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, ...
-            'bootsamples', boot_n, 'error_type', 'mcr', parallelstr);
+            'bootsamples', boot_n, 'error_type', 'mcr', parallelstr, 'verbose', 0);
         % Threshold, if possible - can re-threshold later with threshold() method
 %         stats.weight_obj = threshold(stats.weight_obj, .05, 'unc'); %
 %         @lukasvo76: commented out since we want to threshold flexibly at
@@ -222,7 +222,7 @@ for c = 1:kc
         
     else
         [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, ...
-            'error_type', 'mcr', parallelstr);
+            'error_type', 'mcr', parallelstr, 'verbose' ,0);
     
     end
     
@@ -239,7 +239,7 @@ for c = 1:kc
     figtitle = sprintf('%s_unthresholded_montage_%s_%s', analysisname, scaling_string, mask_string);
     set(gcf, 'Tag', figtitle, 'WindowState','maximized');
     drawnow, snapnow;
-        if save_figures
+        if save_figures_svm
             plugin_save_figure;
         end
     clear o2, clear figtitle

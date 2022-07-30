@@ -16,8 +16,8 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% c2_SVM_contrasts_masked.m         v2.0
-% last modified: 2022/07/26
+% @(#)% c2_SVM_contrasts_masked.m         v2.1
+% last modified: 2022/07/30
 
 
 %% SET OPTIONS & LOAD SVM RESULTS IF NEEDED
@@ -75,7 +75,6 @@ end
 if exist(maskname_svm, 'file')
     [~,maskname_short] = fileparts(maskname_svm);
     mask_string = sprintf('within_%s', maskname_short);
-    mask = fmri_data_st(maskname_svm, 'noverbose'); 
 else
     mask_string = sprintf('without_masking');
 end  
