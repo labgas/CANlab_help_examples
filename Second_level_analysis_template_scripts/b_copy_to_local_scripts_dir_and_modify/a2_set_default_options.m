@@ -123,7 +123,7 @@ vif_threshold = 4; % variance inflation threshold to exclude trials
 
 % GENERAL OPTIONS
 %----------------
-ml_method_mvpa_reg_st = 'oofmridataobj';                            % 'oofmridataobj', or 'predict'
+ml_method_mvpa_reg_st = 'oofmridataobj';                        % 'oofmridataobj', or 'predict'
                                                                     % 'oofmridataobj':
                                                                     % use @bogpetre's object-oriented method
                                                                     % https://github.com/canlab/ooFmriDataObjML
@@ -154,6 +154,9 @@ dosavemvparegstats = true;                                      % see saving opt
 q_threshold_mvpa_reg_st = .05;                                  % default .05       threshold for FDR-corrected display items
 k_threshold_mvpa_reg_st = 10;                                   % default 10        extent threshold for FDR-corrected display items
 
+% OPTIONS IF ML_METHOD == OOFMRIDATAOBJ
+%--------------------------------------
+opt_method_mvpa_reg_st = 'bayes';                               % default bayes     'bayes' or 'gridsearch'     
 
 %% prep_4_apply_signatures_and_save options 
 % --------------------------------------------------------------------
