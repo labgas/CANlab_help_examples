@@ -1,14 +1,28 @@
 %%% c2f_run_MVPA_regression_single_trial.m
 %
+% USAGE
+%
 % This script runs MVPA regression analysis on a continuous outcome Y
 % (lasso-pcr, but can easily be adapted to support vector regression or
 % other methods available in CANlab's predict function) on an fmri_data_st
-% object created using LaBGAS_secondlevel_create_single_trial_fmri_data_st_obj.m. 
+% object created using prep_3c_run_SVMs_on_contrasts_masked.m
 % That script should be run first, or the present script will load the data
 % object if it is saved by the previous script.
 %
-% It is based on the extremely helpful tutorials on single trial analysis
-% in the context of MVPA by @bogpetre @CANlab.
+% Options for this script are set in a2_set_default_options.m, see that
+% script for more info. Many of these options get passed into CANlab's
+% predict function - help predict in Matlab command window for more info
+%
+% TUTORIALS AND DOCUMENTATION
+%
+% A. Canlab predict function
+%
+% This is the classic CANlab method of running ML models, and can be chosen
+% by setting the ml_method_mvpa_reg_st option in a2_set_default_options.m
+% to 'predict'
+%
+% This script is based on the extremely helpful tutorials on 
+% single trial MVPA analysis by @bogpetre @CANlab.
 %
 % Here are Bogdan's walkthroughs:
 % https://canlab.github.io/_pages/canlab_single_trials_demo/demo_norming_comparison.html
@@ -24,15 +38,30 @@
 %
 % @lukasvo76's version of the script for this paper can be found here
 % https://www.dropbox.com/sh/v2nsgoqmbi0cqnk/AAD6I1Gn5KUM6aViom4TLeVJa?dl=0
+%
+% B. Bogdan's object-oriented ML method for fmri_data objects (and beyond)
+%
+% This is a newer method inspired by Python's scikit-learn, including more
+% flexible options for algorithm and feature selection, 
+% hyperparameter optimization, nested cross-validation, etc. However, it
+% does require more advanced programming skills and understanding the logic
+% of the method, with only example models provided as part of this script
+%
+% Dependency: https://github.com/canlab/ooFmriDataObjML
+%
+% Tutorial: https://canlab.github.io/_pages/canlab_pipelines_walkthrough/estimateBestRegionPerformance.html
+% Example script: https://github.com/labgas/LaBGAScore/blob/main/secondlevel/LaBGAScore_secondlevel_ooFmriDataObjML_example.m
 % 
-% 
+% NOTE: This script is work in progress, particularly the permutation,
+% multilevel, and oofmridataobj options are still undergoing improvement
+% and full testing
 %__________________________________________________________________________
 %
 % author: lukas.vanoudenhove@kuleuven.be
 % date:   April, 2021
 %__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v3.0        
-% last modified: 2022/07/28
+% @(#)% c2f_run_MVPA_regression_single_trial     v3.1        
+% last modified: 2022/07/30
 
 
 %% LOAD FMRI_DATA_ST OBJECT AND OTHER NECESSARY VARIABLES IF NEEDED
@@ -70,6 +99,7 @@ whmontage = 5; % see region.montage docs
 
 subject_id = fmri_dat.metadata_table.(subj_identifier);
 [uniq_subject_id, ~, subject_id] = unique(subject_id,'stable');
+fmri_dat.metadata_table.subject_id = subject_id;
 n_subj = size(uniq_subject_id,1);
 
 
@@ -280,19 +310,19 @@ switch ml_method_mvpa_reg_st
                     temp_dat=fmri_dat;
                     temp_dat.Y=temp_dat.Y(random_inds);
 
-                    [~, stats_null(it)] = predict(temp_dat, 'algorithm_name', 'cv_lassopcr', 'nfolds', fold_labels);
+                    [~, stats_null] = predict(temp_dat, 'algorithm_name', 'cv_lassopcr', 'nfolds', fold_labels, 'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
 
                     for k = 1:max(fold_labels) % number of cv folds
-                        regress_data = fmri_data;
-                        regress_data.X = stats_null(it).yfit(fold_labels==k);
-                        regress_data.dat = regress_data.dat(:,kinds=k);
+                        regress_data = fmri_dat;
+                        regress_data.X = stats_null.yfit(fold_labels==k);
+                        regress_data.dat = regress_data.dat(:,fold_labels==k);
                         regress_stats(k) = regress(regress_data,'nodisplay');
-                        tv = replace_empty(regress_stats(k).b);
-                        betas(k,:) = tv.dat(:,1);
+%                         tv = replace_empty(regress_stats(k).b);
+                        betas(k,:) = regress_stats(k).dat(:,1);
                     end
 
                     null_beta(it,:) = mean(betas);
-                    null_weights(it,:) = stats_null(it).weight_obj.dat;
+                    null_weights(it,:) = stats_null.weight_obj.dat;
 
                     it/perm_n_mvpa_reg_st
 
@@ -344,8 +374,10 @@ switch ml_method_mvpa_reg_st
         fprintf('PCR r = %0.3f\n', corr(stats.yfit, fmri_dat.Y));
 
         figure
+        
         line_plot_multisubject(fmri_dat.Y, stats.yfit, 'subjid', subject_id);
         xlabel({['Observed ' behav_outcome],'(average over conditions)'}); ylabel({['SVR Estimated ' behav_outcome],'(cross validated)'})
+        
         set(gcf,'WindowState','Maximized');
         drawnow, snapnow;
 
@@ -423,63 +455,148 @@ switch ml_method_mvpa_reg_st
         
     case 'oofmridataobj'
         
-        % DEFINE ALGORITHM AND FEATURE EXTRACTOR
-        %---------------------------------------
-        alg = pcrRegressor('numcomponents',5); % intiate alg as a pcrRegressor estimator object, other estimators in Github repo/estimators; numcomponents is arbitrary, but typically low for pls - we will optimize this hyperparm later
-        alg.fit(fmri_dat.dat', fmri_dat.Y); % fit alg with brain data as predictor, Y as outcome; note that fields of alg get filled
-        extractVxl = fmri2VxlFeatTransformer; % initiate extractVxl as an (empty?) fmri2VxlFeatTransformer object; other transformers in Github repo/transformers
-        extractVxl.fit(fmri_dat); % transformer takes fmri_data_st object as input and stores its metadata in the brainmodel property (in the .volInfo field, nifti header style data)
-
-        % DEFINE PIPELINE
-        %----------------
-        fmri_pcr = pipeline({{'featExt',extractVxl},{'pcr',alg}}); % define fmri_pcr as a pipeline object including the feature transformer and the algorithm defined above; names are arbitrary
-        fmri_pcr.fit(fmri_dat,fmri_dat.Y) % fit pipeline
-
-        % INNER CROSS-VALIDATION LOOP
-        %----------------------------
-        switch holdout_set_method_mvpa_reg_st
-
-            case 'group'
-                innercv = @(X,Y) cvpartition2(group, 'Group',subject_id, 'GroupKFold', nfolds_mvpa_reg_st);
-                
-            case 'onesample'
-                innercv = @(X,Y) cvpartition2(size(fmri_dat.dat,2),'Group',subject_id, 'GroupKFold', nfolds_mvpa_reg_st); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
-                
-        end
+        switch opt_method_mvpa_reg_st
+            
+            case 'gridsearch'
         
-        innercv(fmri_dat,fmri_dat.Y); % get cross-validation folds - NOT SURE WHETHER THIS IS NEEDED - need assignment to var name?
+                % DEFINE ALGORITHM AND FEATURE EXTRACTOR
+                %---------------------------------------
+                alg = plsRegressor('numcomponents',5); % intiate alg as a plsRegressor estimator object, other estimators in Github repo/estimators; numcomponents is arbitrary, but typically low for pls - we will optimize this hyperparm later
+                alg.fit(fmri_dat.dat', fmri_dat.Y); % fit alg with brain data as predictor, Y as outcome; note that fields of alg get filled
+                extractVxl = fmri2VxlFeatTransformer; % initiate extractVxl as an (empty?) fmri2VxlFeatTransformer object; other transformers in Github repo/transformers
+                extractVxl.fit(fmri_dat); % transformer takes fmri_data_st object as input and stores its metadata in the brainmodel property (in the .volInfo field, nifti header style data)
 
-        % DEFINE OPTIMIZATION GRID
-        %-------------------------
-        gridPoints = table([2 4 5 9 20]','VariableNames',{'pcr__numcomponents'}); % note the double underscore linking name of algorithm in pipeline with its parameter we want to optimize
-        
-        go = gridSearchCV(fmri_pcr,gridPoints,innercv,@get_mse,'verbose',true); % see help gridSearchCV for inputs; scorers in Github repo/scorer; other optimizers in Github repo/estimators
-        go.fit(fmri_dat,fmri_dat.Y);
-        
-        mdl = go.estimator.transformers{1}.brainModel; % empty .dat at this stage
-        mdl.dat = go.estimator.estimator.B; % fills mdl.dat with betas
+                % DEFINE PIPELINE
+                %----------------
+                fmri_pls = pipeline({{'featExt',extractVxl},{'pls',alg}}); % define fmri_pcr as a pipeline object including the feature transformer and the algorithm defined above; names are arbitrary
+                fmri_pls.fit(fmri_dat,fmri_dat.Y) % fit pipeline - JUST AS A TEST? NOT NEEDED FOR THE BELOW?
 
-        % OUTER CROSS-VALIDATION LOOP
-        %----------------------------
-        switch holdout_set_method_mvpa_reg_st
+                % INNER CROSS-VALIDATION FUNCTION
+                %--------------------------------
+                switch holdout_set_method_mvpa_reg_st
 
-            case 'group'
-                outercv = @(X,Y) cvpartition2(group, 'Group',subject_id, 'GroupKFold', nfolds_mvpa_reg_st);
+                    case 'group'
+                        innercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id);
+
+                    case 'onesample'
+                        innercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+
+                end
+
+                innercv(fmri_dat,fmri_dat.Y); % get cross-validation folds - JUST AS A TEST?
+
+                % DEFINE OPTIMIZATION GRID
+                %-------------------------
+                gridPoints = table([2 4 5 9 20]','VariableNames',{'pls__numcomponents'}); % note the double underscore linking name of algorithm in pipeline with its parameter we want to optimize
+
+                go = gridSearchCV(fmri_pls,gridPoints,innercv,@get_mse,'verbose',true); % see help gridSearchCV for inputs; scorers in Github repo/scorer; other optimizers in Github repo/estimators
+                go.fit(fmri_dat,fmri_dat.Y);
+
+                mdl = go.estimator.transformers{1}.brainModel; % empty .dat at this stage
+                mdl.dat = go.estimator.estimator.B(:); % fills mdl.dat with betas
+                figure
+                mdl.montage;
+                set(gcf, 'WindowState','maximized');
+                drawnow, snapnow;
+
+                % OUTER CROSS-VALIDATION FUNCTION
+                %--------------------------------
+                switch holdout_set_method_mvpa_reg_st
+
+                    case 'group'
+                        outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id);
+
+                    case 'onesample'
+                        outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+
+                end
                 
-            case 'onesample'
-                outercv = @(X,Y) cvpartition2(size(fmri_dat.dat,2),'Group',subject_id, 'GroupKFold', nfolds_mvpa_reg_st); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+                % ESTIMATE CROSS-VALIDATED MODEL PERFORMANCE
+                %-------------------------------------------
+                cvGS = crossValScore(fmri_pls, outercv, @get_mse, 'verbose', true); % see help/methods crossValScore; more crossvalidators in Github_repo/crossValidators - check out crossValPredict to get cross-validated prediction estimates at this stage
+                cvGS.do(fmri_dat, fmri_dat.Y); % HOW DOES THIS TAKE GO INTO ACCOUNT SINCE IT IS NOT PART OF THAT PIPELINE? NOT NESTED? SOMETHING WRONG WITH ORDER OF THINGS?
+                cvGS.do_null(); % fits null model - intercept only
+                f1 = cvGS.plot; % plots predicted versus observed
+                % average MSE over folds = cv model performance
                 
-        end
+            case 'bayes'
+                
+                % DEFINE ALGORITHM
+                %-----------------
+                alg = plsRegressor();
+%                 alg.fit(fmri_dat.dat', fmri_dat.Y);
+                
+                % INNER CROSS-VALIDATION FUNCTION
+                %--------------------------------
+                switch holdout_set_method_mvpa_reg_st
 
-        % ESTIMATE CROSS-VALIDATED MODEL PERFORMANCE
-        %-------------------------------------------
-        cvGS = crossValScore(fmri_pcr, outercv, @get_mse, 'verbose', true); % see help/methods crossValScore; more crossvalidators in Github_repo/crossValidators - check out crossValPredict to get cross-validated prediction estimates at this stage
-        cvGS.do(fmri_dat, fmri_dat.Y);
-        cvGS.do_null(); % fits null model - intercept only
-        f1 = cvGS.plot; % plots predicted versus observed
-        % average MSE over folds = cv model performance
+                    case 'group'
+                        innercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata.(subj_identifier)); % WHY NOT METADATA_TABLE HERE? DEPENDS ON INPUT (not features here), SO MAYBE BECAUSE OF METADATA CONSTRUCTOR?
+
+                    case 'onesample'
+                        innercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata.(subj_identifier)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+
+                end
+                
+                % DEFINE BAYESIAN OPTIMIZATION AND CROSS-VALIDATE
+                %------------------------------------------------
+                dims = optimizableVariable('numcomponents',[1,30],'Type','integer','Transform','log');
+                bayesOptParams = {dims, 'AcquisitionFunctionName','expected-improvement-plus',...
+                    'MaxObjectiveEvaluations',30, 'UseParallel', true, 'verbose',1, 'PlotFcn', {}};
+                bo = bayesOptCV(alg,innercv,@get_mse,bayesOptParams);
+                
+                % DEFINE OTHER COMPONENTS OF PIPELINE
+                %------------------------------------
+                featConstructor_han = @(X) table(X.metadata_table.(subj_identifier),'VariableNames',{'participant_id'}); % WHY DO WE NEED THIS?
+                extractVxl = fmri2VxlFeatTransformer('metadataConstructor_funhan',featConstructor_han);
+                zTransVxl = zscoreVxlTransformer(@(X) X.metadata_table.participant_id);
+                zTransImg = functionTransformer(@(x1) rescale(x1,'zscoreimages'));
+                
+                % DEFINE PIPELINE
+                %------------------------------------
+%                 fmri_pls = pipeline({{'zscorevxl', zTransVxl},{'zscoreimg', zTransImg},...
+%                     {'featExt',extractVxl},{'bo_pls',bo}});
+                fmri_pls = pipeline({{'featExt',extractVxl},{'bo_pls',bo}});
+%                 data = features(fmri_dat.dat', fmri_dat.metadata_table.subject_id); % this is an "extended double" that is just a double with metadata in the dat.metadata field
+                fmri_pls.fit(fmri_dat,fmri_dat.Y);
+                
+                % OUTER CROSS-VALIDATION FUNCTION
+                %--------------------------------
+                switch holdout_set_method_mvpa_reg_st
+
+                    case 'group'
+                        outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id);
+
+                    case 'onesample'
+                        outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+
+                end
+                
+                % ESTIMATE CROSS-VALIDATED MODEL PERFORMANCE
+                %-------------------------------------------
+                cvGS = crossValScore(fmri_pls, outercv, @get_mse, 'verbose', true);
+                cvGS.do(fmri_dat, fmri_dat.Y);
+                cvGS.do_null();
+                f1 = cvGS.plot();
+                
+                % PLOT MODEL
+                %-----------
+                mdl = fmri_pls.estimator.transformers{1}.brainModel; % empty .dat at this stage
+                mdl.dat = fmri_pls.estimator.estimator.B(:); % fills mdl.dat with betas
+                mdl.montage;
+                
+                % FURTHER REPORTING OF RESULTS?
+                % boostrapping and thresholding?
+                
+            otherwise
+                
+                error('\ninvalid option "%s" defined in opt_method_mvpa_reg_st variable, choose between "gridsearch" and "bayes"\n',opt_method_mvpa_reg_st);
+
+        end % switch optimization method for oofmridataobj
         
-    otherwise error('\ninvalid option "%s" defined in ml_method_mvpa_reg_st variable, choose between "oofmridataobj" and "predict"\n',ml_method_mvpa_reg_st);
+    otherwise
+        
+        error('\ninvalid option "%s" defined in ml_method_mvpa_reg_st variable, choose between "oofmridataobj" and "predict"\n',ml_method_mvpa_reg_st);
 
 end % switch machine learning method
 
