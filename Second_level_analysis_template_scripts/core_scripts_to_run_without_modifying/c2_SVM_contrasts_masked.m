@@ -205,7 +205,7 @@ for c = 1:kc
         t = threshold(t, q_threshold_svm, 'fdr', 'k', k_threshold_svm); 
         r = region(t,'noverbose');
 
-        o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
         o2 = title_montage(o2, whmontage, [analysisname ' FDR ' num2str(q_threshold) ' ' mask_string]);
 
         figtitle = sprintf('%s_%s_%1.4f_FDR_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, scaling_string, mask_string);
@@ -251,7 +251,7 @@ for c = 1:kc
         t = threshold(t, p_threshold_svm, 'unc', 'k', k_threshold_svm); 
         r = region(t,'noverbose');
 
-        o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
         o2 = title_montage(o2, whmontage, [analysisname ' unc ' num2str(p_threshold) ' ' mask_string]);
 
         figtitle = sprintf('%s_%s_%1.4f_unc_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, scaling_string, mask_string);
