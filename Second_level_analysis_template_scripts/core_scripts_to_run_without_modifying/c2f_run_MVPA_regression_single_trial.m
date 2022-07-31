@@ -318,7 +318,7 @@ switch ml_method_mvpa_reg_st
                         regress_data.dat = regress_data.dat(:,fold_labels==k);
                         regress_stats(k) = regress(regress_data,'nodisplay');
 %                         tv = replace_empty(regress_stats(k).b);
-                        betas(k,:) = regress_stats(k).dat(:,1);
+                        betas(k,:) = regress_stats(k).b.dat(:,1);
                     end
 
                     null_beta(it,:) = mean(betas);
@@ -328,15 +328,15 @@ switch ml_method_mvpa_reg_st
 
                 end
 
-                clear temp_dat k regress_data regress_stats tv;
+                clear temp_dat k regress_data regress_stats betas;
 
                 for k = 1:max(fold_labels) % number of cv folds
-                        regress_data = fmri_data;
+                        regress_data = fmri_dat;
                         regress_data.X = stats.yfit(fold_labels==k);
-                        regress_data.dat = regress_data.dat(:,kinds=k);
+                        regress_data.dat = regress_data.dat(:,fold_labels==k);
                         regress_stats(k) = regress(regress_data,'nodisplay');
-                        tv = replace_empty(regress_stats(k).b);
-                        betas(k,:) = tv.dat(:,1);
+%                         tv = replace_empty(regress_stats(k).b);
+                        betas(k,:) = regress_stats(k).b.dat(:,1);
                 end
 
                 mean_beta = mean(betas);
@@ -359,7 +359,7 @@ switch ml_method_mvpa_reg_st
 
                 end
 
-                perm_stats = stats.weight_obj;
+                perm_stats = statistic_image;
                 perm_stats.dat = mean_beta';
                 perm_stats.p = phat';
 
@@ -437,7 +437,7 @@ switch ml_method_mvpa_reg_st
 
             o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
-            t = bs_stats.weight_obj;
+            t = perm_stats;
             t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
             r = region(bs_stats.weight_obj);
 
