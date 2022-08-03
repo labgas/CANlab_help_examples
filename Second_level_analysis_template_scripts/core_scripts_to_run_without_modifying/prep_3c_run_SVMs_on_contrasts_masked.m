@@ -54,8 +54,8 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v2.3
-% last modified: 2022/07/30
+% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v2.4
+% last modified: 2022/08/03
 
 
 %% SETTINGS
@@ -77,6 +77,28 @@ plugin_get_options_for_analysis_script
 % specify which montage to add title to
 
 whmontage = 5; % see region.montage docs
+
+
+%% LOAD FMRI_DATA_ST OBJECTS AND OTHER NECESSARY VARIABLES IF NEEDED
+%--------------------------------------------------------------------------
+
+if ~exist('resultsdir','var')
+    
+    a_set_up_paths_always_run_first % STUDY-SPECIFIC
+    
+end
+
+if ~exist('DSGN','var') || ~exist('DAT','var')
+    
+    load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    
+end
+
+if ~exist('DATA_OBJ','var')
+    
+    load(fullfile(resultsdir,'data_objects.mat'));
+    
+end
 
 
 %% CHECK SPIDER TOOLBOX AND START CLOCK
@@ -112,6 +134,15 @@ end
 kc = size(DAT.contrasts, 1);
 
 svm_stats_results = cell(1, kc);
+    if dosearchlight_svm
+        searchlight_svm_stats{c} = cell(1, kc);
+        searchlight_svm_objs{c} = cell(1, kc);
+    end
+
+delete(gcp('nocreate'));
+c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
+nw = c.NumWorkers;
+parpool(round(0.7*nw));
 
 for c = 1:kc
     
@@ -226,7 +257,15 @@ for c = 1:kc
     
     end
     
-    % PLOT MONTAGE OF UNTHRESHOLDED RESULTS
+    % RUN SEARCHLIGHT SVM MODEL IF REQUESTED IN OPTIONS
+    %----------------------------------------------------------------------
+    if dosearchlight_svm
+        [searchlight_obj, searchlight_stats, searchlight_indx] = searchlight(cat_obj, 'algorithm_name', 'cv_svm', ...
+            'r', searchlight_radius_svm, 'holdout_set', holdout_set);
+    
+    end
+    
+    % PLOT MONTAGE OF UNTHRESHOLDED SVM RESULTS
     % ---------------------------------------------------------------------
 
     fprintf ('\nShowing unthresholded SVM results, : %s\nEffect: %s\n\n', analysisname, mask_string);
@@ -244,15 +283,42 @@ for c = 1:kc
         end
     clear o2, clear figtitle
     
+    % PLOT MONTAGE OF UNTHRESHOLDED SEARCHLIGHT SVM RESULTS IF REQUESTED
+    % ---------------------------------------------------------------------
+    
+    if dosearchlight_svm
+
+        fprintf ('\nShowing unthresholded searchlight SVM results, : %s\nEffect: %s\n\n', analysisname, mask_string);
+
+        r = region(stats.weight_obj);
+
+        o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = title_montage(o2, whmontage, [analysisname ' unthresholded searchlight ' mask_string]);
+
+        figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, scaling_string, mask_string);
+        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        drawnow, snapnow;
+            if save_figures_svm
+                plugin_save_figure;
+            end
+        clear o2, clear figtitle
+        
+    end
+    
     
     % STORE STATISTIC OBJECTS IN CELL ARRAY
     % --------------------------------------------------------------------
     
 %     stats.weight_obj = enforce_variable_types(stats.weight_obj);
     svm_stats_results{c} = stats;
+    
+    if dosearchlight_svm
+        searchlight_svm_stats{c} = searchlight_stats;
+        searchlight_svm_objs{c} = searchlight_svm_obj;
+    end
         
     if exist('svmmask', 'var')
-        svm_stats_results{c}.mask = svmmask;
+%         svm_stats_results{c}.mask = svmmask;
         svm_stats_results{c}.maskname = maskname_svm;
     end
     
@@ -272,6 +338,11 @@ if dosavesvmstats
     savefilenamedata = fullfile(resultsdir, ['svm_stats_results_contrasts_', scaling_string, '_', results_suffix,'.mat']);
     save(savefilenamedata, 'svm_stats_results', '-v7.3');
     fprintf('\nSaved svm_stats_results_contrasts\n');
+    
+    if dosearchlight
+        save(savefilenamedata, 'searchlight_svm_stats','searchlight_svm_objs','-append');
+        fprintf('\nAdded searchlight results to saved svm_stats_results_contrasts\n');
+    end
     
 end
 

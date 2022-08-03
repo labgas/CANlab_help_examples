@@ -17,8 +17,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v2.3
-% last modified: 2022/07/28
+% @(#)% a2_set_default_options.m         v2.4
+% last modified: 2022/08/03
 
 
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -81,15 +81,17 @@ holdout_set_method = 'onesample';                       % 'group', or 'onesample
                                                             % @lukasvo76: no group factor, stratifies by
                                                             % subject (i.e. leave whole subject out)
 holdout_set_type = 'kfold';                             % default kfold     cross-validation method: 'kfold' or 'leave_one_subject_out' - the latter is not recommended
-nfolds = 5;                                             % default 5         number of cross-validation folds for kfold
+    nfolds = 5;                                             % default 5         number of cross-validation folds for kfold
 maskname_svm = which('gray_matter_mask_sparse.img');    % default use of sparse gray matter mask; maskdir now defined in a_set_up_paths_always_run_first script; if you do not want to mask, change to []; if you want to use a custom mask, put it in maskdir and change name here.
 dosubjectnorm = false;                                  % default false     normalize_each_subject_by_l2norm; normalizes images for each subject by L2 norm of Condition 1 image; can help with numerical scaling and inter-subject scaling diffs
 doimagenorm = false;                                    % default false     normalize_images_by_l2norm; normalizes each image separately, not each subject/pair
 dozscoreimages = false;                                 % default false     Z-score each input image, removing image mean and forcing std to 1. Removes overall effects of image intensity and scale. Can be useful across studies but also removes information. Use judiciously. lukasvo76: corresponds to 'scaled' in myscaling_glm option in prep_3a
-dosavesvmstats = true;                                  % default true      Save statistics and weight map objects for SVM contrasts
-dobootstrap = false;                                    % default false     Takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to the default 10k samples
-boot_n = 5000;                                          % default 5000      Number of bootstrap samples, reduce number for quick results, increase to 10k for publication
+dosavesvmstats = true;                                  % default true      save statistics and weight map objects for SVM contrasts
+dobootstrap = false;                                    % default false     takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to the default 10k samples
+    boot_n = 5000;                                          % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
 parallelstr = 'parallel';                               % parallel proc for boot.   'parallel' or 'noparallel'
+dosearchlight_svm = 'false';                            % default false     perform searchlight SVM analysis 
+    searchlight_radius_svm = 3;                              % default 3         radius for searchlight sphere
 
 
 %% C2_SVM_CONTRASTS_MASKED
@@ -147,10 +149,10 @@ domultilevel_mvpa_reg_st = false;                               % default false;
 %--------------------------------
 algorithm_mvpa_reg_st = 'cv_pcr';                               % default cv_lassopcr, will be passed into predict function, see help predict for options
 dobootstrap_mvpa_reg_st = false;                                % default false     bootstrapping; takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to 10k samples
-boot_n_mvpa_reg_st = 5000;                                      % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
+    boot_n_mvpa_reg_st = 5000;                                      % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
 doperm_mvpa_reg_st = false;                                     % default false     permutation testing; takes a very long time despite implementation of parfor loop
-perm_n_mvpa_reg_st = 5000;                                      % default 5000      number of permutations, reduce number for quick results, increase to 10k for publication
-perm_sidedness = 'both';                                        % default both      tails for permutation test, 'both','smaller', or 'larger'
+    perm_n_mvpa_reg_st = 5000;                                      % default 5000      number of permutations, reduce number for quick results, increase to 10k for publication
+    perm_sidedness = 'both';                                        % default both      tails for permutation test, 'both','smaller', or 'larger'
 dosourcerecon_mvpa_reg_st = false;                              % default false     source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
 dosourcerecon_perm_mvpa_reg_st = false;                         % default false     permutation testing on source recon images; takes a very long time despite implementation of parfor loop
 parallelstr_mvpa_reg_st = 'parallel';                           % parallel proc for boot.   'parallel' or 'noparallel'
@@ -161,6 +163,7 @@ k_threshold_mvpa_reg_st = 10;                                   % default 10    
 % OPTIONS IF ML_METHOD == OOFMRIDATAOBJ
 %--------------------------------------
 opt_method_mvpa_reg_st = 'bayes';                               % default bayes     'bayes' or 'gridsearch'     
+
 
 %% prep_4_apply_signatures_and_save options 
 % --------------------------------------------------------------------
