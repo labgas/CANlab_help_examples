@@ -29,6 +29,7 @@
 %
 % LaBGAS NOTES:
 % - script to be run from rootdir of superdataset for your study
+% - DO NOT FORGET TO MAKE STUDY-SPECIFIC CHANGES INDICATED BELOW
 %
 %__________________________________________________________________________
 %
@@ -220,6 +221,7 @@ htmlsavedir = fullfile(resultsdir,'html');
     
 %% SET USER OPTIONS
 % --------------------------------------------------------
+% STUDY-SPECIFIC: add study name and model name to script name
 
 a2_set_default_options;
 
