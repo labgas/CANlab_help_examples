@@ -45,7 +45,7 @@
 % flexible options for algorithm and feature selection, 
 % hyperparameter optimization, nested cross-validation, etc. However, it
 % does require more advanced programming skills and understanding the logic
-% of the method, with only example models provided as part of this script
+% of the method
 %
 % Dependency: https://github.com/canlab/ooFmriDataObjML
 %
@@ -57,36 +57,36 @@
 % and full testing
 %__________________________________________________________________________
 %
-% author: lukas.vanoudenhove@kuleuven.be
+% author: lukas.vanoudenhove@kuleuven.be, bogpetre@gmail.com
 % date:   April, 2021
 %__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v3.3        
-% last modified: 2022/08/02
+% @(#)% c2f_run_MVPA_regression_single_trial     v4.0        
+% last modified: 2022/08/04
 
 
 %% LOAD FMRI_DATA_ST OBJECT AND OTHER NECESSARY VARIABLES IF NEEDED
 %--------------------------------------------------------------------------
 
 if ~exist('resultsdir','var')
-    
+
     a_set_up_paths_always_run_first % STUDY-SPECIFIC
-    
+
 end
 
 if ~exist('DSGN','var') || ~exist('DAT','var')
-    
+
     load(fullfile(resultsdir,'image_names_and_setup.mat'));
-    
+
     if ~isfield(DAT,'BEHAVIOR')
         error('\n Behavioral data not yet added to DAT structure - run prep_1b script first')
     end
-    
+
 end
 
 if ~exist('fmri_dat','var')
-    
+
     load(fullfile(resultsdir,['single_trial_fmri_data_st_object_' DSGN.modelingfilesdir '.mat']));
-    
+
 end
 
 % specify which montage to add title to
@@ -99,7 +99,7 @@ whmontage = 5; % see region.montage docs
 
 subject_id = fmri_dat.metadata_table.(subj_identifier);
 [uniq_subject_id, ~, subject_id] = unique(subject_id,'stable');
-fmri_dat.metadata_table.subject_id = subject_id;
+% fmri_dat.metadata_table.subject_id = subject_id; % not needed but does not harm
 n_subj = size(uniq_subject_id,1);
 
 
@@ -109,52 +109,57 @@ n_subj = size(uniq_subject_id,1);
 % MASKING IMAGES
 %---------------
 
-if exist('maskname_mvpa_reg_st','var') && ~isempty(maskname_mvpa_reg_st) && exist(maskname_mvpa_reg_st, 'file')
-    
-    [~,maskname_short] = fileparts(maskname_mvpa_reg_st);
-    fprintf('\nMasking data with %s\n',maskname_short);
-    mask_string = sprintf('within mask %s', maskname_short);
-    
-    mvpamask = fmri_mask_image(maskname_mvpa_reg_st);
-    fmri_dat = fmri_dat.apply_mask(mvpamask);
-    fmri_dat.mask_descrip = maskname_mvpa_reg_st;
-    
-else
-    
-    fprintf('\nNo mask found; using full original image data\n');
+    if exist('maskname_mvpa_reg_st','var') && ~isempty(maskname_mvpa_reg_st) && exist(maskname_mvpa_reg_st, 'file')
 
-end % if loop mask
+        [~,maskname_short] = fileparts(maskname_mvpa_reg_st);
+        fprintf('\nMasking data with %s\n',maskname_short);
+        mask_string = sprintf('masked with %s', maskname_short);
+
+        mvpamask = fmri_mask_image(maskname_mvpa_reg_st);
+        fmri_dat = fmri_dat.apply_mask(mvpamask);
+        fmri_dat.mask_descrip = maskname_mvpa_reg_st;
+
+    else
+
+        fprintf('\nNo mask found; using full original image data\n');
+
+    end % if loop mask
 
 
 % SCALING IMAGES
 %---------------
 
-switch myscaling_mvpa_reg_st
+    switch myscaling_mvpa_reg_st
 
-    case 'raw'
-        
-        fprintf('\nNo scaling of input images\n');
-        
-    case 'centerimages'
+        case 'raw'
 
-        fmri_dat = fmri_dat.rescale('centerimages'); 
-        fprintf('\nCentering input images\n');
-        
-    case 'l2norm_images'
+            fprintf('\nNo scaling of input images\n');
 
-        fmri_dat = fmri_dat.rescale('l2norm_images');
-        fprintf('\nNormalizing input images by l2norm\n');
-        
-    case 'zscore_images'
+        case 'centerimages'
 
-        fmri_dat_z = fmri_dat.rescale('zscoreimages');
-        fprintf('\nZ-scoring input images\n');
-        
-    otherwise 
+            fmri_dat = fmri_dat.rescale('centerimages'); 
+            fprintf('\nCentering input images\n');
 
-        error('\ninvalid scaling option %s specified in myscaling_mvpa_reg_st variable defined in a2_set_default_options CANlabhelpexamples script, please correct\n', myscaling_mvpa_reg_st)
+        case 'l2normimages'
 
-end % switch scaling
+            fmri_dat = fmri_dat.rescale('l2norm_images');
+            fprintf('\nNormalizing input images by l2norm\n');
+
+        case 'zscoreimages'
+
+            fmri_dat = fmri_dat.rescale('zscoreimages');
+            fprintf('\nZ-scoring input images\n');
+
+        case 'zscorevoxels'
+
+            fmri_dat = fmri_dat.rescale('zscorevoxels');
+            fprintf('\nZ-scoring voxels across input images\n');
+
+        otherwise 
+
+            error('\ninvalid scaling option %s specified in myscaling_mvpa_reg_st variable defined in a2_set_default_options CANlabhelpexamples script, please correct\n', myscaling_mvpa_reg_st)
+
+    end % switch scaling
    
 
 % ZSCORE BEHAVIORAL OUTCOME
@@ -162,12 +167,12 @@ end % switch scaling
 
 % NOTE: useful for more interpretable values of prediction MSE
 
-if zscore_outcome
-   
-    fmri_dat.Y = zscore(fmri_dat.Y);
-    fprintf('\nZ-scoring outcome fmri_dat.Y across subjects\n');
-    
-end
+    if zscore_outcome
+
+        fmri_dat.Y = zscore(fmri_dat.Y);
+        fprintf('\nZ-scoring outcome fmri_dat.Y across subjects\n');
+
+    end
 
 
 %% DATA VISUALISATION PRIOR TO MODEL BUILDING
@@ -244,442 +249,535 @@ clear sub
 %--------------------------------------------------------------------------
 
 % NOTE: algorithm choice set in a2_default_options.m
-% "help predict" in Matlab command window for more info
 
 % RUN PREDICTIVE REGRESSION MODEL
 %--------------------------------
-switch ml_method_mvpa_reg_st
-    
-% CANLAB PREDICT FUNCTION
+    switch ml_method_mvpa_reg_st
 
-    case 'predict'
-        
-        % CROSS-VALIDATION FOLD SELECTION
+    % CANLAB's PREDICT FUNCTION
 
-        % NOTE: balancing over groups, stratifying over subjects (i.e. leave whole
-        % subject out)
+        case 'predict'
 
-        switch holdout_set_method_mvpa_reg_st
+            % CROSS-VALIDATION FOLD SELECTION
 
-            case 'group'
+            % NOTE: balancing over groups, stratifying over subjects (i.e. leave whole
+            % subject out)
 
-                group = fmri_dat.metadata_table.(group_identifier);
-                cv = cvpartition2(group, 'Group',subject_id, 'GroupKFold', nfolds_mvpa_reg_st);
-                    fold_labels = zeros(size(fmri_dat.dat,2),1);
-                    for sub = 1:cv.NumTestSets
-                        fold_labels(cv.test(sub)) = sub;
-                    end
+            switch holdout_set_method_mvpa_reg_st
 
-            case 'onesample'
+                case 'group'
 
-                cv = cvpartition2(size(fmri_dat.dat,2),'Group',subject_id, 'GroupKFold', nfolds_mvpa_reg_st);
-                    fold_labels = zeros(size(fmri_dat.dat,2),1);
-                    for sub = 1:cv.NumTestSets
-                        fold_labels(cv.test(sub)) = sub;
-                    end
-
-            otherwise
-
-                error('\ninvalid option "%s" defined in holdout_set_method_mvpa_reg_st variable, choose between "group" and "onesample"\n',holdout_set_method_mvpa_reg_st);
-
-        end % switch holdout_set_method
-        
-        % FIT MODEL
-        
-        t0 = tic;
-
-        [cverr, stats, optout] = predict(fmri_dat, 'algorithm_name', algorithm_mvpa_reg_st, ...
-                    'nfolds', fold_labels, 'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
-                
-        t_end = toc(t0);        
-
-            % Obtain bootstrapped weights if requested, or if permutation
-            % is requested - see below
-            
-            delete(gcp('nocreate'));
-            c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
-            nw = c.NumWorkers;
-            parpool(round(0.8*nw));
-
-            if dobootstrap_mvpa_reg_st
-                
-                t0_boot = tic;
-
-                [~ , bs_stats] = predict(fmri_dat, 'algorithm_name', algorithm_mvpa_reg_st,...
-                    'bootsamples', boot_n_mvpa_reg_st, 'nfolds', 1 , 'error_type', 'mse', ...
-                    parallelstr_mvpa_reg_st, 'verbose', 0);
-                
-                t_end_boot = toc(t0_boot);
-                
-            elseif ~dobootstrap_mvpa_reg_st && doperm_mvpa_reg_st % bootstrap with few samples just to create a statistic_image weight object for use in permutation code below
-                
-                t0_boot = tic;
-
-                [~ , bs_stats] = predict(fmri_dat, 'algorithm_name', algorithm_mvpa_reg_st,...
-                    'bootsamples', 50, 'nfolds', 1 , 'error_type', 'mse', ...
-                    parallelstr_mvpa_reg_st, 'verbose', 0);
-                
-                t_end_boot = toc(t0_boot);
-                
-            end
-
-            % Obtain permutation weights if requested
-
-            % NOTE: code adapted from @pkragel s1_predict_anxiety_ratings_lassopcr.m -
-            % NEEDS CHECK BY PHIL
-
-            if doperm_mvpa_reg_st
-                
-                t0_perm = tic;
-                
-                % Get permutation weights
-
-                null_beta = zeros(perm_n_mvpa_reg_st,size(fmri_dat.dat,1)); % number of permutations, number of voxels
-                null_weights = zeros(perm_n_mvpa_reg_st,size(fmri_dat.dat,1));
-                
-                parfor perm = 1:perm_n_mvpa_reg_st
-                    
-                    regress_stats_null = cell(max(fold_labels),1);
-                    betas_null = zeros(max(fold_labels),size(fmri_dat.dat,1));
-                    
-                    random_inds=randperm(size(fmri_dat.Y,1)); % number of images/ratings over subjects
-                    temp_dat=fmri_dat;
-                    temp_dat.Y=temp_dat.Y(random_inds);
-
-                    [~, stats_null] = predict(temp_dat, 'algorithm_name', algorithm_mvpa_reg_st, 'nfolds', fold_labels, 'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
-
-                    for k = 1:max(fold_labels) % number of cv folds
-                        regress_data_null = fmri_dat;
-                        regress_data_null.X = stats_null.yfit(fold_labels==k);
-                        regress_data_null.dat = regress_data_null.dat(:,fold_labels==k);
-                        regress_stats_null{k} = regress(regress_data_null,'nodisplay','noverbose');
-%                         tv = replace_empty(regress_stats(k).b);
-                        betas_null(k,:) = regress_stats_null{k}.b.dat(:,1);
-                    end
-
-                    null_beta(perm,:) = mean(betas_null);
-                    null_weights(perm,:) = stats_null.weight_obj.dat;
-
-                    perm/perm_n_mvpa_reg_st
-
-                end % for loop over number of permutations
-                
-                % Get probability of finding observed weights from
-                % permutation weights
-                
-                mean_weight = stats.weight_obj.dat; % CHECK THIS CODE TMRW
-
-                for weight = 1:size(null_weights,2)
-                    
-                    phat(weight) = 1-sum(mean_weight(weight) > null_weights(:,weight)) / (1+size(null_weights,1));
-
-                    switch perm_sidedness
-                        case 'both'
-                            phat(weight) = (length(find(abs(null_weights(:,weight)) > abs(mean_weight(weight))))+1) / (perm_n_mvpa_reg_st+1); 
-                        case 'smaller'
-                            phat(weight) = (length(find(null_weights(:,weight) < mean_weight(weight)))+1) / (perm_n_mvpa_reg_st+1);
-                        case 'larger'
-                            phat(weight) = (length(find(null_weights(:,weight) > mean_weight(weight)))+1) / (perm_n_mvpa_reg_st+1);
-                    end
-
-                end
-                
-                clear weight;
-                
-                perm_stats_obj = bs_stats.weight_obj; % initiate perm_stats_obj as a statistic_image object identical to bs_stats.weight_obj - is easiest from existing object, but will not work if bootstrapping not (yet) performed
-                perm_stats_obj.dat = mean_weight; % Store weights and p-values in statistic_image object
-                perm_stats_obj.p = phat';
-                
-                if dosourcerecon_mvpa_reg_st
-                    
-                % Get source reconstruction weights
-                
-                    % NOTE: regress each voxel's activity onto yhat
-                    % Ref: Haufe et al, NeuroImage 2014
-
-                    regress_stats = cell(max(fold_labels),1);
-                    betas = zeros(max(fold_labels),size(fmri_dat.dat,1));
-
-                    for k = 1:max(fold_labels) % number of cv folds
-
-                        regress_data = fmri_dat;
-                        regress_data.X = stats.yfit(fold_labels==k);
-                        regress_data.dat = regress_data.dat(:,fold_labels==k);
-                        regress_stats{k} = regress(regress_data,'nodisplay','noverbose');
-    %                         tv = replace_empty(regress_stats(k).b);
-                        betas(k,:) = regress_stats{k}.b.dat(:,1);
-
-                    end % for loop over folds
-                    
-                    clear k;
-
-                    mean_beta = mean(betas);
-                    
-                    if dosourcerecon_perm_mvpa_reg_st
-                
-                        % Get probability of finding observed source reconstruction weights from
-                        % permutation weights
-
-                        for beta = 1:size(null_beta,2)
-
-                            phat_srec(beta) = 1-sum(mean_beta(beta) > null_beta(:,beta)) / (1+size(null_beta,1));
-
-                            switch perm_sidedness
-                                case 'both'
-                                    phat_srec(beta) = (length(find(abs(null_beta(:,beta)) > abs(mean_beta(beta))))+1) / (perm_n_mvpa_reg_st+1); 
-                                case 'smaller'
-                                    phat_srec(beta) = (length(find(null_beta(:,beta) < mean_beta(beta)))+1) / (perm_n_mvpa_reg_st+1);
-                                case 'larger'
-                                    phat_srec(beta) = (length(find(null_beta(:,beta) > mean_beta(beta)))+1) / (perm_n_mvpa_reg_st+1);
-                            end
-
+                    group = fmri_dat.metadata_table.(group_identifier);
+                    cv = cvpartition2(group, 'Group',subject_id, 'GroupKFold', nfolds_mvpa_reg_st);
+                        fold_labels = zeros(size(fmri_dat.dat,2),1);
+                        for sub = 1:cv.NumTestSets
+                            fold_labels(cv.test(sub)) = sub;
                         end
 
-                        source_recon_perm_stats_obj = statistic_image; % Store betas and p-values as statistic_image object
-                        source_recon_perm_stats_obj.dat = mean_beta';
-                        source_recon_perm_stats_obj.p = phat_srec';
-                        
-                    end % if loop permutation testing on source reconstruction
+                case 'onesample'
+
+                    cv = cvpartition2(size(fmri_dat.dat,2),'Group',subject_id, 'GroupKFold', nfolds_mvpa_reg_st);
+                        fold_labels = zeros(size(fmri_dat.dat,2),1);
+                        for sub = 1:cv.NumTestSets
+                            fold_labels(cv.test(sub)) = sub;
+                        end
+
+                otherwise
+
+                    error('\ninvalid option "%s" defined in holdout_set_method_mvpa_reg_st variable, choose between "group" and "onesample"\n',holdout_set_method_mvpa_reg_st);
+
+            end % switch holdout_set_method
+
+            % FIT MODEL
+
+            t0 = tic;
+
+            [cverr, stats, optout] = predict(fmri_dat, 'algorithm_name', algorithm_mvpa_reg_st, ...
+                        'nfolds', fold_labels, 'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
+
+            t_end = toc(t0);        
+
+            
+    % BOGDAN'S OOFMRIDATAOBJ METHOD
+
+        case 'oofmridataobj'
+
+            % DEFINE ALGORITHM
+
+            switch algorithm_mvpa_reg_st
+
+                case 'cv_pls'
+                    alg = plsRegressor(); % intiate alg as a plsRegressor estimator object, other estimators in Github repo/estimators; ; numcomponents is arbitrary, but typically low for pls - we will optimize this hyperparm later
+
+                case 'cv_pcr'
+                    alg = pcrRegressor();
+
+                otherwise
+                    error('\nchoice of algorithm %s in algorithm_mvpa_reg_st option variable is not compatible with choice of machine learning method %s in ml_method_mvpa_reg_st option variable,\n Either chance method to "predict" or change algorithm to "cv_pcr" or "cv_pls"\n');
+
+            end
+
+            alg.fit(fmri_dat.dat', fmri_dat.Y); % fit alg with brain data as predictor, Y as outcome; note that fields of alg get filled
+            % NOTE: fit is not strictly necessary at this stage, but a good test
+            alg_params = alg.get_params; % get to know the hyperparams for this algorithm, which we want to optimize
+
+            % DEFINE FEATURE EXTRACTOR
+
+            extractVxl = fmri2VxlFeatTransformer; % initiate extractVxl as an empty fmri2VxlFeatTransformer object; other transformers in Github repo/transformers
+            extractVxl.fit(fmri_dat); % transformer takes fmri_data_st object as input and stores its metadata in the brainmodel property (in the .volInfo field, nifti header style data)
+            % NOTE: fit is not strictly necessary at this stage, but a good test
+
+            % DEFINE PIPELINE
+
+            fmri_pipeline = pipeline({{'featExt',extractVxl},{'alg',alg}}); % define fmri_pcr as a pipeline object including the feature transformer and the algorithm defined above; names are arbitrary
+            fmri_pipeline.fit(fmri_dat,fmri_dat.Y);
+            % NOTE: fit is not strictly necessary at this stage, but a good test
+
+            % INNER CROSS-VALIDATION FUNCTION
+
+            switch holdout_set_method_mvpa_reg_st
+
+                case 'group'
+                    innercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier));
+
+                case 'onesample'
+                    innercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+
+            end
+            % NOTE: we use metadata_table here, since the input to bo.fit is the
+            % fmri_data_st object fmri_dat, which has a metadata_table field
+
+            cv_folds_mvpa_reg_st = innercv(fmri_dat,fmri_dat.Y); 
+            % NOTE: get cross-validation folds, not strictly necessary, but a good test
+
+            % DEFINE BAYESIAN OPTIMIZATION
+
+            switch algorithm_mvpa_reg_st
+
+                case 'cv_pls'
+                    dims = optimizableVariable('alg__numcomponents',[1,30],'Type','integer','Transform','log');
+
+                case 'cv_pcr'
+                    dims = optimizableVariable('alg__numcomponents',[1,floor(rank(fmri_dat.dat)*(nfolds_mvpa_reg_st-1)/nfolds_mvpa_reg_st)],'Type','integer');
+
+            end
+
+            % NOTE: Type and number of hyperparams to optimize depends on algorithm (check alg.get_params above), as well as other settings
+
+            bayesOptParams = {dims, 'AcquisitionFunctionName','expected-improvement-plus',...
+                'MaxObjectiveEvaluations',30, 'UseParallel', false, 'verbose',1, 'PlotFcn', {}};
+
+            bo = bayesOptCV(fmri_pipeline,innercv,@get_mse,bayesOptParams);
+            bo.fit(fmri_dat,fmri_dat.Y);
+            bo_numcomponents = bo.estimator.estimator.numcomponents;
+
+            % OUTER CROSS-VALIDATION FUNCTION
+
+            switch holdout_set_method_mvpa_reg_st
+
+                case 'group'
+                    outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subject_identifier));
+
+                case 'onesample'
+                    outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subject_identifier)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+
+            end
+            % NOTE: we use metadata_table here, since the input to cvGS.do is the
+            % fmri_data_st object fmri_dat, which has a metadata_table field
+
+            % ESTIMATE CROSS-VALIDATED MODEL PERFORMANCE
+
+            cvGS = crossValScore(bo, outercv, @get_mse, 'n_parallel', nfolds_mvpa_reg_st, 'verbose', true);
+            % NOTE: Bogdan advises not parallizing too much for the purpose of Bayesian
+            % model optimization, since each step learns from the previous one, so we
+            % only parallelize the outer cv loop with 1 core per outer cv fold,
+            % resulting in very acceptable runtimes (on LaBGAS server with 128 GB RAM)
+
+            cvGS.do(fmri_dat, fmri_dat.Y);
+            cvGS.do_null(); % fits null model - intercept only
+            fold_labels = cvGS.fold_lbls;
+
+            % CREATE AN FMRI_DATA OBJECT WITH THE BETAS FOR VISUALIZATION PURPOSES
+            
+            weight_obj = bo.estimator.transformers{1}.brainModel; % empty .dat at this stage
+            weight_obj.dat = bo.estimator.estimator.B(:); % fills mdl.dat with betas
+
+        otherwise
+
+            error('\ninvalid option "%s" defined in ml_method_mvpa_reg_st variable, choose between "oofmridataobj" and "predict"\n',ml_method_mvpa_reg_st);
+
+    end % switch machine learning method
+
+
+% VISUALIZE RESULTS
+%------------------
+
+% PLOT OBSERVED VERSUS PREDICTED
+
+    switch ml_method_mvpa_reg_st
+
+        case 'predict'
+
+            fprintf('%s r = %0.3f\n', algorithm_mvpa_reg_st, corr(stats.yfit, fmri_dat.Y));
+
+            figure
+
+            line_plot_multisubject(fmri_dat.Y, stats.yfit, 'subjid', subject_id);
+            xlabel({['Observed ' behav_outcome],'(average over conditions)'}); ylabel({['SVR Estimated ' behav_outcome],'(cross validated)'})
+
+            set(gcf,'WindowState','Maximized');
+            drawnow, snapnow;
+
+        case 'oofmridataobj'
+
+            for y = 1:size(cvGS.Y,2)
+                r(y,1) = corr(cvGS.yfit{y},cvGS.Y{y});
+            end
+
+            cv_r = mean(r); % average r(yfit,y) over folds = cv correlation
+
+            cv_mse = mean(cvGS.scores); % average MSE over folds = cv model performance
+
+            fprintf('%s cross-validated r = %0.3f\n', algorithm_mvpa_reg_st, cv_r);
+            fprintf('%s cross-validated mse = %0.3f\n', algorithm_mvpa_reg_st, cv_mse);
+
+            f1 = cvGS.plot; % plots predicted versus observed
+
+            set(gcf,'WindowState','Maximized');
+            drawnow, snapnow;
+
+    end
+
+
+% PLOT MONTAGE OF UNTHRESHOLDED WEIGHTS
+
+    fprintf ('\nShowing unthresholded %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
+
+    figure
+
+    o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+
+        switch ml_method_mvpa_reg_st
+
+            case 'predict'
+                w = region(stats.weight_obj);
+
+            case 'oofmridataobj'
+                w=region(weight_obj);
+
+        end
+
+    o2 = addblobs(o2, w);
+    o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' unthresholded ' mask_string]);
+
+    figtitle = sprintf('%s_unthresholded_montage_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
+    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+    drawnow, snapnow;
+
+    clear w, clear o2, clear figtitle
+
+
+%% PERFORM BOOTSTRAPPING, AND/OR PERMUTATION TESTING ON SINGLE-LEVEL MVPA RESULTS IF REQUESTED
+%---------------------------------------------------------------------------------------------
+
+% BOOTSTRAP IF REQUESTED
+%-----------------------
+
+delete(gcp('nocreate'));
+c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
+nw = c.NumWorkers;
+parpool(round(0.8*nw));
+
+    if dobootstrap_mvpa_reg_st
+
+        t0_boot = tic;
+
+        switch ml_method_mvpa_reg_st
+    
+            case 'predict'
+                [~ , bs_stats] = predict(fmri_dat, 'algorithm_name', algorithm_mvpa_reg_st,...
+                    'bootsamples', boot_n_mvpa_reg_st, 'nfolds', 1, 'error_type', 'mse', ...
+                    parallelstr_mvpa_reg_st, 'verbose', 0);
                 
-                end % if loop source reconstruction
+            case 'oofmridataobj'
+                [~ , bs_stats] = predict(fmri_dat, 'algorithm_name', algorithm_mvpa_reg_st,...
+                    'bootsamples', boot_n_mvpa_reg_st, 'nfolds', 1, 'numcomponents', bo_numcomponents, ...
+                    'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
                 
-                t_end_perm = toc(t0_perm);
+        end
 
-            end % if loop permutation
+        t_end_boot = toc(t0_boot);
 
+    elseif ~dobootstrap_mvpa_reg_st && doperm_mvpa_reg_st % bootstrap with few samples just to create a statistic_image weight object for use in permutation code below
 
-        % PLOT OBSERVED VERSUS PREDICTED
+        t0_boot = tic;
 
-        fprintf('PCR r = %0.3f\n', corr(stats.yfit, fmri_dat.Y));
+        [~ , bs_stats] = predict(fmri_dat, 'algorithm_name', algorithm_mvpa_reg_st,...
+            'bootsamples', 20, 'nfolds', 1 , 'error_type', 'mse', ...
+            parallelstr_mvpa_reg_st, 'verbose', 0);
 
-        figure
+        t_end_boot = toc(t0_boot);
+
+    end
+
+    
+% PERFORM PERMUTATION TESTING IF REQUESTED
+%----------------------------------------
+
+% NOTE: code adapted from @pkragel s1_predict_anxiety_ratings_lassopcr.m -
+% NEEDS CHECK BY PHIL!
+
+    if doperm_mvpa_reg_st
+
+    t0_perm = tic;
+
+    % OBTAIN PERMUTATION WEIGHTS
+
+    null_beta = zeros(perm_n_mvpa_reg_st,size(fmri_dat.dat,1)); % number of permutations, number of voxels
+    null_weights = zeros(perm_n_mvpa_reg_st,size(fmri_dat.dat,1));
+
+        parfor perm = 1:perm_n_mvpa_reg_st
+
+            regress_stats_null = cell(max(fold_labels),1);
+            betas_null = zeros(max(fold_labels),size(fmri_dat.dat,1));
+
+            random_inds=randperm(size(fmri_dat.Y,1)); % number of images/ratings over subjects
+            temp_dat=fmri_dat;
+            temp_dat.Y=temp_dat.Y(random_inds);
+            
+            switch ml_method_mvpa_reg_st
+    
+                case 'predict'
+                    [~, stats_null] = predict(temp_dat, 'algorithm_name', algorithm_mvpa_reg_st, 'nfolds', fold_labels, ...
+                        'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
+
+                case 'oofmridataobj'
+                    [~, stats_null] = predict(temp_dat, 'algorithm_name', algorithm_mvpa_reg_st, 'nfolds', fold_labels, ...
+                        'numcomponents', bo_numcomponents, 'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
+                    
+            end
+            
+            for k = 1:max(fold_labels) % number of cv folds
+                regress_data_null = fmri_dat;
+                regress_data_null.X = stats_null.yfit(fold_labels==k);
+                regress_data_null.dat = regress_data_null.dat(:,fold_labels==k);
+                regress_stats_null{k} = regress(regress_data_null,'nodisplay','noverbose');
+        %                         tv = replace_empty(regress_stats(k).b);
+                betas_null(k,:) = regress_stats_null{k}.b.dat(:,1);
+            end
+
+            null_beta(perm,:) = mean(betas_null);
+            null_weights(perm,:) = stats_null.weight_obj.dat;
+
+            perm/perm_n_mvpa_reg_st
+
+        end % parfor loop over number of permutations
+
+    % GET PROBABILITY FOR OBSERVED WEIGHTS FROM PERMUTATON WEIGHTS
+    
+        switch ml_method_mvpa_reg_st
+    
+            case 'predict'
+                mean_weight = stats.weight_obj.dat;
+                
+            case 'oofmridataobj'
+                mean_weight = weight_obj.dat;
         
-        line_plot_multisubject(fmri_dat.Y, stats.yfit, 'subjid', subject_id);
-        xlabel({['Observed ' behav_outcome],'(average over conditions)'}); ylabel({['SVR Estimated ' behav_outcome],'(cross validated)'})
-        
-        set(gcf,'WindowState','Maximized');
-        drawnow, snapnow;
+        end
+
+        for weight = 1:size(null_weights,2)
+
+            phat(weight) = 1-sum(mean_weight(weight) > null_weights(:,weight)) / (1+size(null_weights,1));
+
+            switch perm_sidedness
+                case 'both'
+                    phat(weight) = (length(find(abs(null_weights(:,weight)) > abs(mean_weight(weight))))+1) / (perm_n_mvpa_reg_st+1); 
+                case 'smaller'
+                    phat(weight) = (length(find(null_weights(:,weight) < mean_weight(weight)))+1) / (perm_n_mvpa_reg_st+1);
+                case 'larger'
+                    phat(weight) = (length(find(null_weights(:,weight) > mean_weight(weight)))+1) / (perm_n_mvpa_reg_st+1);
+            end
+
+        end
+
+    clear weight;
+
+    perm_stats_obj = bs_stats.weight_obj; % initiate perm_stats_obj as a statistic_image object identical to bs_stats.weight_obj - is easiest from existing object, but will not work if bootstrapping not (yet) performed
+    perm_stats_obj.dat = mean_weight; % Store weights and p-values in statistic_image object
+    perm_stats_obj.p = phat';
+    
+    t_end_perm = toc(t0_perm);
+    
+    end % if loop permutation
 
 
-        % PLOT MONTAGE OF UNTHRESHOLDED WEIGHTS
+% VISUALIZE BOOTSTRAPPING, AND/OR PERMUTATION RESULTS
+%----------------------------------------------------
 
-        fprintf ('\nShowing unthresholded %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
+    % PLOT MONTAGE OF THRESHOLDED WEIGHTS AFTER BOOTSTRAPPING AND/OR PERMUTATION TESTING
+
+    if dobootstrap_mvpa_reg_st
+
+        fprintf ('\nShowing bootstrapped %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
 
         figure
 
         o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
-        w = region(stats.weight_obj);
+        t = bs_stats.weight_obj;
+        t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
+        r = region(t);
 
-        o2 = addblobs(o2, w);
-        o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' unthresholded ' mask_string]);
+        o2 = addblobs(o2, r);
+        o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' bootstrapped ' mask_string]);
 
-        figtitle = sprintf('%s_unthresholded_montage_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
+        figtitle = sprintf('%s_%1.4f_bootstrap_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
         set(gcf, 'Tag', figtitle, 'WindowState','maximized');
         drawnow, snapnow;
 
         clear w, clear o2, clear figtitle
 
+    end % if loop bootstrap
+    
+    if doperm_mvpa_reg_st
 
-        % PLOT MONTAGE OF THRESHOLDED WEIGHTS AFTER BOOTSTRAPPING OR PERMUTATION TESTING
+        fprintf ('\nShowing permutation %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
 
-        if dobootstrap_mvpa_reg_st
+        figure
 
-            fprintf ('\nShowing bootstrapped %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
+        o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
-            figure
+        t = perm_stats_obj;
+        t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
+        r = region(t);
 
-            o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = addblobs(o2, r);
+        o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' permutation ' mask_string]);
 
-            t = bs_stats.weight_obj;
-            t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
-            r = region(t);
+        figtitle = sprintf('%s_%1.4f_permutation_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
+        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        drawnow, snapnow;
 
-            o2 = addblobs(o2, r);
-            o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' bootstrapped ' mask_string]);
+        clear w, clear o2, clear figtitle
 
-            figtitle = sprintf('%s_%1.4f_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-            drawnow, snapnow;
+    end % if loop permutation
+    
 
-            clear w, clear o2, clear figtitle
+%% PERFORM SOURCE RECONSTRUCTION AKA STRUCTURE COEFFICIENTS ON SINGLE LEVEL MVPA MODELS IF REQUESTED
+%---------------------------------------------------------------------------------------------------
+
+    if dosourcerecon_mvpa_reg_st
+
+    % OBTAIN SOURCE RECONSTRUCTION WEIGHTS
+    %-------------------------------------
+
+        % NOTE: regress each voxel's activity onto yhat
+        % Ref: Haufe et al, NeuroImage 2014
+
+        regress_stats = cell(max(fold_labels),1);
+        betas = zeros(max(fold_labels),size(fmri_dat.dat,1));
+
+        for k = 1:max(fold_labels) % number of cv folds
+
+            regress_data = fmri_dat;
             
-        end % if loop bootstrap
-
-        if doperm_mvpa_reg_st
-
-            fprintf ('\nShowing permutation %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
-
-            figure
-
-            o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
-
-            t = perm_stats_obj;
-            t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
-            r = region(t);
-
-            o2 = addblobs(o2, r);
-            o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' permutation ' mask_string]);
-
-            figtitle = sprintf('%s_%1.4f_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-            drawnow, snapnow;
-
-            clear w, clear o2, clear figtitle
-
-        end % if loop permutation
-
-        
-% BOGDAN'S OOFMRIDATAOBJ METHOD
-        
-    case 'oofmridataobj'
-        
-        switch opt_method_mvpa_reg_st
+            switch ml_method_mvpa_reg_st
+    
+                case 'predict'
+                    regress_data.X = stats.yfit(fold_labels==k);
+                    
+                case 'oofmridataobj'
+                    regress_data.X = cvGS.yfit{k};
+                    
+            end
             
-            case 'gridsearch'
+            regress_data.dat = regress_data.dat(:,fold_labels==k);
+            regress_stats{k} = regress(regress_data,'nodisplay','noverbose');
+%                         tv = replace_empty(regress_stats(k).b);
+            betas(k,:) = regress_stats{k}.b.dat(:,1);
+
+        end % for loop over folds
+
+        clear k;
+
+        mean_beta = mean(betas);
         
-                % DEFINE ALGORITHM AND FEATURE EXTRACTOR
-                %---------------------------------------
-                alg = plsRegressor('numcomponents',5); % intiate alg as a plsRegressor estimator object, other estimators in Github repo/estimators; numcomponents is arbitrary, but typically low for pls - we will optimize this hyperparm later
-                alg.fit(fmri_dat.dat', fmri_dat.Y); % fit alg with brain data as predictor, Y as outcome; note that fields of alg get filled
-                extractVxl = fmri2VxlFeatTransformer; % initiate extractVxl as an (empty?) fmri2VxlFeatTransformer object; other transformers in Github repo/transformers
-                extractVxl.fit(fmri_dat); % transformer takes fmri_data_st object as input and stores its metadata in the brainmodel property (in the .volInfo field, nifti header style data)
-
-                % DEFINE PIPELINE
-                %----------------
-                fmri_pls = pipeline({{'featExt',extractVxl},{'pls',alg}}); % define fmri_pcr as a pipeline object including the feature transformer and the algorithm defined above; names are arbitrary
-                fmri_pls.fit(fmri_dat,fmri_dat.Y) % fit pipeline - JUST AS A TEST? NOT NEEDED FOR THE BELOW?
-
-                % INNER CROSS-VALIDATION FUNCTION
-                %--------------------------------
-                switch holdout_set_method_mvpa_reg_st
-
-                    case 'group'
-                        innercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id);
-
-                    case 'onesample'
-                        innercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
-
-                end
-
-                innercv(fmri_dat,fmri_dat.Y); % get cross-validation folds - JUST AS A TEST?
-
-                % DEFINE OPTIMIZATION GRID
-                %-------------------------
-                gridPoints = table([2 4 5 9 20]','VariableNames',{'pls__numcomponents'}); % note the double underscore linking name of algorithm in pipeline with its parameter we want to optimize
-
-                go = gridSearchCV(fmri_pls,gridPoints,innercv,@get_mse,'verbose',true); % see help gridSearchCV for inputs; scorers in Github repo/scorer; other optimizers in Github repo/estimators
-                go.fit(fmri_dat,fmri_dat.Y);
-
-                mdl = go.estimator.transformers{1}.brainModel; % empty .dat at this stage
-                mdl.dat = go.estimator.estimator.B(:); % fills mdl.dat with betas
-                figure
-                mdl.montage;
-                set(gcf, 'WindowState','maximized');
-                drawnow, snapnow;
-
-                % OUTER CROSS-VALIDATION FUNCTION
-                %--------------------------------
-                switch holdout_set_method_mvpa_reg_st
-
-                    case 'group'
-                        outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id);
-
-                    case 'onesample'
-                        outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
-
-                end
-                
-                % ESTIMATE CROSS-VALIDATED MODEL PERFORMANCE
-                %-------------------------------------------
-                cvGS = crossValScore(fmri_pls, outercv, @get_mse, 'verbose', true); % see help/methods crossValScore; more crossvalidators in Github_repo/crossValidators - check out crossValPredict to get cross-validated prediction estimates at this stage
-                cvGS.do(fmri_dat, fmri_dat.Y); % HOW DOES THIS TAKE GO INTO ACCOUNT SINCE IT IS NOT PART OF THAT PIPELINE? NOT NESTED? SOMETHING WRONG WITH ORDER OF THINGS?
-                cvGS.do_null(); % fits null model - intercept only
-                f1 = cvGS.plot; % plots predicted versus observed
-                % average MSE over folds = cv model performance
-                
-            case 'bayes'
-                
-                % DEFINE ALGORITHM
-                %-----------------
-                alg = plsRegressor();
-%                 alg.fit(fmri_dat.dat', fmri_dat.Y);
-                
-                % INNER CROSS-VALIDATION FUNCTION
-                %--------------------------------
-                switch holdout_set_method_mvpa_reg_st
-
-                    case 'group'
-                        innercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata.(subj_identifier)); % WHY NOT METADATA_TABLE HERE? DEPENDS ON INPUT (not features here), SO MAYBE BECAUSE OF METADATA CONSTRUCTOR?
-
-                    case 'onesample'
-                        innercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata.(subj_identifier)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
-
-                end
-                
-                % DEFINE BAYESIAN OPTIMIZATION AND CROSS-VALIDATE
-                %------------------------------------------------
-                dims = optimizableVariable('numcomponents',[1,30],'Type','integer','Transform','log');
-                bayesOptParams = {dims, 'AcquisitionFunctionName','expected-improvement-plus',...
-                    'MaxObjectiveEvaluations',30, 'UseParallel', true, 'verbose',1, 'PlotFcn', {}};
-                bo = bayesOptCV(alg,innercv,@get_mse,bayesOptParams);
-                
-                % DEFINE OTHER COMPONENTS OF PIPELINE
-                %------------------------------------
-                featConstructor_han = @(X) table(X.metadata_table.(subj_identifier),'VariableNames',{'participant_id'}); % WHY DO WE NEED THIS?
-                extractVxl = fmri2VxlFeatTransformer('metadataConstructor_funhan',featConstructor_han);
-                zTransVxl = zscoreVxlTransformer(@(X) X.metadata_table.participant_id);
-                zTransImg = functionTransformer(@(x1) rescale(x1,'zscoreimages'));
-                
-                % DEFINE PIPELINE
-                %------------------------------------
-%                 fmri_pls = pipeline({{'zscorevxl', zTransVxl},{'zscoreimg', zTransImg},...
-%                     {'featExt',extractVxl},{'bo_pls',bo}});
-                fmri_pls = pipeline({{'featExt',extractVxl},{'bo_pls',bo}});
-%                 data = features(fmri_dat.dat', fmri_dat.metadata_table.subject_id); % this is an "extended double" that is just a double with metadata in the dat.metadata field
-                fmri_pls.fit(fmri_dat,fmri_dat.Y);
-                
-                % OUTER CROSS-VALIDATION FUNCTION
-                %--------------------------------
-                switch holdout_set_method_mvpa_reg_st
-
-                    case 'group'
-                        outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id);
-
-                    case 'onesample'
-                        outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.subject_id); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
-
-                end
-                
-                % ESTIMATE CROSS-VALIDATED MODEL PERFORMANCE
-                %-------------------------------------------
-                cvGS = crossValScore(fmri_pls, outercv, @get_mse, 'verbose', true);
-                cvGS.do(fmri_dat, fmri_dat.Y);
-                cvGS.do_null();
-                f1 = cvGS.plot();
-                
-                % PLOT MODEL
-                %-----------
-                mdl = fmri_pls.estimator.transformers{1}.brainModel; % empty .dat at this stage
-                mdl.dat = fmri_pls.estimator.estimator.B(:); % fills mdl.dat with betas
-                mdl.montage;
-                
-                % FURTHER REPORTING OF RESULTS?
-                % boostrapping and thresholding?
-                
-            otherwise
-                
-                error('\ninvalid option "%s" defined in opt_method_mvpa_reg_st variable, choose between "gridsearch" and "bayes"\n',opt_method_mvpa_reg_st);
-
-        end % switch optimization method for oofmridataobj
+        source_recon_data_obj = stats.weight_obj; % initialize as fmri_data object with correct volInfo
+        source_recon_data_obj.dat = mean_beta';
         
-    otherwise
+
+    % VISUALIZE UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS
+    % -----------------------------------------------------
+        fprintf ('\nShowing unthresholded source reconstruction %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
+
+        figure
+
+        o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+
+        w = region(source_recon_data_obj);
+
+        o2 = addblobs(o2, w);
+        o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' unthresholded source reconstruction' mask_string]);
+
+        figtitle = sprintf('%s_unthresholded_source_reconstruction_montage_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
+        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        drawnow, snapnow;
+
+        clear w, clear o2, clear figtitle
+    
+    end % if loop source reconstruction
+    
+    
+    if dosourcerecon_perm_mvpa_reg_st
         
-        error('\ninvalid option "%s" defined in ml_method_mvpa_reg_st variable, choose between "oofmridataobj" and "predict"\n',ml_method_mvpa_reg_st);
+    % PERFORM PERMUTATION ON SOURCE RECONSTRUCTION WEIGHTS
+    % ----------------------------------------------------
 
-end % switch machine learning method
+        % GET PROBABILITY FOR OBSERVED SOURCE RECONSTRUCTION WEIGHTS FROM PERMUTATON WEIGHTS
 
+        for beta = 1:size(null_beta,2)
 
+            phat_srec(beta) = 1-sum(mean_beta(beta) > null_beta(:,beta)) / (1+size(null_beta,1));
+
+            switch perm_sidedness
+                case 'both'
+                    phat_srec(beta) = (length(find(abs(null_beta(:,beta)) > abs(mean_beta(beta))))+1) / (perm_n_mvpa_reg_st+1); 
+                case 'smaller'
+                    phat_srec(beta) = (length(find(null_beta(:,beta) < mean_beta(beta)))+1) / (perm_n_mvpa_reg_st+1);
+                case 'larger'
+                    phat_srec(beta) = (length(find(null_beta(:,beta) > mean_beta(beta)))+1) / (perm_n_mvpa_reg_st+1);
+            end
+
+        end
+
+        source_recon_perm_stats_obj = bs_stats.weight_obj;
+        source_recon_perm_stats_obj.dat = mean_beta';
+        source_recon_perm_stats_obj.p = phat_srec';
+        
+        % VISUALIZE THRESHOLDED SOURCE RECONSTRUCTION RESULTS AFTER PERMUTATION
+
+        fprintf ('\nShowing permutation source reconstruction %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
+
+        figure
+
+        o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+
+        t = source_recon_perm_stats_obj;
+        t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
+        r = region(t);
+
+        o2 = addblobs(o2, r);
+        o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' permutation source reconstruction ' mask_string]);
+
+        figtitle = sprintf('%s_%1.4f_permutation_source_reconstruction_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
+        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        drawnow, snapnow;
+
+        clear w, clear o2, clear figtitle
+       
+    end % if loop permutation testing on source reconstruction
+    
+    
 %% SAVE STATS FOR SINGLE LEVEL MODELS
 %--------------------------------------------------------------------------
 
@@ -689,12 +787,20 @@ if dosavemvparegstats
     save(savefilename, 'stats', '-v7.3');
 
         if dobootstrap_mvpa_reg_st
-            save(savefilename,'bs_stats', '-v7.3', '-append');
+            save(savefilename,'bs_stats', '-append');
         end
 
         if doperm_mvpa_reg_st
-            save(savefilename,'perm_stats_obj', '-v7.3', '-append');
+            save(savefilename,'perm_stats_obj', '-append');
         end
+        
+        if dosourcerecon_mvpa_reg_st
+            save(savefilename,'source_recon_data_obj', '-append');
+        end 
+        
+        if dosourcerecon_perm_mvpa_reg_st
+            save(savefilename,'source_recon_perm_stats_obj', '-append');
+        end 
         
 end
         

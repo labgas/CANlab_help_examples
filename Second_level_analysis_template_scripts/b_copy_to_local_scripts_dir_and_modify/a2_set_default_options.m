@@ -17,8 +17,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v2.4
-% last modified: 2022/08/03
+% @(#)% a2_set_default_options.m         v2.5
+% last modified: 2022/08/04
 
 
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -125,13 +125,15 @@ vif_threshold = 4; % variance inflation threshold to exclude trials
 
 % GENERAL OPTIONS
 %----------------
-ml_method_mvpa_reg_st = 'predict';                        % 'oofmridataobj', or 'predict'
+ml_method_mvpa_reg_st = 'predict';                              % 'oofmridataobj', or 'predict'
                                                                     % 'oofmridataobj':
                                                                     % use @bogpetre's object-oriented method
                                                                     % https://github.com/canlab/ooFmriDataObjML
                                                                     % 'predict'
                                                                     % use CANlab's predict function
                                                                     % https://github.com/canlab/CanlabCore/blob/master/CanlabCore/%40fmri_data/predict.m
+algorithm_mvpa_reg_st = 'cv_pcr';                               % default cv_pcr, will be passed into predict function (help predict for options) if ml_method_mvpa_reg_st == 'predict' or adapted if 'oofmridataobj'
+                                                                    % if ml_method_mvpa_reg_st = 'oofmridataobj', only cv_pls and cv_pcr are implemented in this script for now
 holdout_set_method_mvpa_reg_st = 'onesample';                   % 'group', or 'onesample'
                                                                     % 'group': use DAT.BETWEENPERSON.group or 
                                                                     % DAT.BETWEENPERSON.contrasts{c}.group;
@@ -142,28 +144,23 @@ holdout_set_method_mvpa_reg_st = 'onesample';                   % 'group', or 'o
 nfolds_mvpa_reg_st = 5;                                         % default 5; number of cross-validation folds for kfold
 zscore_outcome = true;                                          % default true; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
 maskname_mvpa_reg_st = which('gray_matter_mask_sparse.img');    % see above
-myscaling_mvpa_reg_st = 'raw';                                  % options are 'raw', 'centerimages', 'zscoreimages', 'l2norm_images'
-domultilevel_mvpa_reg_st = false;                               % default false; fits multilevel mvpa models - WORK IN PROGRESS
+myscaling_mvpa_reg_st = 'raw';                                  % options are 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
 
-% OPTIONS IF ML_METHOD == PREDICT
-%--------------------------------
-algorithm_mvpa_reg_st = 'cv_pcr';                               % default cv_lassopcr, will be passed into predict function, see help predict for options
+% STATISTICS AND RESULTS VISUALIZATION OPTIONS
+%---------------------------------------------
 dobootstrap_mvpa_reg_st = false;                                % default false     bootstrapping; takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to 10k samples
     boot_n_mvpa_reg_st = 5000;                                      % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
+    parallelstr_mvpa_reg_st = 'parallel';                           % parallel proc for boot.   'parallel' or 'noparallel'
 doperm_mvpa_reg_st = false;                                     % default false     permutation testing; takes a very long time despite implementation of parfor loop
     perm_n_mvpa_reg_st = 5000;                                      % default 5000      number of permutations, reduce number for quick results, increase to 10k for publication
     perm_sidedness = 'both';                                        % default both      tails for permutation test, 'both','smaller', or 'larger'
 dosourcerecon_mvpa_reg_st = false;                              % default false     source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
-dosourcerecon_perm_mvpa_reg_st = false;                         % default false     permutation testing on source recon images; takes a very long time despite implementation of parfor loop
-parallelstr_mvpa_reg_st = 'parallel';                           % parallel proc for boot.   'parallel' or 'noparallel'
-dosavemvparegstats = true;                                      % see saving options above
+    dosourcerecon_perm_mvpa_reg_st = false;                         % default false     permutation testing on source recon images; takes a very long time despite implementation of parfor loop
 q_threshold_mvpa_reg_st = .05;                                  % default .05       threshold for FDR-corrected display items
-k_threshold_mvpa_reg_st = 10;                                   % default 10        extent threshold for FDR-corrected display items
+k_threshold_mvpa_reg_st = 10;                                   % default 10        extent threshold for FDR-corrected display items 
+dosavemvparegstats = true;                                      % see saving options above
 
-% OPTIONS IF ML_METHOD == OOFMRIDATAOBJ
-%--------------------------------------
-opt_method_mvpa_reg_st = 'bayes';                               % default bayes     'bayes' or 'gridsearch'     
-
+domultilevel_mvpa_reg_st = false;                               % default false; fits multilevel mvpa models - WORK IN PROGRESS
 
 %% prep_4_apply_signatures_and_save options 
 % --------------------------------------------------------------------
