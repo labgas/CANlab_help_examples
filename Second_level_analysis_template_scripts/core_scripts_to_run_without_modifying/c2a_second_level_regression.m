@@ -130,7 +130,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             tj = get_wh_image(t, j);
                 if apply_mask_before_fdr
-                    tj = apply_mask(tj, mask);
+                    tj = apply_mask(tj, glmmask);
                 end
             tj = threshold(tj, q_threshold, 'fdr', 'k', k_threshold); 
 
@@ -155,7 +155,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             tj = get_wh_image(t, j);
                 if apply_mask_before_fdr
-                    tj = apply_mask(tj, mask);
+                    tj = apply_mask(tj, glmmask);
                 end
             tj = threshold(tj, q_threshold, 'fdr', 'k', k_threshold); 
 
@@ -192,7 +192,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             tj = get_wh_image(t, j);
                 if apply_mask_before_fdr
-                    tj = apply_mask(tj, mask);
+                    tj = apply_mask(tj, glmmask);
                 end
             tj = threshold(tj, p_threshold, 'unc', 'k', k_threshold); 
 
@@ -217,7 +217,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             tj = get_wh_image(t, j);
                 if apply_mask_before_fdr
-                    tj = apply_mask(tj, mask);
+                    tj = apply_mask(tj, glmmask);
                 end
             tj = threshold(tj, p_threshold, 'unc', 'k', k_threshold); 
 
