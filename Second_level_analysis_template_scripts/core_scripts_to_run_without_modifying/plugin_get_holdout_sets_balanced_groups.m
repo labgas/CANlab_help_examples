@@ -17,7 +17,7 @@
 outcome_value = zeros(size(condition_codes));
 holdout_set = {};
 
-switch holdout_set_type
+switch holdout_set_type_svm
     
 % @lukasvo76: did not adapt this option since LOOCV is generally not
 % recommended anymore, hence untested
@@ -75,9 +75,9 @@ switch holdout_set_type
         %    are left out, but the original code below takes care of that
         %    too, so we don't need that option here
         
-        cvpart = cvpartition(group,'KFOLD',nfolds);
+        cvpart = cvpartition(group,'KFOLD',nfolds_svm);
         
-        for i = 1:nfolds
+        for i = 1:nfolds_svm
             
             mytest = cvpart.test(i);
             

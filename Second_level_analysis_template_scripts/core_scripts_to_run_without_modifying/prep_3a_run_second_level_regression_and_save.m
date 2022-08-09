@@ -12,42 +12,54 @@
 %   hood, which is robust by default
 % 2) saves the results using standard naming and location
 % 
-% - To specify analysis options, run a2_set_default_options
-% - To choose between conditions and contrasts, set option below
-% - To get results reports, run c2a_second_level_regression
+% To get results reports, run c2a_second_level_regression
 %
-% OPTIONS SPECIFIED IN a2_set_default_options
+% OPTIONS
+%
+% NOTE: defaults are specified in a2_set_default_options for any given model,
+% but if you want to run the same model with different options (for example
+% voxel- and parcelwise regression), you can make a copy of this script with
+% a letter index (e.g. _s6a_) and change the default option here
 %
 % - dorobust : robust regression or OLS (true/false)
 % - dorobfit_parcelwise: voxel- or parcelwise regression (true/false) - % OPTION ADDED BY @LUKASVO76 MAY 2022
-% - myscaling: 'raw', 'scaled', or 'scaled_contrasts' (defined in a2_set_..., image scaling done in prep_2_... and prep_3_... data load)
+%       - csf_wm_covs: true adds global wm & csf regressors at second level
+%       - remove_outliers: true removes outlier images/subjects based on mahalanobis distance 
+% - myscaling_glm: 'raw', 'scaled', or 'scaled_contrasts' (defined in a2_set_..., image scaling done in prep_2_... and prep_3_... data load)
+% - maskname_glm: 
+%       - default use of sparse gray matter mask
+%       - model-specific maskdir defined in a_set_up_paths_always_run_first script
+%       - if you do not want to mask, change to []
+%       - if you want to use a custom mask, put it in maskdir and change name here
+%       - only used for visualization of uncorrected results in this script
 % - design_matrix_type: 'group', 'custom', or 'onesample'
 %                       Group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group;
 %                       Custom: use all columns of table object DAT.BETWEENPERSON.contrasts{c};
 %                       Onesample: use constant (i.e. intercept) only
 %
-% 'group' option 
-% Assuming that groups are concatenated in contrast image lists, and
-% regressor values of 1 or -1 will specify the group identity for each
-% image. Requires DAT.BETWEENPERSON.group field specifying group membership for
-% each image.
+%       - 'group' option 
+%           Assuming that groups are concatenated in contrast image lists, and
+%           regressor values of 1 or -1 will specify the group identity for each
+%           image. Requires DAT.BETWEENPERSON.group field specifying group membership for
+%           each image.
 %
-% 'custom' option: 
-% Can enter a multi-column design matrix for each contrast
-% Design matrix can be different for each contrast
+%       - 'custom' option: 
+%           Can enter a multi-column design matrix for each contrast
+%           Design matrix can be different for each contrast
 %
-% 'onesample' option:
-% Only adds intercept, hence performs a one-sample t-test on contrast
-% images across all subjects, similarly to c_univariate_contrast_maps_
-% scripts, but with more flexible options including scaling and robustfit
-% OPTION ADDED BY @LUKASVO76 MAY 2022
+%       - 'onesample' option:
+%           Only adds intercept, hence performs a one-sample t-test on contrast
+%           images across all subjects, similarly to c_univariate_contrast_maps_
+%           scripts, but with more flexible options including scaling and robustfit
+%   
+%       OPTION ADDED BY @LUKASVO76 MAY 2022
 %
-% To set up group and custom variables, see prep_1b_prep_behavioral_data
+%       NOTE: To set up group and custom variables, see prep_1b_prep_behavioral_data
 %
-% OPTIONS TO BE SPECIFIED IN THIS SCRIPT
+% MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT
 %
-% -mygroupfieldname: 'contrasts' or 'conditions'
-% -results_suffix: name to add to results file to specify model in case of multiple models, e.g. 'covariate_rating'
+% - mygroupfieldname: 'contrasts' or 'conditions'
+% - results_suffix: name to add to results file to specify in case of multiple versions of model, e.g. 'covariate_rating'
 %
 %__________________________________________________________________________
 %
@@ -55,26 +67,46 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3a_run_second_level_regression_and_save.m         v2.3
-% last modified: 2022/07/28
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v3.0
+% last modified: 2022/08/09
 
 
-%% SETTINGS
+%% GET AND SET OPTIONS
 %--------------------------------------------------------------------------
 
-% options to be specified here
+% SET MANDATORY OPTIONS
 
 mygroupnamefield = 'contrasts'; 
-results_suffix = ''; % do not delete, leave empty if not needed
+results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
+% NOTE: do NOT delete the latter option, leave empty if not needed
+% NOTE: do NOT use to add a suffix specifying the scaling or masking option, this will be added automatically
 
-% options set in a2_set_default_options
+% GET MODEL-SPECIFIC PATHS AND OPTIONS
 
-options_needed = {'dorobust', 'myscaling_glm', 'design_matrix_type'};
+a_set_up_paths_always_run_first;
+% NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
+% NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
+
+% GET DEFAULT OPTIONS IF NOT SET IN A2_SET_DEFAULT_OPTIONS
+
+options_needed = {'dorobust', 'dorobfit_parcelwise', 'myscaling_glm', 'design_matrix_type', 'maskname_glm'};
 options_exist = cellfun(@exist, options_needed); 
 
-option_default_values = {true, 'raw', 'onesample'}; % defaults if we cannot find info in a2_set_default_options at all ; @lukasvo76: changed the defaults to align with a2_set_default_options
+option_default_values = {false, false, 'raw', 'onesample', which('gray_matter_mask_sparse.img')};
 
-plugin_get_options_for_analysis_script
+plugin_get_options_for_analysis_script;
+
+% SET CUSTOM OPTIONS
+
+% NOTE: only specify if you want to run multiple versions of your model with different options
+% than the defaults you set in your model-specific version of a2_set_default_options.m
+
+% dorobust = true/false;
+% dorobfit_parcelwise = true/false;
+%   csf_wm_covs = true/false;
+%   remove_outliers = true/false;
+% myscaling_glm = 'raw'/'scaled'/'scaled_contrasts';
+% design_matrix_type = 'onesample'/'group'/'custom';
 
 
 %% CHECK REQUIRED DAT FIELDS
@@ -108,10 +140,12 @@ end
 
 if exist('maskname_glm', 'var') && ~isempty(maskname_glm) && exist(maskname_glm, 'file')
     [~,maskname_short] = fileparts(maskname_glm);
-    mask_string = sprintf('within mask %s', maskname_short);
+    mask_string = sprintf('masked with %s', maskname_short);
     glmmask = fmri_mask_image(maskname_glm, 'noverbose'); 
+    fprintf('\nMasking results visualization with %s\n', maskname_short);
 else
     mask_string = sprintf('without masking');
+    fprintf('\nShowing results without masking\n');
 end  
 
 
@@ -566,13 +600,14 @@ end  % for loop over contrasts or conditions
 %% SAVE RESULTS
 % -------------------------------------------------------------------------
 if ~dorobfit_parcelwise
-    savefilenamedata = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
-    save(savefilenamedata, 'regression_stats_results', '-v7.3');
-    fprintf('\nSaved regression_stats_results for %s\n', mygroupnamefield);
+        savefilenamedata = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
+        save(savefilenamedata, 'regression_stats_results', '-v7.3');
+        fprintf('\nSaved regression_stats_results for %s\n', mygroupnamefield);
+
 else
-    savefilenamedata = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
-    save(savefilenamedata, 'parcelwise_stats_results', '-v7.3');
-    fprintf('\nSaved parcelwise_stats_results for %s\n', mygroupnamefield);
+        savefilenamedata = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
+        save(savefilenamedata, 'parcelwise_stats_results', '-v7.3');
+        fprintf('\nSaved parcelwise_stats_results for %s\n', mygroupnamefield);
 end
 
 fprintf('\nFilename: %s\n', savefilenamedata);

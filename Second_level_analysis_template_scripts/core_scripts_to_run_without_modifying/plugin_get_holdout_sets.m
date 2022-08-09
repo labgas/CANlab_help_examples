@@ -16,7 +16,7 @@
 outcome_value = zeros(size(condition_codes));
 holdout_set = {};
 
-switch holdout_set_type
+switch holdout_set_type_svm
     
     case 'leave_one_subject_out'
         
@@ -36,7 +36,7 @@ switch holdout_set_type
         clear n
         
         printhdr('Holdout set:  k-fold cross-validation, leaving whole subject out');
-        fprintf('\nk = %d\n',nfolds);
+        fprintf('\nk = %d\n',nfolds_svm);
         
         for i = 1:length(wh) % wh is which conditions have non-zero contrast weights
             
@@ -51,12 +51,12 @@ switch holdout_set_type
         % Or, if equal size sets, pick first
         [~, wh_max_imgs] = max(n);
         
-        cvpart = cvpartition(n(wh_max_imgs),'k',nfolds);
+        cvpart = cvpartition(n(wh_max_imgs),'k',nfolds_svm);
         
         % Assign test set for each fold to all images in paired conditions
         % If participants are crossed with conditions, this leaves one whole participant out (all images across conditions)
         
-        for i = 1:nfolds
+        for i = 1:nfolds_svm
             
             mytest = cvpart.test(i);
             

@@ -1,5 +1,5 @@
 %%% prep_3c_run_SVMs_on_contrasts_masked.m
-
+%
 % USAGE
 %
 % This script 
@@ -11,17 +11,28 @@
 % - To specify analysis options, run a2_set_default_options
 % - To get results reports, run c2a_second_level_regression
 %
-% OPTIONS SPECIFIED IN a2_set_default_options
+% OPTIONS
 %
-% - maskname_svm: default use of sparse gray matter mask; maskdir now defined in a_set_up_paths_always_run_first script; if you do not want to mask, change to []; if you want to use a custom mask, put it in maskdir and change name here.
-% - dosubjectnorm: default false; normalize_each_subject_by_l2norm; normalizes images for each subject by L2 norm of Condition 1 image; can help with numerical scaling and inter-subject scaling diffs
-% - doimagenorm: default false; normalize_images_by_l2norm; normalizes each image separately, not each subject/pair
-% - dozscoreimages: default false; Z-score each input image, removing image mean and forcing std to 1. Removes overall effects of image intensity and scale. Can be useful across studies but also removes information. Use judiciously. lukasvo76: corresponds to 'scaled' in myscaling_glm option in prep_3a
+% NOTE: defaults are specified in a2_set_default_options for any given model,
+% but if you want to run the same model with different options (for example
+% comparing different machine learning methods), you can make a copy of this script with
+% a letter index (e.g. _s6a_) and change the default option here
+%
+% - maskname_svm: 
+%       - default use of sparse gray matter mask
+%       - maskdir now defined in a_set_up_paths_always_run_first script
+%       - if you do not want to mask, change to []
+%       - if you want to use a custom mask, put it in maskdir and change name here.
+% - myscaling_svm: options are 'raw','subjectnorm','imagenorm','zscoreimages','zscorevoxels'
+%                       subjectnorm: normalize_each_subject_by_l2norm; normalizes images for each subject by L2 norm of Condition 1 image; can help with numerical scaling and inter-subject scaling diffs
+%                       imagenorm: normalize_images_by_l2norm; normalizes each image separately, not each subject/pair
+%                       zscoreimages: Z-score each input image, removing image mean and forcing std to 1. Removes overall effects of image intensity and scale. Can be useful across studies but also removes information. Use judiciously. lukasvo76: corresponds to 'scaled' in myscaling_glm option in prep_3a
+%                       zscorevoxels: Z-score each voxel across images
 % - dosavesvmstats: default true; Save statistics and weight map objects for SVM contrasts
-% - dobootstrap: default false; Takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to the default 10k samples
-% - boot_n: default 5000; number of bootstrap samples       Reduce number for quick results
+% - dobootstrap_svm: default false; Takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n_svm is set to the default 10k samples
+%       boot_n_svm: default 5000; number of bootstrap samples       Reduce number for quick results
 % - parallelstr: default 'parallel'; parallel processing for bootstrapping.   'parallel' or 'noparallel'
-% - holdout_set_method: 'group', or 'onesample'
+% - holdout_set_method_svm: 'group', or 'onesample'
 %                       Group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group for balancing holdout set over groups;
 %                       Onesample: use subject identifier only for stratifying by subject (i.e. leave whole subject out)
 %
@@ -38,15 +49,23 @@
 %           to stratify by subject (i.e. leave both images of same subject
 %           out in holdout set)
 %
-% - holdout_set_type: 'kfold', or 'leave_one_subject_out': default 'kfold'; choose between kfold or leave one subject out cross-validation - the latter is not recommended
-% - nfolds: default 5, number of folds for kfold CV
+% - holdout_set_type_svm: 'kfold', or 'leave_one_subject_out': default 'kfold'; choose between kfold or leave one subject out cross-validation - the latter is not recommended
+%       nfolds_svm: default 5, number of folds for kfold CV
+% - dosearchlight_svm: perform searchlight SVM analysis 
+%       searchlight_radius_svm: radius for searchlight sphere
+%       IMPORTANT NOTE: searchlight option is currently not working because of
+%                       weird memory issues in fmri_data.searchlight - DO NOT USE UNTIL FIXED
+% - ml_method_svm: 'oofmridataobj', or 'predict'
+%       'oofmridataobj' option:
+%           use @bogpetre's object-oriented method
+%           https://github.com/canlab/ooFmriDataObjML
+%       'predict' option:
+%           use CANlab's predict function
+%           https://github.com/canlab/CanlabCore/blob/master/CanlabCore/%40fmri_data/predict.m
 %
-% LAST THREE OPTIONS ADDED BY @LUKASVO76 JULY 2022
+% MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT
 %
-% 
-% OPTIONS TO BE SPECIFIED IN THIS SCRIPT
-%
-% -results_suffix: name to add to results file to specify model in case of multiple models, e.g. 'masked_gray_matter'
+% - results_suffix: name to add to results file to specify in case of multiple version of model, e.g. 'oofmridataobj'
 %
 %__________________________________________________________________________
 %
@@ -54,39 +73,55 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v2.4
-% last modified: 2022/08/03
+% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v3.0
+% last modified: 2022/08/09
 
 
-%% SETTINGS
+%% GET AND SET OPTIONS
 %--------------------------------------------------------------------------
 
-% options to be specified here
- 
-results_suffix = ''; % do not delete, leave empty if not needed
+% SET MANDATORY OPTIONS
 
-% options set in a2_set_default_options
+results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
+% NOTE: do NOT delete this option, leave empty if not needed
+% NOTE: do NOT use to add a suffix specifying the scaling or masking option, this will be added automatically
 
-options_needed = {'dosavesvmstats', 'dobootstrap', 'boot_n', 'holdout_set_method', 'holdout_set_type', 'nfolds'};  % Options we are looking for. Set in a2_set_default_options
+% GET MODEL-SPECIFIC PATHS AND OPTIONS
+
+a_set_up_paths_always_run_first;
+% NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT!
+% NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
+
+% GET DEFAULT OPTIONS IF NOT SET IN A2_SET_DEFAULT_OPTIONS
+
+options_needed = {'dosavesvmstats', 'dobootstrap_svm', 'boot_n_svm', 'holdout_set_method_svm', 'holdout_set_type_svm', 'nfolds_svm', 'ml_method_svm'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed); 
 
-option_default_values = {true false 5000 'onesample' 'kfold' 5};          % defaults if we cannot find info in a2_set_default_options at all 
+option_default_values = {true false 5000 'onesample' 'kfold' 5 'predict'};
 
-plugin_get_options_for_analysis_script
+plugin_get_options_for_analysis_script;
 
-% specify which montage to add title to
+% SET CUSTOM OPTIONS
 
-whmontage = 5; % see region.montage docs
+% NOTE: only specify if you want to run multiple versions of your model with different options
+% than the defaults you set in your model-specific version of a2_set_default_options.m
+
+% ml_method_svm: 'oofmridataobj'/'predict';
+% holdout_set_method_svm = 'onesample'/'group';
+% holdout_set_type_svm = 'kfold'/'leave_one_subject_out';
+%    nfolds_svm = x;
+% maskname_svm = []/which(maskname);
+% myscaling_svm = 'raw'/'subjectnorm'/'imagenorm'/'zscoreimages'/'zscorevoxels'
+% dosavesvmstats = true/false;
+% dobootstrap_svm = true/false;
+%    boot_n_svm = yyyy;
+% parallelstr = 'parallel'/'noparallel';
+% dosearchlight_svm = true/false;
+%    searchlight_radius_svm = z;
 
 
-%% LOAD FMRI_DATA_ST OBJECTS AND OTHER NECESSARY VARIABLES IF NEEDED
+%% LOAD NECESSARY VARIABLES IF NEEDED
 %--------------------------------------------------------------------------
-
-if ~exist('resultsdir','var')
-    
-    a_set_up_paths_always_run_first % STUDY-SPECIFIC
-    
-end
 
 if ~exist('DSGN','var') || ~exist('DAT','var')
     
@@ -101,29 +136,35 @@ if ~exist('DATA_OBJ','var')
 end
 
 
-%% CHECK SPIDER TOOLBOX AND START CLOCK
+%% CHECK DEPENDENCIES
 % -------------------------------------------------------------------------
-
-spath = which('use_spider.m');
-if isempty(spath)
-    error('Spider toolbox not found on Matlab path, clone CanlabCore repo and add to Matlab path to prevent prediction from breaking')
+switch ml_method_svm
+    
+    case 'predict'
+        spath = which('use_spider.m');
+        if isempty(spath)
+            error('Spider toolbox not found on Matlab path, clone CanlabCore repo and add to Matlab path to prevent prediction from breaking')
+        end
+        
+    case 'oofmridataobj'
+        opath = which('bayesOptCV.m');
+        if isempty(opath)
+            error('ooFmriDataObjML repo not found on Matlab path, clone repo and add to Matlab path to prevent prediction from breaking')
+        end
+        
+    otherwise
+        error('\ninvalid option "%s" defined in ml_method_mvpa_svm variable, choose between "oofmridataobj" and "predict"\n',ml_method_svm);
+        
 end
+            
 
-if dobootstrap
-    svmtime = tic; 
-end
-
-
-%% GET MASK AND MASKNAME
+%% GET MASK
 % -------------------------------------------------------------------------
 
 if exist('maskname_svm', 'var') && ~isempty(maskname_svm) 
     svmmask = fmri_mask_image(maskname_svm, 'noverbose');
     [~,maskname_short] = fileparts(maskname_svm);
-    mask_string = sprintf('within mask %s', maskname_short);
-    
-else
-    fprintf('\nNo mask found; using full original image data\n');
+    mask_string = sprintf('masked with %s', maskname_short);
 
 end
 
@@ -138,11 +179,9 @@ svm_stats_results = cell(1, kc);
         searchlight_svm_stats{c} = cell(1, kc);
         searchlight_svm_objs{c} = cell(1, kc);
     end
-
-delete(gcp('nocreate'));
-c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
-nw = c.NumWorkers;
-parpool(round(0.7*nw));
+    if dobootstrap_svm
+       bootstrap_svm_stats{c} = cell(1, kc); 
+    end
 
 for c = 1:kc
     
@@ -179,19 +218,23 @@ for c = 1:kc
     % values and SVM is numerically unstable. If so, re-normalizing each
     % subject can help.
     
-    scaling_string = 'no_scaling';
+    switch myscaling_svm
+        
+        case 'raw'
     
-    if exist('dosubjectnorm', 'var') && dosubjectnorm
-        cat_obj = normalize_each_subject_by_l2norm(cat_obj, condition_codes);
-        scaling_string = 'scaling_l2norm_subjects';
-        fprintf('\nNormalizing condition images for each subject by L2 norm of Condition 1 image before SVM\n')
-        
-    elseif exist('doimagenorm','var') && doimagenorm  
-        cat_obj = normalize_images_by_l2norm(cat_obj);
-        scaling_string = 'scaling_l2norm_conditions';
-        fprintf('\nNormalizing each condition image for each subject by L2 norm before SVM\n')
-        
-    end
+            scaling_string = 'no_scaling';
+            
+        case 'subjectnorm'
+    
+            cat_obj = normalize_each_subject_by_l2norm(cat_obj, condition_codes);
+            scaling_string = 'scaling_l2norm_subjects';
+            fprintf('\nNormalizing condition images for each subject by L2 norm of Condition 1 image before SVM\n')
+            
+        case 'imagenorm'
+         
+            cat_obj = normalize_images_by_l2norm(cat_obj);
+            scaling_string = 'scaling_l2norm_conditions';
+            fprintf('\nNormalizing each condition image for each subject by L2 norm before SVM\n')
     
     % Z-SCORE
     
@@ -199,39 +242,51 @@ for c = 1:kc
     % Removes overall effects of image intensity and scale. Can be useful
     % across studies but also removes information. Use judiciously.
     
-    if exist('dozscoreimages', 'var') && dozscoreimages
-        fprintf('\nZ-scoring each condition image for each subject before SVM\n');
-        scaling_string = 'scaling_z_score_conditions';
-        cat_obj = rescale(cat_obj, 'zscoreimages');
-        
-    end
-    
-    % FORMAT AND ATTACH OUTCOME: 
-    % 1, -1 for the two conditions in the contrast
-    % DEFINE HOLDOUT SETS:
-    % use plugin scripts according to holdout_set_method
-    % --------------------------------------------------------------------
-    
-    % NOTE:
-    % assume that subjects are in same position in each input file!
-    
-    switch holdout_set_method
-        
-        case 'group' 
-            plugin_get_holdout_sets_balanced_groups; % @lukasvo76: built in this option to manually define your holdout sets balancing for group variable, wrote a new plugin based on @bogpetre's walkthrough code for single-trials and between-within MVPA
-            cat_obj.Y = outcome_value;
-        
-        case 'onesample'
-            plugin_get_holdout_sets; % @lukasvo76: this is the original CANlab code which works fine if you do not have to balance your holdout sets for a group variable
-            cat_obj.Y = outcome_value;
+        case 'zscoreimages'
+            fprintf('\nZ-scoring each condition image for each subject before SVM\n');
+            scaling_string = 'scaling_z_score_conditions';
+            cat_obj = rescale(cat_obj, 'zscoreimages');
+            
+        case 'zscorevoxels'
+            fprintf('\nZ-scoring each condition image for each subject before SVM\n');
+            scaling_string = 'scaling_z_score_conditions';
+            cat_obj = rescale(cat_obj, 'zscoreimages');
             
         otherwise
-            error('\ninvalid option "%s" defined in holdout_set_method variable, choose between "group" and "onesample"\n',holdout_set_method);
-    
+            error('incorrect scaling option %s specified in myscaling_svm option in a2_set_default_options.\nChoose between "raw", "subjectnorm", "imagenorm", "zscoreimages", or "zscorevoxels"\n', myscaling_svm);
+        
     end
     
+    % DEFINE HOLDOUT SETS
+    % -------------------
+    % NOTE: use plugin scripts according to holdout_set_method_svm
+
+        switch holdout_set_method_svm
+
+            case 'group' 
+                plugin_get_holdout_sets_balanced_groups; % @lukasvo76: built in this option to manually define your holdout sets balancing for group variable, wrote a new plugin based on @bogpetre's walkthrough code for single-trials and between-within MVPA
+
+            case 'onesample'
+                plugin_get_holdout_sets; % @lukasvo76: this is the original CANlab code which works fine if you do not have to balance your holdout sets for a group variable
+
+            otherwise
+                error('\ninvalid option "%s" defined in holdout_set_method_svm variable, choose between "group" and "onesample"\n',holdout_set_method_svm);
+
+        end
+    
+    % FORMAT AND ATTACH OUTCOME
+    % -------------------------
+    % NOTES:
+    % a. 1, -1 for the two conditions in the contrast
+    % b. assume that subjects are in same position in each input file!
+            
+    cat_obj.Y = outcome_value;
+    cat_obj.metadata_table.subject_id = [[1:(size(cat_obj.Y,1)/2)]';[1:(size(cat_obj.Y,1)/2)]'];
+        if strcmp(holdout_set_method_svm,'group')
+            cat_obj.metadata_table.group_id = [group';group'];      
+        end
+    
     % SANITY CHECK ON OUTCOME
-    % --------------------------------------------------------------------
     
     if all(cat_obj.Y > 0) || all(cat_obj.Y < 0)
         % Only positive or negative weights - nothing to compare
@@ -243,24 +298,85 @@ for c = 1:kc
     
     % RUN PREDICTIVE SVM MODEL
     % --------------------------------------------------------------------
-    if dobootstrap
-        [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, ...
-            'bootsamples', boot_n, 'error_type', 'mcr', parallelstr, 'verbose', 0);
-        % Threshold, if possible - can re-threshold later with threshold() method
-%         stats.weight_obj = threshold(stats.weight_obj, .05, 'unc'); %
-%         @lukasvo76: commented out since we want to threshold flexibly at
-%         a later stage in c2_SVM_contrasts_masked
-        
-    else
-        [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, ...
-            'error_type', 'mcr', parallelstr, 'verbose' ,0);
+    switch ml_method_svm
     
-    end
+        case 'predict'
+
+            % RUN MODEL USING CANLAB'S PREDICT FUNCTION
+
+            [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, ...
+                'error_type', 'mcr', parallelstr, 'verbose' ,0);
+
+        case 'oofmridataobj'
+
+            % DEFINE ALGORITHM
+
+            alg = linearSvmClf();
+            alg.fit(cat_obj.dat', cat_obj.Y); % fit alg with brain data as predictor, Y as outcome; note that fields of alg get filled
+            % NOTE: fit is not strictly necessary at this stage, but a good test
+            alg_params = alg.get_params; % get to know the hyperparams for this algorithm, which we want to optimize
+            
+            % DEFINE FEATURE EXTRACTOR
+            
+            featConstructor_han = @(X)([]);
+            extractVxl = fmri2VxlFeatTransformer('metadataConstructor_funhan',featConstructor_han); % initiate extractVxl as an empty fmri2VxlFeatTransformer object; other transformers in Github repo/transformers
+            extractVxl.fit(cat_obj); % transformer takes fmri_data_st object as input and stores its metadata in the brainmodel property (in the .volInfo field, nifti header style data)
+            % NOTE: fit is not strictly necessary at this stage, but a good test
+            
+            % DEFINE PIPELINE
+
+            fmri_pipeline = pipeline({{'featExt',extractVxl},{'alg',alg}}); % define fmri_pcr as a pipeline object including the feature transformer and the algorithm defined above; names are arbitrary
+            fmri_pipeline.fit(cat_obj,cat_obj.Y);
+            % NOTE: fit is not strictly necessary at this stage, but a good test
+            
+            % INNER CROSS-VALIDATION FUNCTION
+
+            switch holdout_set_method_svm
+
+                case 'group'
+                    innercv = @(X,Y) cvpartition2(X.metadata_table.group_id, 'GroupKFold', nfolds_svm, 'Group', X.metadata_table.subject_id);
+
+                case 'onesample'
+                    innercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_svm, 'Group', X.metadata_table.subject_id); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+
+            end
+            % NOTE: we use metadata_table here, since the input to bo.fit is the
+            % fmri_data_st object cat_obj, which has a metadata_table field
+            
+            cv_folds_svm = innercv(cat_obj,cat_obj.Y); 
+            % NOTE: get cross-validation folds, not strictly necessary, but a good test
+            
+            % DEFINE BAYESIAN OPTIMIZATION
+
+            dims = optimizableVariable('alg__C',[0.1,100]);
+
+            % NOTE: Type and number of hyperparams to optimize depends on algorithm (check alg.get_params above), as well as other settings
+
+            bayesOptParams = {dims, 'AcquisitionFunctionName','expected-improvement-plus',...
+                'MaxObjectiveEvaluations',30, 'UseParallel', false, 'verbose',1, 'PlotFcn', {}};
+
+            bo = bayesOptCV(fmri_pipeline,innercv,@get_hinge_loss,bayesOptParams);
+            bo.fit(cat_obj,cat_obj.Y);
+            bo_numcomponents = bo.estimator.estimator.numcomponents;
+
+
+        otherwise
+
+            error('\ninvalid option "%s" defined in ml_method_mvpa_svm variable, choose between "oofmridataobj" and "predict"\n',ml_method_svm);
+
+    end % switch machine learning method
+    
     
     % RUN SEARCHLIGHT SVM MODEL IF REQUESTED IN OPTIONS
     %----------------------------------------------------------------------
     if dosearchlight_svm
-        [searchlight_obj, searchlight_stats, searchlight_indx] = searchlight(cat_obj, 'algorithm_name', 'cv_svm', ...
+        
+%         delete(gcp('nocreate'));
+%         c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
+%         nw = c.NumWorkers;
+%         parpool(round(0.8*nw));
+        
+        [searchlight_obj, searchlight_stats, searchlight_idx] = searchlight(cat_obj, 'algorithm_name', 'cv_svm', ...
             'r', searchlight_radius_svm, 'holdout_set', holdout_set);
     
     end
@@ -272,7 +388,7 @@ for c = 1:kc
     
     r = region(stats.weight_obj);
     
-    o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+    o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
     o2 = title_montage(o2, whmontage, [analysisname ' unthresholded ' mask_string]);
 
     figtitle = sprintf('%s_unthresholded_montage_%s_%s', analysisname, scaling_string, mask_string);
@@ -292,7 +408,7 @@ for c = 1:kc
 
         r = region(stats.weight_obj);
 
-        o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
         o2 = title_montage(o2, whmontage, [analysisname ' unthresholded searchlight ' mask_string]);
 
         figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, scaling_string, mask_string);
@@ -303,7 +419,39 @@ for c = 1:kc
             end
         clear o2, clear figtitle
         
-    end
+    end % if loop bootstrap
+    
+    
+    % BOOTSTRAP IF REQUESTED
+    % --------------------------------------------------------------------
+    if dobootstrap_svm
+        
+        delete(gcp('nocreate'));
+        c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
+        nw = c.NumWorkers;
+        parpool(round(0.8*nw));
+        
+        t0_boot = tic;
+
+        switch ml_method_svm
+    
+            case 'predict'
+                [~, bs_stats] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', 1, ...
+                    'bootsamples', boot_n_svm, 'error_type', 'mcr', parallelstr, 'verbose', 0);
+                
+            case 'oofmridataobj'
+                [~ , bs_stats] = predict(fmri_dat, 'algorithm_name', 'cv_svm', 'nfolds', 1, ...
+                    'bootsamples', boot_n_svm,  'numcomponents', bo_numcomponents, ...
+                    'error_type', 'mse', parallelstr, 'verbose', 0);
+                
+        end
+
+        t_end_boot = toc(t0_boot);
+        disp('Cumulative run time:');
+        toc(t_end_boot); 
+        
+        
+    end % if loop bootstrap
     
     
     % STORE STATISTIC OBJECTS IN CELL ARRAY
@@ -316,16 +464,21 @@ for c = 1:kc
         searchlight_svm_stats{c} = searchlight_stats;
         searchlight_svm_objs{c} = searchlight_svm_obj;
     end
+    
+    if dobootstrap_svm
+        bootstrap_svm_stats{c} = bs_stats;
+    end
         
     if exist('svmmask', 'var')
 %         svm_stats_results{c}.mask = svmmask;
         svm_stats_results{c}.maskname = maskname_svm;
-    end
-    
-    if dobootstrap
-        disp('Cumulative run time:');
-        toc(svmtime); 
-    
+        if dosearchlight_svm
+            searchlight_svm_stats{c}.maskname = maskname_svm;
+        end
+        if dobootstrap_svm
+            bootstrap_svm_stats{c}.maskname = maskname_svm;
+        end
+            
     end
 
 end  % loop over contrasts
@@ -335,13 +488,22 @@ end  % loop over contrasts
 %--------------------------------------------------------------------------
 
 if dosavesvmstats
-    savefilenamedata = fullfile(resultsdir, ['svm_stats_results_contrasts_', scaling_string, '_', results_suffix,'.mat']);
+    if exist('maskname_short', 'var')
+        savefilenamedata = fullfile(resultsdir, ['svm_stats_results_contrasts_', scaling_string, '_', maskname_short, '_', results_suffix,'.mat']);
+    else
+        savefilenamedata = fullfile(resultsdir, ['svm_stats_results_contrasts_', scaling_string, '_', results_suffix,'.mat']);
+    end
     save(savefilenamedata, 'svm_stats_results', '-v7.3');
     fprintf('\nSaved svm_stats_results_contrasts\n');
     
-    if dosearchlight
+    if dosearchlight_svm
         save(savefilenamedata, 'searchlight_svm_stats','searchlight_svm_objs','-append');
         fprintf('\nAdded searchlight results to saved svm_stats_results_contrasts\n');
+    end
+    
+    if dobootstrap_svm
+        save(savefilenamedata, 'bootstrap_svm_stats','-append');
+        fprintf('\nAdded bootstrapped results to saved svm_stats_results_contrasts\n');
     end
     
 end

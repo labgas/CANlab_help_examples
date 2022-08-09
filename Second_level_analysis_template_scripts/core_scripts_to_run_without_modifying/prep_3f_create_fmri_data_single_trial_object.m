@@ -1,17 +1,32 @@
 %%% prep_3f_create_fmri_data_single_trial_object
 %
-% This script creates an fmri_data_st object from the single trial con
-% images written in rootdir/firstlevel/model_x_yyy/sub-zz by
-% LaBGAScore_firstlevel_s2_fit_model.m and adds a
-% convenient metadata_table field containing
+% USAGE
+%
+% This script creates and saves an fmri_data_st object from the single trial 
+% con images written in rootdir/firstlevel/model_x_yyy/sub-zz by
+% LaBGAScore_firstlevel_s2_fit_model.m and 
+% adds a convenient metadata_table field containing
 % 1. single trial ratings from rootdir/BIDS/phenotype/<phenotype_trial>.tsv
 % 2. single trial vifs
 %
-% If you set the study/model-specific options in the a2_set_default_options
-% script, this script should be generic if your data are organized according to
-% LaBGAS conventions
-% 
-% Option to exclude trials for certain conditions is built in
+% OPTIONS
+%
+% NOTE: defaults are specified in a2_set_default_options for any given model,
+% but if you want to run the same model with different options (for example
+% voxel- and parcelwise regression), you can make a copy of this script with
+% a letter index (e.g. _s6a_) and change the default option here
+%
+% cons2exclude: cell array of condition names to exclude, separated by commas (or blanks)
+% behav_outcome: name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+% subj_identifier: name of subject identifier variable in same table
+% cond_identifier: name of condition identifier variable in same table
+% group_identifier: name of group identifier variable in same table; leave commented out if you don't have groups
+% vif_threshold: variance inflation threshold to exclude trials
+%
+% MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT
+%
+% results_suffix: name to add to results file to specify model in case of
+% multiple models, e.g. 'water_excluded'
 %
 % IMPORTANT NOTE: this script has not been extensively tested on messy data
 % yet (i.e. missing trials, NaNs for outcome, etc)!
@@ -21,28 +36,50 @@
 % author: lukas.vanoudenhove@kuleuven.be
 % date:   Dartmouth, March, 2021
 %__________________________________________________________________________
-% @(#)% prep_3f_create_fmri_data_single_trial_object.m     v2.1        
-% last modified: 2022/07/27
+% @(#)% prep_3f_create_fmri_data_single_trial_object.m     v3.0       
+% last modified: 2022/08/09
 
 
-%% SET OPTIONS
+%% GET AND SET OPTIONS
 %--------------------------------------------------------------------------
 
-% Now moved to a2_set_default_options
+% SET MANDATORY OPTIONS
+
+results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
+% NOTE: do NOT delete the latter option, leave empty if not needed
+% NOTE: do NOT use to add a suffix specifying the behavioral outcome, this will be added automatically
+
+% GET MODEL-SPECIFIC PATHS AND OPTIONS
+
+a_set_up_paths_always_run_first;
+% NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT!
+% NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
+
+% SET CUSTOM OPTIONS
+
+% NOTE: only specify if you want to run multiple versions of your model with different options
+% than the defaults you set in your model-specific version of a2_set_default_options.m
+
+% cons2exclude = {'varname1'}; % cell array of condition names to exclude, separated by commas (or blanks)
+% behav_outcome = 'varname2'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+% subj_identifier = 'varname3'; % name of subject identifier variable in same table
+% cond_identifier = 'varname4'; % name of condition identifier variable in same table
+% group_identifier = 'varname5'; % name of group identifier variable in same table; leave commented out if you don't have groups
+% vif_threshold = x; % variance inflation threshold to exclude trials
 
 
-%% LOAD VARIABLES
+%% LOAD NECESSARY VARIABLES IF NEEDED AND DO PREP WORK
 %--------------------------------------------------------------------------
-    if ~exist('resultsdir','var')
-        a_set_up_paths_always_run_first
+    
+if ~exist('DSGN','var') || ~exist('DAT','var')
+    
+    load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    
+    if ~isfield(DAT,'BEHAVIOR')
+        error('\n Behavioral data not yet added to DAT structure - run prep_1b script first\n')
     end
     
-    if ~exist('DSGN','var') || ~exist('DAT','var')
-        load(fullfile(resultsdir,'image_names_and_setup.mat'));
-        if ~isfield(DAT,'BEHAVIOR')
-            error('\n Behavioral data not yet added to DAT structure - run prep_1b script first\n')
-        end
-    end
+end
 
 [~,subjs] = fileparts(DSGN.subjects);
 
@@ -221,7 +258,8 @@ fprintf('\n');
 fmri_dat.Y = fmri_dat.metadata_table.(behav_outcome);
 fmri_dat.Y_descrip = behav_outcome;
 idx_Ynan = ~isnan(fmri_dat.Y);
-fmri_dat = get_wh_image(fmri_dat,idx_Ynan); % @bogpetre's fmri_data_st object nicely excludes the right row in all fields - River Roost IPA earned ;)
+fmri_dat = get_wh_image(fmri_dat,idx_Ynan); 
+% NOTE: @bogpetre's fmri_data_st object nicely excludes the right row in all fields - River Roost IPA earned ;)
 
 
 %% EXCLUDE TRIALS EXCEEDING VIF THRESHOLD AND MASK
@@ -286,6 +324,6 @@ clear sub subject_id_vifs uniq_subject_id_vifs n_subj_vifs this_idx_vifs this_vi
 %% SAVE FMRI_DATA_ST OBJECT
 %--------------------------------------------------------------------------
 
-savefilename = fullfile(resultsdir, ['single_trial_fmri_data_st_object_' DSGN.modelingfilesdir '.mat']);
+savefilename = fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_', results_suffix, '.mat']);
 save(savefilename, 'fmri_dat', 'cons2exclude', 'behav_outcome', 'subj_identifier', 'cond_identifier');
 

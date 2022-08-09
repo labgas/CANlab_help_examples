@@ -1,11 +1,13 @@
 %%% c2f_run_MVPA_regression_single_trial.m
 %
+%
 % USAGE
+% -----
 %
 % This script runs MVPA regression analysis on a continuous outcome Y
-% (lasso-pcr, but can easily be adapted to support vector regression or
-% other methods available in CANlab's predict function) on an fmri_data_st
-% object created using prep_3c_run_SVMs_on_contrasts_masked.m
+% (default pcr, but can easily be adapted to pls or
+% other machine learning algorithms) on an fmri_data_st
+% object created using prep_3f_create_fmri_data_single_trial_object.m
 % That script should be run first, or the present script will load the data
 % object if it is saved by the previous script.
 %
@@ -13,9 +15,11 @@
 % script for more info. Many of these options get passed into CANlab's
 % predict function - help predict in Matlab command window for more info
 %
-% TUTORIALS AND DOCUMENTATION
 %
-% A. Canlab predict function
+% TUTORIALS AND DOCUMENTATION
+% ---------------------------
+%
+% A. CANLAB'S PREDICT FUNCTION
 %
 % This is the classic CANlab method of running ML models, and can be chosen
 % by setting the ml_method_mvpa_reg_st option in a2_set_default_options.m
@@ -39,7 +43,7 @@
 % @lukasvo76's version of the script for this paper can be found here
 % https://www.dropbox.com/sh/v2nsgoqmbi0cqnk/AAD6I1Gn5KUM6aViom4TLeVJa?dl=0
 %
-% B. Bogdan's object-oriented ML method for fmri_data objects (and beyond)
+% B. BOGDAN'S MACHINE LEARNING TOOLKIT FOR FMRI_DATA OBJECTS
 %
 % This is a newer method inspired by Python's scikit-learn, including more
 % flexible options for algorithm and feature selection, 
@@ -52,26 +56,99 @@
 % Tutorial: https://canlab.github.io/_pages/canlab_pipelines_walkthrough/estimateBestRegionPerformance.html
 % Example script: https://github.com/labgas/LaBGAScore/blob/main/secondlevel/LaBGAScore_secondlevel_ooFmriDataObjML_example.m
 % 
-% NOTE: This script is work in progress, particularly the permutation,
+%
+% OPTIONS
+% -------
+%
+% NOTE: defaults are specified in a2_set_default_options for any given model,
+% but if you want to run the same model with different options, 
+% you can make a copy of this script with a letter index (e.g. _s6a_) 
+% and change the default options below
+%
+% GENERAL OPTIONS
+%
+% ml_method_mvpa_reg_st: 'oofmridataobj', or 'predict'
+%       'oofmridataobj':
+%           use @bogpetre's object-oriented method
+%           https://github.com/canlab/ooFmriDataObjML
+%       'predict'
+%           use CANlab's predict function
+%           https://github.com/canlab/CanlabCore/blob/master/CanlabCore/%40fmri_data/predict.m
+% algorithm_mvpa_reg_st: default cv_pcr
+%       will be passed into predict function (help predict for options) if ml_method_mvpa_reg_st == 'predict' or adapted correctly if 'oofmridataobj'
+%       if ml_method_mvpa_reg_st = 'oofmridataobj', only cv_pls and cv_pcr are implemented in this script for now
+% holdout_set_method_mvpa_reg_st: 'group', or 'onesample'
+%       'group': use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group;
+%           balances holdout sets over groups
+%       'onesample': use subject id only
+%           no group factor, stratifies by subject (i.e. leave whole subject out)
+% nfolds_mvpa_reg_st: default 5; number of cross-validation folds for kfold
+% zscore_outcome: default false; true zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
+% maskname_mvpa_reg_st: default which('gray_matter_mask_sparse.img');
+%       - default use of sparse gray matter mask
+%       - maskdir now defined in a_set_up_paths_always_run_first script
+%       - if you do not want to mask, change to []
+%       - if you want to use a custom mask, put it in maskdir and change name here.
+% myscaling_mvpa_reg_st: default 'raw'; options are 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
+%
+% STATISTICS AND RESULTS VISUALIZATION OPTIONS
+% --------------------------------------------
+%
+% dobootstrap_mvpa_reg_st: default false; true bootstraps weights - takes AN AWFUL LOT OF TIME, hence only use true for final analysis
+%    boot_n_mvpa_reg_st: default 5000; number of bootstrap samples, reduce number for quick results
+%    parallelstr_mvpa_reg_st: default 'parallel'; parallel proc for bootstrapping
+% doperm_mvpa_reg_st: default false; true performs permutation testing - takes AN AFWUL LOT OF TIME, hence only use true for final analysis
+%    perm_n_mvpa_reg_st: default 5000; number of permutations, reduce number for quick results
+%    perm_sidedness: default 'both'; tails for permutation test, 'both','smaller', or 'larger'
+% dosourcerecon_mvpa_reg_st: default false; true performs source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
+%    dosourcerecon_perm_mvpa_reg_st: default false; true performs
+%    permutation testing on source recon images; takes an AWFUL LOT OF TIME
+% q_threshold_mvpa_reg_st: default .05; threshold for FDR-corrected display items
+% k_threshold_mvpa_reg_st: default = true;                                      % see saving options above 10; extent threshold for FDR-corrected display items 
+% dosavemvparegstats: default true; Save statistics and weight map objects
+% domultilevel_mvpa_reg_st: default false; fits multilevel mvpa models - WORK IN PROGRESS
+%
+%
+% IMPORTANT NOTE: This script is work in progress, particularly the permutation,
 % multilevel, and oofmridataobj options are still undergoing improvement
 % and full testing
+%
 %__________________________________________________________________________
 %
 % author: lukas.vanoudenhove@kuleuven.be, bogpetre@gmail.com
 % date:   April, 2021
 %__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v4.0        
-% last modified: 2022/08/04
+% @(#)% c2f_run_MVPA_regression_single_trial     v5.0        
+% last modified: 2022/08/09
+
+
+%% GET AND SET OPTIONS
+%--------------------------------------------------------------------------
+
+% GET MODEL-SPECIFIC PATHS AND OPTIONS
+
+a_set_up_paths_always_run_first;
+
+% NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
+% NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
+
+% SET/COPY MANDATORY OPTIONS FROM CORRESPONDING PREP_3f_ SCRIPT
+
+results_suffix = ''; % suffix of your choice added to .mat file with saved results
+behav_outcome = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+subj_identifier = 'participant_id'; % name of subject identifier variable in same table
+% group_identifier = 'group'; % name of group identifier variable in same table; leave commented out if you don't have groups
+
+% SET CUSTOM OPTIONS
+
+% NOTE: only specify if you want to run a second version of your model with different options
+% than the defaults you set in your model-specific version of a2_set_default_options.m
+% 
+% See documentation above and a2_set_default_options.m for list of options
 
 
 %% LOAD FMRI_DATA_ST OBJECT AND OTHER NECESSARY VARIABLES IF NEEDED
 %--------------------------------------------------------------------------
-
-if ~exist('resultsdir','var')
-
-    a_set_up_paths_always_run_first % STUDY-SPECIFIC
-
-end
 
 if ~exist('DSGN','var') || ~exist('DAT','var')
 
@@ -85,13 +162,9 @@ end
 
 if ~exist('fmri_dat','var')
 
-    load(fullfile(resultsdir,['single_trial_fmri_data_st_object_' DSGN.modelingfilesdir '.mat']));
+    load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_', results_suffix, '.mat']));
 
 end
-
-% specify which montage to add title to
-
-whmontage = 5; % see region.montage docs
 
 
 %% DEFINE SUBJECT IDENTIFIERS
@@ -313,7 +386,7 @@ clear sub
                     alg = pcrRegressor();
 
                 otherwise
-                    error('\nchoice of algorithm %s in algorithm_mvpa_reg_st option variable is not compatible with choice of machine learning method %s in ml_method_mvpa_reg_st option variable,\n Either chance method to "predict" or change algorithm to "cv_pcr" or "cv_pls"\n');
+                    error('\nchoice of algorithm "%s" in algorithm_mvpa_reg_st option variable is not compatible with choice of machine learning method "%s" in ml_method_mvpa_reg_st option variable,\n Either chance method to "predict" or change algorithm to "cv_pcr" or "cv_pls"\n', algorithm_mvpa_reg_st, ml_method_mvpa_reg_st);
 
             end
 
@@ -322,8 +395,9 @@ clear sub
             alg_params = alg.get_params; % get to know the hyperparams for this algorithm, which we want to optimize
 
             % DEFINE FEATURE EXTRACTOR
-
-            extractVxl = fmri2VxlFeatTransformer; % initiate extractVxl as an empty fmri2VxlFeatTransformer object; other transformers in Github repo/transformers
+            
+            featConstructor_han = @(X)([]);
+            extractVxl = fmri2VxlFeatTransformer('metadataConstructor_funhan',featConstructor_han); % initiate extractVxl as an empty fmri2VxlFeatTransformer object; other transformers in Github repo/transformers
             extractVxl.fit(fmri_dat); % transformer takes fmri_data_st object as input and stores its metadata in the brainmodel property (in the .volInfo field, nifti header style data)
             % NOTE: fit is not strictly necessary at this stage, but a good test
 
@@ -376,10 +450,10 @@ clear sub
             switch holdout_set_method_mvpa_reg_st
 
                 case 'group'
-                    outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subject_identifier));
+                    outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier));
 
                 case 'onesample'
-                    outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subject_identifier)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+                    outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
 
             end
             % NOTE: we use metadata_table here, since the input to cvGS.do is the
@@ -450,6 +524,8 @@ clear sub
 
 
 % PLOT MONTAGE OF UNTHRESHOLDED WEIGHTS
+
+    whmontage = 5;
 
     fprintf ('\nShowing unthresholded %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
 
@@ -782,8 +858,15 @@ parpool(round(0.8*nw));
 %--------------------------------------------------------------------------
 
 if dosavemvparegstats
-
-    savefilename = fullfile(resultsdir, 'single_trial_multilevel_MVPA_results.mat');
+    
+    if exist('maskname_short', 'var')
+        savefilename = fullfile(resultsdir, 'single_trial_', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', results_suffix, '_results.mat');
+    
+    else
+        savefilename = fullfile(resultsdir, 'single_trial_', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', results_suffix, '_results.mat');
+        
+    end
+    
     save(savefilename, 'stats', '-v7.3');
 
         if dobootstrap_mvpa_reg_st
