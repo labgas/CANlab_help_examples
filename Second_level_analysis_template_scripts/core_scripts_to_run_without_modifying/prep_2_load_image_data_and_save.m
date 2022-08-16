@@ -13,8 +13,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_2_load_image_data_and_save.m         v1.0
-% last modified: 2022/05/26
+% @(#)% prep_2_load_image_data_and_save.m         v1.1
+% last modified: 2022/08/16
 
 
 %% SET DEFAULT OPTIONS IF NEEDED
@@ -129,14 +129,11 @@ for i = 1:size(DAT.conditions,2)
     
     printhdr(sprintf('Loading raw images: condition %3.0f, %s', i, DAT.conditions{i}));
     
-    % If images are less than 2 mm res, sample in native space:
-%     DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}); 
-    
-    % If images are very large/high-res, you may want to sample to the mask space instead:
-    DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}, which('brainmask.nii'), sample_type_string, 'noverbose'); % @lukasvo76: changed to @bogpetre's improved data_st object class
+    DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}, which('brainmask_canlab.nii'), sample_type_string); % @lukasvo76: changed to @bogpetre's improved data_st object class
     
     % make sure we are using right variable types (space-saving)
-    % this is new and could be a source of errors - beta testing!
+    % NOTE CANlab (old): this is new and could be a source of errors - beta testing!
+    % NOTE lukasvo76: this also includes removing empty voxels using the fmri_data.remove_empty function!
     DATA_OBJ{i} = enforce_variable_types(DATA_OBJ{i});
      
     if dozipimages

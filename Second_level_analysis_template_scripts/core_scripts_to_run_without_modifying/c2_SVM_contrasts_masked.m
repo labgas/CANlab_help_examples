@@ -131,7 +131,7 @@ else
 
 end 
 
-
+        
 %% AVERAGE IMAGES FROM THE SAME PERSON WITHIN EACH SVM CLASS IF NEEDED
 % -------------------------------------------------------------------------
 
@@ -161,7 +161,15 @@ end
 % condition. You want to test the average of the first 4 vs. the average of
 % the last 4 when you caculate test accuracy.
 
-[dist_from_hyperplane, Y, svm_dist_pos_neg, svm_dist_pos_neg_matrix] = plugin_svm_contrasts_get_results_per_subject(DAT, svm_stats_results, DATA_OBJ);
+switch ml_method_svm
+    
+    case 'predict'
+        [dist_from_hyperplane, Y, svm_dist_pos_neg, svm_dist_pos_neg_matrix] = plugin_svm_contrasts_get_results_per_subject(DAT, svm_stats_results, DATA_OBJ);
+
+    case 'oofmridataobj'
+        [dist_from_hyperplane, Y, svm_dist_pos_neg, svm_dist_pos_neg_matrix] = plugin_oofmridataobj_svm_contrasts_get_results_per_subject(DAT, svm_stats_results, DATA_OBJ);
+        
+end
 
 
 %% CHECK WHETHER WE HAVE PAIRED IMAGES AND ERROR OUT IF NOT

@@ -102,8 +102,6 @@ dobootstrap_svm = false;                                % default false     take
     boot_n_svm = 5000;                                      % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
 parallelstr = 'parallel';                               % parallel proc for boot.   'parallel' or 'noparallel'
 dosearchlight_svm = false;                              % default false     perform searchlight SVM analysis
-% IMPORTANT NOTE: searchlight option is currently not working because of
-% weird memory issues in fmri_data.searchlight - DO NOT USE UNTIL FIXED
     searchlight_radius_svm = 3;                              % default 3         radius for searchlight sphere
 
 
@@ -145,7 +143,7 @@ ml_method_mvpa_reg_st = 'predict';                              % 'oofmridataobj
                                                                     % 'predict'
                                                                     % use CANlab's predict function
                                                                     % https://github.com/canlab/CanlabCore/blob/master/CanlabCore/%40fmri_data/predict.m
-algorithm_mvpa_reg_st = 'cv_pcr';                               % default cv_pcr, will be passed into predict function (help predict for options) if ml_method_mvpa_reg_st == 'predict' or adapted if 'oofmridataobj'
+algorithm_mvpa_reg_st = 'cv_pcr';                               % default cv_pcr, will be passed into predict function (help fmri_data.predict for options) if ml_method_mvpa_reg_st == 'predict' or adapted if 'oofmridataobj'
                                                                     % if ml_method_mvpa_reg_st = 'oofmridataobj', only cv_pls and cv_pcr are implemented in this script for now
 holdout_set_method_mvpa_reg_st = 'onesample';                   % 'group', or 'onesample'
                                                                     % 'group': use DAT.BETWEENPERSON.group or 

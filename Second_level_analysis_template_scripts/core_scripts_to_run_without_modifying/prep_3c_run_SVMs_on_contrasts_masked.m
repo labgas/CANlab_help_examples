@@ -73,8 +73,8 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v3.0
-% last modified: 2022/08/09
+% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v3.1
+% last modified: 2022/08/16
 
 
 %% GET AND SET OPTIONS
@@ -153,7 +153,7 @@ switch ml_method_svm
         end
         
     otherwise
-        error('\ninvalid option "%s" defined in ml_method_mvpa_svm variable, choose between "oofmridataobj" and "predict"\n',ml_method_svm);
+        error('\ninvalid option "%s" defined in ml_method_svm variable, choose between "oofmridataobj" and "predict"\n',ml_method_svm);
         
 end
             
@@ -175,13 +175,21 @@ end
 kc = size(DAT.contrasts, 1);
 
 svm_stats_results = cell(1, kc);
-    if dosearchlight_svm
-        searchlight_svm_stats{c} = cell(1, kc);
-        searchlight_svm_objs{c} = cell(1, kc);
+
+if dosearchlight_svm
+    searchlight_svm_stats = cell(1, kc);
+    searchlight_svm_objs = cell(1, kc);
+    
+    for cond = 1:size(DATA_OBJ,2) % need to convert our fmri_data_st objects to fmri_data to prevent searchlight function from breaking on some removed voxel issue
+        DATA_OBJ{1,cond} = fmri_data(DATA_OBJ{1,cond});
+    
     end
-    if dobootstrap_svm
-       bootstrap_svm_stats{c} = cell(1, kc); 
-    end
+    
+end
+
+if dobootstrap_svm
+   bootstrap_svm_stats = cell(1, kc); 
+end
 
 for c = 1:kc
     
@@ -194,7 +202,7 @@ for c = 1:kc
     % CREATE COMBINED DATA OBJECT WITH INPUT IMAGES FOR BOTH CONDITIONS
     % ---------------------------------------------------------------------
     [cat_obj, condition_codes] = cat(DATA_OBJ{wh}); 
-    cat_obj = remove_empty(cat_obj); % @lukasvo76: added this as the cat function includes replace_empty on the objects, which causes problems later on with the stats_object output of predict; I also guess we do not want to run the SVMs on these "artificial" zeroes?
+    cat_obj = enforce_variable_types(cat_obj); % @lukasvo76 added as the fmri_data.cat function includes replace_empty on the objects, which causes problems later on with the stats_object output of predict
     
     % APPLY MASK IF SPECIFIED IN OPTIONS
     %----------------------------------------------------------------------
@@ -357,7 +365,42 @@ for c = 1:kc
 
             bo = bayesOptCV(fmri_pipeline,innercv,@get_hinge_loss,bayesOptParams);
             bo.fit(cat_obj,cat_obj.Y);
-            bo_numcomponents = bo.estimator.estimator.numcomponents;
+            bo_C = bo.estimator.estimator.C;
+            
+            % OUTER CROSS-VALIDATION FUNCTION
+
+            switch holdout_set_method_svm
+
+                case 'group'
+                    outercv = @(X,Y) cvpartition2(X.metadata_table.group_id, 'GroupKFold', nfolds_svm, 'Group', X.metadata_table.subject_id);
+
+                case 'onesample'
+                    outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_svm, 'Group', X.metadata_table.subject_id);
+
+            end
+            % NOTE: we use metadata_table here, since the input to cvGS.do is the
+            % fmri_data_st object fmri_dat, which has a metadata_table field
+            
+            % ESTIMATE CROSS-VALIDATED MODEL PERFORMANCE
+
+            cvGS = crossValScore(bo, outercv, @get_f1_macro, 'n_parallel', nfolds_svm, 'verbose', true);
+            % NOTE: Bogdan advises not parallizing too much for the purpose of Bayesian
+            % model optimization, since each step learns from the previous one, so we
+            % only parallelize the outer cv loop with 1 core per outer cv fold,
+            % resulting in very acceptable runtimes (on LaBGAS server with 128 GB RAM)
+
+            cvGS.do(cat_obj, cat_obj.Y);
+            cvGS.do_null(); % fits null model - intercept only
+            fold_labels = cvGS.fold_lbls;
+            
+            % CREATE AN FMRI_DATA OBJECT WITH THE BETAS FOR VISUALIZATION PURPOSES
+            
+            weight_obj = bo.estimator.transformers{1}.brainModel; % empty .dat at this stage
+            weight_obj.dat = bo.estimator.estimator.B(:); % fills mdl.dat with betas
+            
+            % KEEP IMPORTANT VARIABLES/OBJECTS IN STRUCTURE FOR SAVING
+            
+            stats = struct('bo',bo,'cvGS',cvGS,'weight_obj',weight_obj);
 
 
         otherwise
@@ -371,22 +414,32 @@ for c = 1:kc
     %----------------------------------------------------------------------
     if dosearchlight_svm
         
-%         delete(gcp('nocreate'));
-%         c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
-%         nw = c.NumWorkers;
-%         parpool(round(0.8*nw));
+        delete(gcp('nocreate'));
+        clust = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
+        nw = clust.NumWorkers;
+        parpool(round(0.8*nw));
         
-        [searchlight_obj, searchlight_stats, searchlight_idx] = searchlight(cat_obj, 'algorithm_name', 'cv_svm', ...
-            'r', searchlight_radius_svm, 'holdout_set', holdout_set);
+        [searchlight_obj, searchlight_stats, searchlight_idx] = searchlightLukas(cat_obj, 'algorithm_name', 'cv_svm', ...
+            'r', searchlight_radius_svm, 'holdout_set', holdout_set, 'do_online', 'no_weights');
     
     end
     
     % PLOT MONTAGE OF UNTHRESHOLDED SVM RESULTS
     % ---------------------------------------------------------------------
-
-    fprintf ('\nShowing unthresholded SVM results, : %s\nEffect: %s\n\n', analysisname, mask_string);
     
-    r = region(stats.weight_obj);
+    whmontage = 5;
+
+    fprintf ('\nShowing unthresholded SVM results, : %s\n%s\n\n', analysisname, mask_string);
+    
+        switch ml_method_svm
+
+            case 'predict'
+                r = region(stats.weight_obj);
+                
+            case 'oofmridataobj'
+                r = region(weight_obj);
+                
+        end
     
     o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
     o2 = title_montage(o2, whmontage, [analysisname ' unthresholded ' mask_string]);
@@ -440,8 +493,8 @@ for c = 1:kc
                     'bootsamples', boot_n_svm, 'error_type', 'mcr', parallelstr, 'verbose', 0);
                 
             case 'oofmridataobj'
-                [~ , bs_stats] = predict(fmri_dat, 'algorithm_name', 'cv_svm', 'nfolds', 1, ...
-                    'bootsamples', boot_n_svm,  'numcomponents', bo_numcomponents, ...
+                [~ , bs_stats] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', 1, ...
+                    'bootsamples', boot_n_svm,  'C', bo_C, ...
                     'error_type', 'mse', parallelstr, 'verbose', 0);
                 
         end
@@ -459,6 +512,7 @@ for c = 1:kc
     
 %     stats.weight_obj = enforce_variable_types(stats.weight_obj);
     svm_stats_results{c} = stats;
+
     
     if dosearchlight_svm
         searchlight_svm_stats{c} = searchlight_stats;

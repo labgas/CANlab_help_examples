@@ -15,8 +15,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3_calc_univariate_contrast_maps_and_save.m         v1.0
-% last modified: 2022/05/26
+% @(#)% prep_3_calc_univariate_contrast_maps_and_save.m         v1.1
+% last modified: 2022/08/16
 
 
 %% RAW AND L2NORM-RESCALED CONTRAST IMAGES FROM RAW CONDITION IMAGES
@@ -40,7 +40,7 @@ end
 sz = sz(:, 2);
 
 for i = 1:k
-    DATA_OBJ{i} = replace_empty(DATA_OBJ{i});
+    DATA_OBJ{i} = replace_empty(DATA_OBJ{i},'voxels');
 end
 
 
@@ -91,7 +91,7 @@ for c = 1:size(DAT.contrasts, 1)
         
     end
     
-    DATA_OBJ_CON{c} = remove_empty(DATA_OBJ_CON{c});
+%     DATA_OBJ_CON{c} = remove_empty(DATA_OBJ_CON{c}); % lukasvo76: redundant since fmri_data.enforce_variable_types below includes remove_empty
     DATA_OBJ_CON{c}.image_names = DAT.contrastnames;
     DATA_OBJ_CON{c}.source_notes = DAT.contrastnames;
     
@@ -230,7 +230,7 @@ for c = 1:size(DAT.contrasts, 1)
         
     end
     
-    DATA_OBJ_CONsc{c} = remove_empty(DATA_OBJ_CONsc{c});
+%     DATA_OBJ_CONsc{c} = remove_empty(DATA_OBJ_CONsc{c}); % lukasvo76: redundant since fmri_data.enforce_variable_types below includes remove_empty
     DATA_OBJ_CONsc{c}.image_names = DAT.contrastnames;
     DATA_OBJ_CONsc{c}.source_notes = DAT.contrastnames;
     
