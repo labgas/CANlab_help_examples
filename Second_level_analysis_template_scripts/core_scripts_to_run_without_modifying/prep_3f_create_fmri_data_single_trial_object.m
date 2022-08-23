@@ -47,7 +47,7 @@
 
 results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
 % NOTE: do NOT delete the latter option, leave empty if not needed
-% NOTE: do NOT use to add a suffix specifying the behavioral outcome, this will be added automatically
+% NOTE: do NOT use to add a suffix specifying the behavioral outcome nor excluded conditions, this will be added automatically
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
@@ -83,6 +83,8 @@ end
 
 [~,subjs] = fileparts(DSGN.subjects);
 
+if ~isempty(cons2exclude)
+
     for con2ex = 1:size(cons2exclude,2)
         outcome_vars_between_idx(con2ex,:) = contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,behav_outcome) & ~contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,cons2exclude{con2ex});
     end
@@ -91,17 +93,30 @@ end
         outcome_vars_between_idx2(out) = logical(sum(outcome_vars_between_idx(:,out)));
     end
     
-outcome_vars_between = DAT.BEHAVIOR.behavioral_data_table(:,outcome_vars_between_idx2);
+    outcome_vars_between = DAT.BEHAVIOR.behavioral_data_table(:,outcome_vars_between_idx2);
 
     for var = 1:sum(outcome_vars_between_idx2)
         missings{var} = isnan(table2array(outcome_vars_between(:,var))); % index for subjects with missing behavioral data, which we want to exclude
     end
     
-missings = cell2mat(missings);
-
-    for sub = size(missings,1)
-        idx_behav(sub) = sum(missings(sub,:));
+    missings = cell2mat(missings);
+    
+else
+    
+    outcome_vars_between_idx = contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,behav_outcome);
+    outcome_vars_between = DAT.BEHAVIOR.behavioral_data_table(:,outcome_vars_between_idx);
+    
+    for var = 1:sum(outcome_vars_between_idx)
+        missings{var} = isnan(table2array(outcome_vars_between(:,var))); % index for subjects with missing behavioral data, which we want to exclude
     end
+    
+    missings = cell2mat(missings);
+    
+end
+
+for sub = size(missings,1)
+    idx_behav(sub) = sum(missings(sub,:));
+end
     
 clear sub var out con2ex
 
@@ -111,11 +126,11 @@ idx_exclude = ~ismember(subjs,subjs2use);
 subjs2use = subjs2use';
 subjs2exclude = subjs(idx_exclude,:); 
 
-    if ~isempty(subjs2exclude)
-        warning('subjects %s are missing behavioral data for at least one entire condition - excluding them from analysis',char(subjs2exclude))
-    else
-        warning('no subjects with missing behavioral data for entire condition - including all subjects in analysis')
-    end
+if ~isempty(subjs2exclude)
+    warning('subjects %s are missing behavioral data for at least one entire condition - excluding them from analysis',char(subjs2exclude))
+else
+    warning('no subjects with missing behavioral data for entire condition - including all subjects in analysis')
+end
 
     
 %% READ CON IMAGES AND VIFS AND ADD TO FMRI_DATA_ST OBJECT
@@ -285,7 +300,7 @@ ylabel('variance inflation factor');
 
 good_trials_idx = fmri_dat.metadata_table.vifvalue < vif_threshold;
 bad_trials_perc = sum(~good_trials_idx)./size(fmri_dat.metadata_table.vifvalue,1).*100;
-sprintf('%4.2f percent of trials exceeds a vif threshold of %d, indicating multicollinearity with noise regressors; script will remove them',bad_trials_perc,vif_threshold);
+sprintf('%4.2f percent of trials exceeds a vif threshold of %d, indicating multicollinearity with noise regressors; script will remove them',bad_trials_perc,vif_threshold)
 
 % per subject
 
@@ -324,6 +339,13 @@ clear sub subject_id_vifs uniq_subject_id_vifs n_subj_vifs this_idx_vifs this_vi
 %% SAVE FMRI_DATA_ST OBJECT
 %--------------------------------------------------------------------------
 
-savefilename = fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_', results_suffix, '.mat']);
+if ~isempty(cons2exclude)
+    savefilename = fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_exclude_cond_', char([cons2exclude{:}]), '_', results_suffix, '.mat']);
+
+else
+    savefilename = fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_', results_suffix, '.mat']);
+
+end
+
 save(savefilename, 'fmri_dat', 'cons2exclude', 'behav_outcome', 'subj_identifier', 'cond_identifier');
 

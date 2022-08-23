@@ -83,7 +83,7 @@
 %       'onesample': use subject id only
 %           no group factor, stratifies by subject (i.e. leave whole subject out)
 % nfolds_mvpa_reg_st: default 5; number of cross-validation folds for kfold
-% zscore_outcome: default false; true zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
+% zscore_outcome_mvpa_reg_st: default false; true zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
 % maskname_mvpa_reg_st: default which('gray_matter_mask_sparse.img');
 %       - default use of sparse gray matter mask
 %       - maskdir now defined in a_set_up_paths_always_run_first script
@@ -118,8 +118,8 @@
 % author: lukas.vanoudenhove@kuleuven.be, bogpetre@gmail.com
 % date:   April, 2021
 %__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v5.0        
-% last modified: 2022/08/09
+% @(#)% c2f_run_MVPA_regression_single_trial     v5.1        
+% last modified: 2022/08/16
 
 
 %% GET AND SET OPTIONS
@@ -134,6 +134,7 @@ a_set_up_paths_always_run_first;
 
 % SET/COPY MANDATORY OPTIONS FROM CORRESPONDING PREP_3f_ SCRIPT
 
+cons2exclude = {}; % cell array of condition names to exclude, separated by commas (or blanks)
 results_suffix = ''; % suffix of your choice added to .mat file with saved results
 behav_outcome = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
 subj_identifier = 'participant_id'; % name of subject identifier variable in same table
@@ -161,9 +162,14 @@ if ~exist('DSGN','var') || ~exist('DAT','var')
 end
 
 if ~exist('fmri_dat','var')
+    
+    if ~isempty(cons2exclude)
+        load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_exclude_cond_', char([cons2exclude{:}]), '_', results_suffix, '.mat']));
+        
+    else
+        load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_', results_suffix, '.mat']));
 
-    load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_', results_suffix, '.mat']));
-
+    end
 end
 
 
@@ -240,7 +246,7 @@ n_subj = size(uniq_subject_id,1);
 
 % NOTE: useful for more interpretable values of prediction MSE
 
-    if zscore_outcome
+    if zscore_outcome_mvpa_reg_st
 
         fmri_dat.Y = zscore(fmri_dat.Y);
         fprintf('\nZ-scoring outcome fmri_dat.Y across subjects\n');
@@ -497,7 +503,7 @@ clear sub
             figure
 
             line_plot_multisubject(fmri_dat.Y, stats.yfit, 'subjid', subject_id);
-            xlabel({['Observed ' behav_outcome],'(average over conditions)'}); ylabel({['SVR Estimated ' behav_outcome],'(cross validated)'})
+            xlabel({['Observed ' behav_outcome],'(average over conditions)'}); ylabel({['Estimated ' behav_outcome],'(cross validated)'})
 
             set(gcf,'WindowState','Maximized');
             drawnow, snapnow;
@@ -860,11 +866,24 @@ parpool(round(0.8*nw));
 if dosavemvparegstats
     
     if exist('maskname_short', 'var')
-        savefilename = fullfile(resultsdir, 'single_trial_', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', results_suffix, '_results.mat');
-    
-    else
-        savefilename = fullfile(resultsdir, 'single_trial_', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', results_suffix, '_results.mat');
         
+        if ~isempty(cons2exclude)
+            savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome, '_exclude_cond_', char([cons2exclude{:}]), '_', results_suffix, '_results.mat']);
+            
+        else
+            savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome, '_', results_suffix, '_results.mat']);
+        
+        end
+        
+    else
+        
+        if ~isempty(cons2exclude)
+                        savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome, '_exclude_cond_', char([cons2exclude{:}]), '_', results_suffix, '_results.mat']);
+            
+        else
+            savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome, '_', results_suffix, '_results.mat']);
+        
+        end
     end
     
     save(savefilename, 'stats', '-v7.3');

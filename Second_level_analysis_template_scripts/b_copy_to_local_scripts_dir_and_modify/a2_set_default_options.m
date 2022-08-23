@@ -123,7 +123,7 @@ myscaling_svm_between = 'raw'; % see above
 %% PREP_3F_CREATE_FMRI_DATA_SINGLE_TRIAL_OBJECT
 %----------------------------------------------
 
-cons2exclude = {'water'}; % cell array of condition names to exclude, separated by commas (or blanks)
+cons2exclude = {}; % cell array of condition names to exclude, separated by commas (or blanks)
 behav_outcome = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
 subj_identifier = 'participant_id'; % name of subject identifier variable in same table
 cond_identifier = 'trial_type'; % name of condition identifier variable in same table
@@ -153,7 +153,7 @@ holdout_set_method_mvpa_reg_st = 'onesample';                   % 'group', or 'o
                                                                     % @lukasvo76: no group factor, stratifies by
                                                                     % subject (i.e. leave whole subject out)
 nfolds_mvpa_reg_st = 5;                                         % default 5; number of cross-validation folds for kfold
-zscore_outcome = false;                                         % default false; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
+zscore_outcome_mvpa_reg_st = false;                             % default false; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
 maskname_mvpa_reg_st = which('gray_matter_mask_sparse.img');    % see above
 myscaling_mvpa_reg_st = 'raw';                                  % options are 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
 
@@ -172,6 +172,29 @@ k_threshold_mvpa_reg_st = 10;                                   % default 10    
 dosavemvparegstats = true;                                      % see saving options above
 
 domultilevel_mvpa_reg_st = false;                               % default false; fits multilevel mvpa models - WORK IN PROGRESS
+
+
+%% C2G_RUN_MULTILEVEL_MEDIATION_SINGLE_TRIAL
+%-----------------------------------------------------------------------------------------------------------------------
+
+% GENERAL OPTIONS
+%----------------
+
+save_figures_pdm = false;                                        % default false; % true saves .svg files of all figures (slow, takes up space)
+zscore_outcome_pdm = false;                                     % default false; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
+maskname_pdm = which('gray_matter_mask_sparse.img');            % see above
+myscaling_pdm = 'raw';                                          % options are 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
+
+% STATISTICS AND RESULTS VISUALIZATION OPTIONS
+%---------------------------------------------
+nPDM = 10;                                                      % default 10        number of PDMs to retain, chances are very low that meaningful variance is explained by PDM # > 10
+dobootstrap_pdm = false;                                        % default false     bootstrapping; takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to 10k samples
+    boot_n_pdm = 5000;                                              % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
+dosourcerecon_pdm = false;                                      % default false     source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
+p_threshold_pdm = .005;                                         % default .005       threshold for FDR-corrected display items
+k_threshold_pdm = 10;                                           % default 10        extent threshold for FDR-corrected display items 
+dosavepdmstats = true;                                          % see saving options above
+
 
 %% prep_4_apply_signatures_and_save options 
 % --------------------------------------------------------------------

@@ -419,7 +419,7 @@ for c = 1:kc
         nw = clust.NumWorkers;
         parpool(round(0.8*nw));
         
-        [searchlight_obj, searchlight_stats, searchlight_idx] = searchlightLukas(cat_obj, 'algorithm_name', 'cv_svm', ...
+        [searchlight_obj, searchlight_stats, ~] = searchlightLukas(cat_obj, 'algorithm_name', 'cv_svm', ...
             'r', searchlight_radius_svm, 'holdout_set', holdout_set, 'do_online', 'no_weights');
     
     end
@@ -438,7 +438,6 @@ for c = 1:kc
                 
             case 'oofmridataobj'
                 r = region(weight_obj);
-                
         end
     
     o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
