@@ -58,8 +58,8 @@
 % author: lukas.vanoudenhove@kuleuven.be
 % date:   August, 2022
 %__________________________________________________________________________
-% @(#)% c2f_run_multivariate_mediation_single_trial     v1.0        
-% last modified: 2022/08/16
+% @(#)% c2g_run_multivariate_mediation_single_trial     v1.1        
+% last modified: 2022/08/24
 %
 %
 %% GET AND SET OPTIONS
@@ -481,7 +481,7 @@ for cont = 1:size(contrastnames2include,2)
     
     for comp = 1:size(pdm.Wfull,2)
 
-        fprintf ('\nSHOWING UNTHRESHOLDED PDM RESULTS, CONTRAST: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+        fprintf ('\nSHOWING UNTHRESHOLDED PDM RESULTS, CONTRAST: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
 
         dat_unt{comp} = fmri_dat;
         dat_unt{comp}.dat = pdm.Wfull{comp};
@@ -489,7 +489,7 @@ for cont = 1:size(contrastnames2include,2)
         reg_unt{comp} = region(dat_unt{comp});
 
         o2 = montage(reg_unt{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-        o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' unthresholded PDM #' num2str(comp), ' ', mask_string]);
+        o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' unthresholded PDM #' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
 
         figtitle = sprintf('%s_unthresholded_montage_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
         set(gcf, 'Tag', figtitle, 'WindowState','maximized');
@@ -543,6 +543,8 @@ for cont = 1:size(contrastnames2include,2)
             end % for loop over pdm components
 
             if dosavepdmstats
+                
+                fprintf('\nSAVING SOURCE RECONSTRUCTION RESULTS\n');
 
                 if exist('maskname_short', 'var')
                     savefilename_source_recon = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']);
@@ -578,12 +580,12 @@ for cont = 1:size(contrastnames2include,2)
     
     for comp = 1:size(pdm.Wfull,2)
 
-        fprintf ('\nSHOWING UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS, CONTRAST: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+        fprintf ('\nSHOWING UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS, CONTRAST: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
         
         reg_sc{comp} = region(source_obj_cont{comp});
 
         o2 = montage(reg_sc{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-        o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' source reconstruction unthresholded PDM #' num2str(comp), ' ', mask_string]);
+        o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' source reconstruction unthresholded PDM #' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
 
         figtitle = sprintf('%s_unthresholded_montage_source_reconstruction_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
         set(gcf, 'Tag', figtitle, 'WindowState','maximized');
@@ -603,7 +605,7 @@ for cont = 1:size(contrastnames2include,2)
     
         % FDR-CORRECTED
 
-        fprintf ('\nSHOWING FDR-CORRECTED PDM RESULTS, CONTRAST: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+        fprintf ('\nSHOWING FDR-CORRECTED PDM RESULTS, CONTRAST: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
 
         for comp = 1:size(pdm.Wfull,2)
 
@@ -613,7 +615,7 @@ for cont = 1:size(contrastnames2include,2)
 
             % Results table
 
-            fprintf ('\nTable bootstrapped PDM results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+            fprintf ('\nTable bootstrapped PDM results, contrast: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
             fprintf('FDR q < .05 = p < %3.8f\n', pdm.pThreshold(comp));
 
             [reg_fdr{comp}, ~, ~ ] = autolabel_regions_using_atlas(reg_fdr{comp});
@@ -624,11 +626,11 @@ for cont = 1:size(contrastnames2include,2)
 
             % Montage
 
-            fprintf ('\nMontage bootstrapped PDM results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+            fprintf ('\nMontage bootstrapped PDM results, contrast: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
             fprintf('FDR q < .05 = p < %3.8f\n', pdm.pThreshold(comp));
 
             o2 = montage(reg_all_fdr{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-            o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' FDR-corrected PDM # ' num2str(comp), ' ', mask_string]);
+            o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' FDR-corrected PDM # ' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
 
             figtitle = sprintf('%s_FDR_montage_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
             set(gcf, 'Tag', figtitle, 'WindowState','maximized');
@@ -640,7 +642,7 @@ for cont = 1:size(contrastnames2include,2)
 
             % Regioncenters
 
-            fprintf ('\nRegioncenters bootstrapped PDM results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+            fprintf ('\nRegioncenters bootstrapped PDM results, contrast: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
             fprintf('FDR q < .05 = p < %3.8f\n', pdm.pThreshold(comp));
 
                 % Positive weights

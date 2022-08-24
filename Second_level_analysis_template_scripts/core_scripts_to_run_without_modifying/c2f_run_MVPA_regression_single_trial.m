@@ -151,6 +151,10 @@ subj_identifier = 'participant_id'; % name of subject identifier variable in sam
 %% LOAD FMRI_DATA_ST OBJECT AND OTHER NECESSARY VARIABLES IF NEEDED
 %--------------------------------------------------------------------------
 
+fprintf('\n\n');
+printhdr('LOADING DATA');
+fprintf('\n\n');
+
 if ~exist('DSGN','var') || ~exist('DAT','var')
 
     load(fullfile(resultsdir,'image_names_and_setup.mat'));
@@ -184,6 +188,10 @@ n_subj = size(uniq_subject_id,1);
 
 %% SCALE AND/OR MASK IMAGES AND BEHAVIORAL OUTCOME ACCORDING TO OPTIONS
 %--------------------------------------------------------------------------
+
+fprintf('\n\n');
+printhdr('MASKING AND SCALING IMAGES IF REQUESTED IN OPTIONS');
+fprintf('\n\n');
 
 % MASKING IMAGES
 %---------------
@@ -257,6 +265,10 @@ n_subj = size(uniq_subject_id,1);
 %% DATA VISUALISATION PRIOR TO MODEL BUILDING
 %--------------------------------------------------------------------------
 
+fprintf('\n\n');
+printhdr('PLOTTING DATA');
+fprintf('\n\n');
+
 % BETA IMAGES
 %------------
 
@@ -328,6 +340,10 @@ clear sub
 %--------------------------------------------------------------------------
 
 % NOTE: algorithm choice set in a2_default_options.m
+
+fprintf('\n\n');
+printhdr(['RUNNING ', upper(algorithm_mvpa_reg_st)]);
+fprintf('\n\n');
 
 % RUN PREDICTIVE REGRESSION MODEL
 %--------------------------------
@@ -492,13 +508,19 @@ clear sub
 % VISUALIZE RESULTS
 %------------------
 
+fprintf('\n\n');
+printhdr('VISUALIZING RESULTS');
+fprintf('\n\n');
+
 % PLOT OBSERVED VERSUS PREDICTED
+
+fprintf('\nPLOTTING OBSERVED VERSUS PREDICTED\n');
 
     switch ml_method_mvpa_reg_st
 
         case 'predict'
 
-            fprintf('%s r = %0.3f\n', algorithm_mvpa_reg_st, corr(stats.yfit, fmri_dat.Y));
+            fprintf('\n%s r = %0.3f\n', algorithm_mvpa_reg_st, corr(stats.yfit, fmri_dat.Y));
 
             figure
 
@@ -518,8 +540,8 @@ clear sub
 
             cv_mse = mean(cvGS.scores); % average MSE over folds = cv model performance
 
-            fprintf('%s cross-validated r = %0.3f\n', algorithm_mvpa_reg_st, cv_r);
-            fprintf('%s cross-validated mse = %0.3f\n', algorithm_mvpa_reg_st, cv_mse);
+            fprintf('\n%s cross-validated r = %0.3f\n', algorithm_mvpa_reg_st, cv_r);
+            fprintf('\n%s cross-validated mse = %0.3f\n', algorithm_mvpa_reg_st, cv_mse);
 
             f1 = cvGS.plot; % plots predicted versus observed
 
@@ -531,9 +553,11 @@ clear sub
 
 % PLOT MONTAGE OF UNTHRESHOLDED WEIGHTS
 
+fprintf('\nPLOTTING WEIGHT MAPS\n');
+
     whmontage = 5;
 
-    fprintf ('\nShowing unthresholded %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
+    fprintf ('\nSHOWING UNTHRESHOLDED %s RESULTS, %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
 
     figure
 
@@ -571,6 +595,8 @@ nw = c.NumWorkers;
 parpool(round(0.8*nw));
 
     if dobootstrap_mvpa_reg_st
+        
+        fprintf('\nBOOTSTRAPPING WEIGHT MAPS\n');
 
         t0_boot = tic;
 
@@ -610,85 +636,87 @@ parpool(round(0.8*nw));
 % NEEDS CHECK BY PHIL!
 
     if doperm_mvpa_reg_st
+        
+        fprintf('\nPERFORMING PERMUTATION TESTS\n');
 
-    t0_perm = tic;
+        t0_perm = tic;
 
-    % OBTAIN PERMUTATION WEIGHTS
+        % OBTAIN PERMUTATION WEIGHTS
 
-    null_beta = zeros(perm_n_mvpa_reg_st,size(fmri_dat.dat,1)); % number of permutations, number of voxels
-    null_weights = zeros(perm_n_mvpa_reg_st,size(fmri_dat.dat,1));
+        null_beta = zeros(perm_n_mvpa_reg_st,size(fmri_dat.dat,1)); % number of permutations, number of voxels
+        null_weights = zeros(perm_n_mvpa_reg_st,size(fmri_dat.dat,1));
 
-        parfor perm = 1:perm_n_mvpa_reg_st
+            parfor perm = 1:perm_n_mvpa_reg_st
 
-            regress_stats_null = cell(max(fold_labels),1);
-            betas_null = zeros(max(fold_labels),size(fmri_dat.dat,1));
+                regress_stats_null = cell(max(fold_labels),1);
+                betas_null = zeros(max(fold_labels),size(fmri_dat.dat,1));
 
-            random_inds=randperm(size(fmri_dat.Y,1)); % number of images/ratings over subjects
-            temp_dat=fmri_dat;
-            temp_dat.Y=temp_dat.Y(random_inds);
-            
+                random_inds=randperm(size(fmri_dat.Y,1)); % number of images/ratings over subjects
+                temp_dat=fmri_dat;
+                temp_dat.Y=temp_dat.Y(random_inds);
+
+                switch ml_method_mvpa_reg_st
+
+                    case 'predict'
+                        [~, stats_null] = predict(temp_dat, 'algorithm_name', algorithm_mvpa_reg_st, 'nfolds', fold_labels, ...
+                            'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
+
+                    case 'oofmridataobj'
+                        [~, stats_null] = predict(temp_dat, 'algorithm_name', algorithm_mvpa_reg_st, 'nfolds', fold_labels, ...
+                            'numcomponents', bo_numcomponents, 'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
+
+                end
+
+                for k = 1:max(fold_labels) % number of cv folds
+                    regress_data_null = fmri_dat;
+                    regress_data_null.X = stats_null.yfit(fold_labels==k);
+                    regress_data_null.dat = regress_data_null.dat(:,fold_labels==k);
+                    regress_stats_null{k} = regress(regress_data_null,'nodisplay','noverbose');
+            %                         tv = replace_empty(regress_stats(k).b);
+                    betas_null(k,:) = regress_stats_null{k}.b.dat(:,1);
+                end
+
+                null_beta(perm,:) = mean(betas_null);
+                null_weights(perm,:) = stats_null.weight_obj.dat;
+
+                perm/perm_n_mvpa_reg_st
+
+            end % parfor loop over number of permutations
+
+        % GET PROBABILITY FOR OBSERVED WEIGHTS FROM PERMUTATON WEIGHTS
+
             switch ml_method_mvpa_reg_st
-    
+
                 case 'predict'
-                    [~, stats_null] = predict(temp_dat, 'algorithm_name', algorithm_mvpa_reg_st, 'nfolds', fold_labels, ...
-                        'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
+                    mean_weight = stats.weight_obj.dat;
 
                 case 'oofmridataobj'
-                    [~, stats_null] = predict(temp_dat, 'algorithm_name', algorithm_mvpa_reg_st, 'nfolds', fold_labels, ...
-                        'numcomponents', bo_numcomponents, 'error_type', 'mse', parallelstr_mvpa_reg_st, 'verbose', 0);
-                    
-            end
-            
-            for k = 1:max(fold_labels) % number of cv folds
-                regress_data_null = fmri_dat;
-                regress_data_null.X = stats_null.yfit(fold_labels==k);
-                regress_data_null.dat = regress_data_null.dat(:,fold_labels==k);
-                regress_stats_null{k} = regress(regress_data_null,'nodisplay','noverbose');
-        %                         tv = replace_empty(regress_stats(k).b);
-                betas_null(k,:) = regress_stats_null{k}.b.dat(:,1);
+                    mean_weight = weight_obj.dat;
+
             end
 
-            null_beta(perm,:) = mean(betas_null);
-            null_weights(perm,:) = stats_null.weight_obj.dat;
+            for weight = 1:size(null_weights,2)
 
-            perm/perm_n_mvpa_reg_st
+                phat(weight) = 1-sum(mean_weight(weight) > null_weights(:,weight)) / (1+size(null_weights,1));
 
-        end % parfor loop over number of permutations
+                switch perm_sidedness
+                    case 'both'
+                        phat(weight) = (length(find(abs(null_weights(:,weight)) > abs(mean_weight(weight))))+1) / (perm_n_mvpa_reg_st+1); 
+                    case 'smaller'
+                        phat(weight) = (length(find(null_weights(:,weight) < mean_weight(weight)))+1) / (perm_n_mvpa_reg_st+1);
+                    case 'larger'
+                        phat(weight) = (length(find(null_weights(:,weight) > mean_weight(weight)))+1) / (perm_n_mvpa_reg_st+1);
+                end
 
-    % GET PROBABILITY FOR OBSERVED WEIGHTS FROM PERMUTATON WEIGHTS
-    
-        switch ml_method_mvpa_reg_st
-    
-            case 'predict'
-                mean_weight = stats.weight_obj.dat;
-                
-            case 'oofmridataobj'
-                mean_weight = weight_obj.dat;
-        
-        end
-
-        for weight = 1:size(null_weights,2)
-
-            phat(weight) = 1-sum(mean_weight(weight) > null_weights(:,weight)) / (1+size(null_weights,1));
-
-            switch perm_sidedness
-                case 'both'
-                    phat(weight) = (length(find(abs(null_weights(:,weight)) > abs(mean_weight(weight))))+1) / (perm_n_mvpa_reg_st+1); 
-                case 'smaller'
-                    phat(weight) = (length(find(null_weights(:,weight) < mean_weight(weight)))+1) / (perm_n_mvpa_reg_st+1);
-                case 'larger'
-                    phat(weight) = (length(find(null_weights(:,weight) > mean_weight(weight)))+1) / (perm_n_mvpa_reg_st+1);
             end
 
-        end
+        clear weight;
 
-    clear weight;
+        perm_stats_obj = bs_stats.weight_obj; % initiate perm_stats_obj as a statistic_image object identical to bs_stats.weight_obj - is easiest from existing object, but will not work if bootstrapping not (yet) performed
+        perm_stats_obj.dat = mean_weight; % Store weights and p-values in statistic_image object
+        perm_stats_obj.p = phat';
 
-    perm_stats_obj = bs_stats.weight_obj; % initiate perm_stats_obj as a statistic_image object identical to bs_stats.weight_obj - is easiest from existing object, but will not work if bootstrapping not (yet) performed
-    perm_stats_obj.dat = mean_weight; % Store weights and p-values in statistic_image object
-    perm_stats_obj.p = phat';
-    
-    t_end_perm = toc(t0_perm);
+        t_end_perm = toc(t0_perm);
     
     end % if loop permutation
 
@@ -696,11 +724,15 @@ parpool(round(0.8*nw));
 % VISUALIZE BOOTSTRAPPING, AND/OR PERMUTATION RESULTS
 %----------------------------------------------------
 
+fprintf('\n\n');
+printhdr('VISUALIZE BOOTSTRAPPING AND/OR PERMUTATION RESULTS');
+fprintf('\n\n');
+
     % PLOT MONTAGE OF THRESHOLDED WEIGHTS AFTER BOOTSTRAPPING AND/OR PERMUTATION TESTING
 
     if dobootstrap_mvpa_reg_st
 
-        fprintf ('\nShowing bootstrapped %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
+        fprintf ('\nSHOWING BOOTSTRAPPED %s RESULTS, %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
 
         figure
 
@@ -723,7 +755,7 @@ parpool(round(0.8*nw));
     
     if doperm_mvpa_reg_st
 
-        fprintf ('\nShowing permutation %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
+        fprintf ('\nSHOWING PERMUTATION %s RESULTS, %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
 
         figure
 
@@ -749,6 +781,12 @@ parpool(round(0.8*nw));
 %---------------------------------------------------------------------------------------------------
 
     if dosourcerecon_mvpa_reg_st
+        
+        fprintf('\n\n');
+        printhdr('SOURCE RECONSTRUCTION');
+        fprintf('\n\n');
+        
+        fprintf('\nCALCULATING SOURCE RECONSTRUCTION MAPS\n');
 
     % OBTAIN SOURCE RECONSTRUCTION WEIGHTS
     %-------------------------------------
@@ -790,7 +828,8 @@ parpool(round(0.8*nw));
 
     % VISUALIZE UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS
     % -----------------------------------------------------
-        fprintf ('\nShowing unthresholded source reconstruction %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
+        
+        fprintf ('\nSHOWING UNTHRESHOLDED SOURCE RECONSTRUCTION %s RESULTS, %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
 
         figure
 
@@ -814,6 +853,8 @@ parpool(round(0.8*nw));
         
     % PERFORM PERMUTATION ON SOURCE RECONSTRUCTION WEIGHTS
     % ----------------------------------------------------
+    
+    fprintf('\nPERFORMING PERMUTATION TESTS ON SOURCE RECONSTRUCTION MAPS\n');
 
         % GET PROBABILITY FOR OBSERVED SOURCE RECONSTRUCTION WEIGHTS FROM PERMUTATON WEIGHTS
 
@@ -838,7 +879,7 @@ parpool(round(0.8*nw));
         
         % VISUALIZE THRESHOLDED SOURCE RECONSTRUCTION RESULTS AFTER PERMUTATION
 
-        fprintf ('\nShowing permutation source reconstruction %s results, %s\nScaling: %s\n\n', algorithm_mvpa_reg_st, mask_string, myscaling_mvpa_reg_st);
+        fprintf ('\nSHOWING PERMUTATION SOURCE RECONSTRUCTION %s RESULTS, %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
 
         figure
 
@@ -864,6 +905,10 @@ parpool(round(0.8*nw));
 %--------------------------------------------------------------------------
 
 if dosavemvparegstats
+    
+    fprintf('\n\n');
+    printhdr('SAVING ALL RESULTS');
+    fprintf('\n\n');
     
     if exist('maskname_short', 'var')
         
