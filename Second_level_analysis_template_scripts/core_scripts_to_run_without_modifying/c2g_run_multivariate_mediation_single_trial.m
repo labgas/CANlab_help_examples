@@ -67,7 +67,7 @@
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
-a_set_up_paths_always_run_first;
+% a_set_up_paths_always_run_first;
 
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
@@ -91,6 +91,10 @@ cond_identifier = 'trial_type'; % name of condition identifier variable in same 
 
 %% LOAD FMRI_DATA_ST OBJECT AND OTHER NECESSARY VARIABLES IF NEEDED
 %--------------------------------------------------------------------------
+
+fprintf('\n\n');
+printhdr('LOADING DATA');
+fprintf('\n\n');
 
 if ~exist('DSGN','var') || ~exist('DAT','var')
 
@@ -169,6 +173,10 @@ end
 %% SCALE AND/OR MASK IMAGES AND BEHAVIORAL OUTCOME ACCORDING TO OPTIONS
 %--------------------------------------------------------------------------
 
+fprintf('\n\n');
+printhdr('MASKING AND SCALING IMAGES IF REQUESTED IN OPTIONS');
+fprintf('\n\n');
+
 % MASKING IMAGES
 %---------------
 
@@ -243,6 +251,10 @@ end
 %% DATA VISUALISATION PRIOR TO MODEL BUILDING
 %--------------------------------------------------------------------------
 
+fprintf('\n\n');
+printhdr('PLOTTING DATA');
+fprintf('\n\n');
+
 % BETA IMAGES
 %------------
 
@@ -313,7 +325,15 @@ clear sub
 %% SET UP AND RUN MULTIVARIATE MEDIATION
 %--------------------------------------------------------------------------
 
+fprintf('\n\n');
+printhdr('RUNNING MULTIVARIATE MEDIATION');
+fprintf('\n\n');
+
 for cont = 1:size(contrastnames2include,2)
+    
+    fprintf('\n\n');
+    printhdr(['CONTRAST: ',contrastnames2include{cont}]);
+    fprintf('\n\n');
     
     % SET UP
     %-------
@@ -359,6 +379,8 @@ for cont = 1:size(contrastnames2include,2)
         end % for loop subjects
         
         if dosavepdmstats
+            
+            fprintf('\nSAVING DATA OBJECTS\n');
         
             if exist('maskname_short', 'var')
                 savefilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', maskname_short, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
@@ -374,6 +396,8 @@ for cont = 1:size(contrastnames2include,2)
         
     % RUN MULTIVARIATE MEDIATION
     % --------------------------
+    
+        fprintf('\nCALCULATING FULL PDM PATH COEFFICIENTS\n');
 
         pdm = multivariateMediation(X,Y,M,'nPDM',nPDM,'plots'); 
         set(gcf,'WindowState','maximized');
@@ -388,9 +412,13 @@ for cont = 1:size(contrastnames2include,2)
         first_localmax = first_localmax(1,1);
         nPDM2retain = first_localmax-1;
         
+        fprintf('\nREDUCED PDM PATH COEFFICIENTS\n');
+        
         pdm = multivariateMediation(pdm,'nPDM',nPDM2retain);
         
         if dosavepdmstats
+            
+            fprintf('\nSAVING PDM RESULTS\n');
         
             if exist('maskname_short', 'var')
                 savefilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', maskname_short, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
@@ -401,6 +429,9 @@ for cont = 1:size(contrastnames2include,2)
             end
             
             if dobootstrap_pdm
+                
+                fprintf('\nBOOTSTRAPPING REDUCED PDM PATH COEFFICIENTS\n');
+                
                 pdm = multivariateMediation(pdm, 'noPDMestimation','bootPDM',1:nPDM2retain,'bootjPDM','Bsamp',boot_n_pdm,'save2file',savefilename_pdm); 
                 
             else
@@ -413,6 +444,9 @@ for cont = 1:size(contrastnames2include,2)
         else
             
             if dobootstrap_pdm
+                
+                fprintf('\nBOOTSTRAPPING REDUCED PDM PATH COEFFICIENTS\n');
+                
                 pdm = multivariateMediation(pdm,'noPDMestimation','bootPDM',1:nPDM2retain,'bootjPDM','Bsamp',boot_n_pdm); 
                 
             end
@@ -447,7 +481,7 @@ for cont = 1:size(contrastnames2include,2)
     
     for comp = 1:size(pdm.Wfull,2)
 
-        fprintf ('\nShowing unthresholded PDM results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+        fprintf ('\nSHOWING UNTHRESHOLDED PDM RESULTS, CONTRAST: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
 
         dat_unt{comp} = fmri_dat;
         dat_unt{comp}.dat = pdm.Wfull{comp};
@@ -455,7 +489,7 @@ for cont = 1:size(contrastnames2include,2)
         reg_unt{comp} = region(dat_unt{comp});
 
         o2 = montage(reg_unt{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-        o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' unthresholded PDM # ' num2str(comp), ' ', mask_string]);
+        o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' unthresholded PDM #' num2str(comp), ' ', mask_string]);
 
         figtitle = sprintf('%s_unthresholded_montage_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
         set(gcf, 'Tag', figtitle, 'WindowState','maximized');
@@ -476,6 +510,8 @@ for cont = 1:size(contrastnames2include,2)
         % "source reconstruction is thus no more than a covariance map which
         % shows how much each voxel covaries with model prediction across images" - Bogdan
         % ref Haufe et al, NeuroImage 2014
+        
+        fprintf('\nCALCULATING SOURCE RECONSTRUCTION MAPS\n');
         
         if ~exist(fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']),'file') || ...
                 ~exist(fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']),'file')
@@ -542,12 +578,12 @@ for cont = 1:size(contrastnames2include,2)
     
     for comp = 1:size(pdm.Wfull,2)
 
-        fprintf ('\nShowing unthresholded source reconstruction results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+        fprintf ('\nSHOWING UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS, CONTRAST: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
         
         reg_sc{comp} = region(source_obj_cont{comp});
 
         o2 = montage(reg_sc{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-        o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' source reconstruction unthresholded PDM # ' num2str(comp), ' ', mask_string]);
+        o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' source reconstruction unthresholded PDM #' num2str(comp), ' ', mask_string]);
 
         figtitle = sprintf('%s_unthresholded_montage_source_reconstruction_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
         set(gcf, 'Tag', figtitle, 'WindowState','maximized');
@@ -567,7 +603,7 @@ for cont = 1:size(contrastnames2include,2)
     
         % FDR-CORRECTED
 
-        printhdr('FDR-corrected results');
+        fprintf ('\nSHOWING FDR-CORRECTED PDM RESULTS, CONTRAST: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
 
         for comp = 1:size(pdm.Wfull,2)
 
@@ -577,7 +613,7 @@ for cont = 1:size(contrastnames2include,2)
 
             % Results table
 
-            fprintf ('\nShowing bootstrapped PDM results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+            fprintf ('\nTable bootstrapped PDM results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
             fprintf('FDR q < .05 = p < %3.8f\n', pdm.pThreshold(comp));
 
             [reg_fdr{comp}, ~, ~ ] = autolabel_regions_using_atlas(reg_fdr{comp});
@@ -588,7 +624,7 @@ for cont = 1:size(contrastnames2include,2)
 
             % Montage
 
-            fprintf ('\nShowing bootstrapped PDM results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+            fprintf ('\nMontage bootstrapped PDM results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
             fprintf('FDR q < .05 = p < %3.8f\n', pdm.pThreshold(comp));
 
             o2 = montage(reg_all_fdr{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
@@ -604,7 +640,7 @@ for cont = 1:size(contrastnames2include,2)
 
             % Regioncenters
 
-            fprintf ('\nShowing bootstrapped PDM results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
+            fprintf ('\nRegioncenters bootstrapped PDM results, contrast: %s, PDM #%s, %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string);
             fprintf('FDR q < .05 = p < %3.8f\n', pdm.pThreshold(comp));
 
                 % Positive weights
@@ -649,7 +685,8 @@ for cont = 1:size(contrastnames2include,2)
 
             end
             
-            printhdr('Saving region objects and tables to disk');
+            fprintf('\n\n');
+            fprintf('\nSAVING REGION OBJECTS AND TABLES\n');
             disp('dat_fdr, etc.  : cell array of thresholded data objects at FDR threshold');
             disp('dat_unc, etc.  : cell array of thresholded data objects at uncorrected threshold');
             disp('In cell arrays of data objects, dat_*{i}.dat contains thresholded data for the i-th pdm');
@@ -666,8 +703,9 @@ for cont = 1:size(contrastnames2include,2)
             disp('results_table_fdr, etc.  : cell array of tables at FDR threshold');
             disp('results_table_unc, etc.  : cell array of tables at uncorrected threshold');
             disp('Use these data to write tables to excel etc');
+            fprintf('\n\n');
                 
-            save(savefilename_regions, 'dat_fdr', 'dat_unc', 'reg_*', 'results_*'); 
+            save(savefilename_regions, 'dat_fdr', 'dat_unt', 'reg_*', 'results_*'); 
             
         end % if dosavepdmstats
         
