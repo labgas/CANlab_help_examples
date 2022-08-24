@@ -120,8 +120,8 @@
 %__________________________________________________________________________
 % @(#)% c2f_run_MVPA_regression_single_trial     v5.1        
 % last modified: 2022/08/16
-
-
+%
+%
 %% GET AND SET OPTIONS
 %--------------------------------------------------------------------------
 
@@ -569,7 +569,7 @@ fprintf('\nPLOTTING WEIGHT MAPS\n');
                 w = region(stats.weight_obj);
 
             case 'oofmridataobj'
-                w=region(weight_obj);
+                w = region(weight_obj);
 
         end
 
