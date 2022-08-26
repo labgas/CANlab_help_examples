@@ -12,8 +12,12 @@
 % object if it is saved by the previous script.
 %
 % Options for this script are set in a2_set_default_options.m, see that
-% script for more info. Many of these options get passed into CANlab's
-% predict function - help predict in Matlab command window for more info
+% script and below for more info. 
+% Many of these options get passed into CANlab's predict function:
+% help fmri_data.predict in Matlab command window for more info
+%
+% Run this script with Matlab's publish function to generate html report of results:
+% publish('c2f_run_MVPA_regression_single_trial','outputDir',htmlsavedir)
 %
 %
 % TUTORIALS AND DOCUMENTATION
@@ -60,7 +64,8 @@
 % OPTIONS
 % -------
 %
-% NOTE: defaults are specified in a2_set_default_options for any given model,
+% NOTE: 
+% defaults are specified in a2_set_default_options for any given model,
 % but if you want to run the same model with different options, 
 % you can make a copy of this script with a letter index (e.g. _s6a_) 
 % and change the default options below
@@ -109,19 +114,21 @@
 % domultilevel_mvpa_reg_st: default false; fits multilevel mvpa models - WORK IN PROGRESS
 %
 %
-% IMPORTANT NOTE: This script is work in progress, particularly the permutation,
-% multilevel, and oofmridataobj options are still undergoing improvement
-% and full testing
+% IMPORTANT NOTE
+% --------------
+%
+% This script is work in progress, particularly the permutation and multilevel
+% options are still undergoing improvement and full testing
 %
 %__________________________________________________________________________
 %
 % author: lukas.vanoudenhove@kuleuven.be, bogpetre@gmail.com
 % date:   April, 2021
 %__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v5.1        
-% last modified: 2022/08/16
-%
-%
+% @(#)% c2f_run_MVPA_regression_single_trial     v5.2        
+% last modified: 2022/08/25
+
+
 %% GET AND SET OPTIONS
 %--------------------------------------------------------------------------
 
@@ -160,7 +167,8 @@ if ~exist('DSGN','var') || ~exist('DAT','var')
     load(fullfile(resultsdir,'image_names_and_setup.mat'));
 
     if ~isfield(DAT,'BEHAVIOR')
-        error('\n Behavioral data not yet added to DAT structure - run prep_1b script first')
+        fprintf('\n');
+        error('Behavioral data not yet added to DAT structure - run prep_1b script first');
     end
 
 end
@@ -208,7 +216,7 @@ fprintf('\n\n');
 
     else
 
-        fprintf('\nNo mask found; using full original image data\n');
+        fprintf('\nNo mask found; using full original image data\n\n');
 
     end % if loop mask
 
@@ -220,31 +228,31 @@ fprintf('\n\n');
 
         case 'raw'
 
-            fprintf('\nNo scaling of input images\n');
+            fprintf('\nNo scaling of input images\n\n');
 
         case 'centerimages'
 
             fmri_dat = fmri_dat.rescale('centerimages'); 
-            fprintf('\nCentering input images\n');
+            fprintf('\nCentering input images\n\n');
 
         case 'l2normimages'
 
             fmri_dat = fmri_dat.rescale('l2norm_images');
-            fprintf('\nNormalizing input images by l2norm\n');
+            fprintf('\nNormalizing input images by l2norm\n\n');
 
         case 'zscoreimages'
 
             fmri_dat = fmri_dat.rescale('zscoreimages');
-            fprintf('\nZ-scoring input images\n');
+            fprintf('\nZ-scoring input images\n\n');
 
         case 'zscorevoxels'
 
             fmri_dat = fmri_dat.rescale('zscorevoxels');
-            fprintf('\nZ-scoring voxels across input images\n');
+            fprintf('\nZ-scoring voxels across input images\n\n');
 
         otherwise 
 
-            error('\ninvalid scaling option %s specified in myscaling_mvpa_reg_st variable defined in a2_set_default_options CANlabhelpexamples script, please correct\n', myscaling_mvpa_reg_st)
+            error('\ninvalid scaling option %s specified in myscaling_mvpa_reg_st variable defined in a2_set_default_options script, please correct\n\n', myscaling_mvpa_reg_st);
 
     end % switch scaling
    
@@ -257,7 +265,7 @@ fprintf('\n\n');
     if zscore_outcome_mvpa_reg_st
 
         fmri_dat.Y = zscore(fmri_dat.Y);
-        fprintf('\nZ-scoring outcome fmri_dat.Y across subjects\n');
+        fprintf('\nZ-scoring outcome fmri_dat.Y across subjects\n\n');
 
     end
 
@@ -304,6 +312,7 @@ clear sub
 % OVER SUBJECTS
 
 b1=figure;
+
 hold off;
 b1=histogram(fmri_dat.Y);
 box off
@@ -379,7 +388,7 @@ fprintf('\n\n');
 
                 otherwise
 
-                    error('\ninvalid option "%s" defined in holdout_set_method_mvpa_reg_st variable, choose between "group" and "onesample"\n',holdout_set_method_mvpa_reg_st);
+                    error('\ninvalid option "%s" defined in holdout_set_method_mvpa_reg_st variable, choose between "group" and "onesample"\n\n',holdout_set_method_mvpa_reg_st);
 
             end % switch holdout_set_method
 
@@ -408,7 +417,7 @@ fprintf('\n\n');
                     alg = pcrRegressor();
 
                 otherwise
-                    error('\nchoice of algorithm "%s" in algorithm_mvpa_reg_st option variable is not compatible with choice of machine learning method "%s" in ml_method_mvpa_reg_st option variable,\n Either chance method to "predict" or change algorithm to "cv_pcr" or "cv_pls"\n', algorithm_mvpa_reg_st, ml_method_mvpa_reg_st);
+                    error('\nchoice of algorithm "%s" in algorithm_mvpa_reg_st option variable is not compatible with choice of machine learning method "%s" in ml_method_mvpa_reg_st option variable,\n Either chance method to "predict" or change algorithm to "cv_pcr" or "cv_pls"\n\n', algorithm_mvpa_reg_st, ml_method_mvpa_reg_st);
 
             end
 
@@ -500,7 +509,7 @@ fprintf('\n\n');
 
         otherwise
 
-            error('\ninvalid option "%s" defined in ml_method_mvpa_reg_st variable, choose between "oofmridataobj" and "predict"\n',ml_method_mvpa_reg_st);
+            error('\ninvalid option "%s" defined in ml_method_mvpa_reg_st variable, choose between "oofmridataobj" and "predict"\n\n',ml_method_mvpa_reg_st);
 
     end % switch machine learning method
 
@@ -514,13 +523,15 @@ fprintf('\n\n');
 
 % PLOT OBSERVED VERSUS PREDICTED
 
-fprintf('\nPLOTTING OBSERVED VERSUS PREDICTED\n');
+fprintf('\n\n');
+printhdr('Plotting observed versus predicted');
+fprintf('\n\n');
 
     switch ml_method_mvpa_reg_st
 
         case 'predict'
 
-            fprintf('\n%s r = %0.3f\n', algorithm_mvpa_reg_st, corr(stats.yfit, fmri_dat.Y));
+            fprintf('\n%s r = %0.3f\n\n', algorithm_mvpa_reg_st, corr(stats.yfit, fmri_dat.Y));
 
             figure
 
@@ -540,8 +551,8 @@ fprintf('\nPLOTTING OBSERVED VERSUS PREDICTED\n');
 
             cv_mse = mean(cvGS.scores); % average MSE over folds = cv model performance
 
-            fprintf('\n%s cross-validated r = %0.3f\n', algorithm_mvpa_reg_st, cv_r);
-            fprintf('\n%s cross-validated mse = %0.3f\n', algorithm_mvpa_reg_st, cv_mse);
+            fprintf('\n%s cross-validated r = %0.3f\n\n', algorithm_mvpa_reg_st, cv_r);
+            fprintf('\n%s cross-validated mse = %0.3f\n\n', algorithm_mvpa_reg_st, cv_mse);
 
             f1 = cvGS.plot; % plots predicted versus observed
 
@@ -553,7 +564,9 @@ fprintf('\nPLOTTING OBSERVED VERSUS PREDICTED\n');
 
 % PLOT MONTAGE OF UNTHRESHOLDED WEIGHTS
 
-fprintf('\nPLOTTING WEIGHT MAPS\n');
+fprintf('\n\n');
+printhdr('Plotting unthresholded weight maps');
+fprintf('\n\n');
 
     whmontage = 5;
 
@@ -596,7 +609,9 @@ parpool(round(0.8*nw));
 
     if dobootstrap_mvpa_reg_st
         
-        fprintf('\nBOOTSTRAPPING WEIGHT MAPS\n');
+        fprintf('\n\n');
+        printhdr('BOOTSTRAPPING WEIGHT MAPS');
+        fprintf('\n\n');
 
         t0_boot = tic;
 
@@ -637,7 +652,9 @@ parpool(round(0.8*nw));
 
     if doperm_mvpa_reg_st
         
-        fprintf('\nPERFORMING PERMUTATION TESTS\n');
+        fprintf('\n\n');
+        printhdr('PERFORMING PERMUTATION TESTING ON WEIGHT MAPS');
+        fprintf('\n\n');
 
         t0_perm = tic;
 
@@ -645,13 +662,15 @@ parpool(round(0.8*nw));
 
         null_beta = zeros(perm_n_mvpa_reg_st,size(fmri_dat.dat,1)); % number of permutations, number of voxels
         null_weights = zeros(perm_n_mvpa_reg_st,size(fmri_dat.dat,1));
+        size_dat = size(fmri_dat.dat,1); % more efficient in parfor loop
+        size_Y = size(fmri_dat.Y,1);
 
             parfor perm = 1:perm_n_mvpa_reg_st
 
                 regress_stats_null = cell(max(fold_labels),1);
-                betas_null = zeros(max(fold_labels),size(fmri_dat.dat,1));
+                betas_null = zeros(max(fold_labels),size_dat);
 
-                random_inds=randperm(size(fmri_dat.Y,1)); % number of images/ratings over subjects
+                random_inds=randperm(size_Y); % number of images/ratings over subjects
                 temp_dat=fmri_dat;
                 temp_dat.Y=temp_dat.Y(random_inds);
 
@@ -724,9 +743,13 @@ parpool(round(0.8*nw));
 % VISUALIZE BOOTSTRAPPING, AND/OR PERMUTATION RESULTS
 %----------------------------------------------------
 
-fprintf('\n\n');
-printhdr('VISUALIZE BOOTSTRAPPING AND/OR PERMUTATION RESULTS');
-fprintf('\n\n');
+    if dobootstrap_mvpa_reg_st || doperm_mvpa_reg_st
+        
+        fprintf('\n\n');
+        printhdr('VISUALIZING BOOTSTRAPPING AND/OR PERMUTATION RESULTS');
+        fprintf('\n\n');
+        
+    end
 
     % PLOT MONTAGE OF THRESHOLDED WEIGHTS AFTER BOOTSTRAPPING AND/OR PERMUTATION TESTING
 
@@ -786,7 +809,9 @@ fprintf('\n\n');
         printhdr('SOURCE RECONSTRUCTION');
         fprintf('\n\n');
         
-        fprintf('\nCALCULATING SOURCE RECONSTRUCTION MAPS\n');
+        fprintf('\n\n');
+        printhdr('Calculating source reconstruction weights');
+        fprintf('\n\n');
 
     % OBTAIN SOURCE RECONSTRUCTION WEIGHTS
     %-------------------------------------
@@ -828,6 +853,10 @@ fprintf('\n\n');
 
     % VISUALIZE UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS
     % -----------------------------------------------------
+    
+        fprintf('\n\n');
+        printhdr('Visualizing unthresholded source reconstruction maps');
+        fprintf('\n\n');
         
         fprintf ('\nSHOWING UNTHRESHOLDED SOURCE RECONSTRUCTION %s RESULTS, %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
 
@@ -854,7 +883,9 @@ fprintf('\n\n');
     % PERFORM PERMUTATION ON SOURCE RECONSTRUCTION WEIGHTS
     % ----------------------------------------------------
     
-    fprintf('\nPERFORMING PERMUTATION TESTS ON SOURCE RECONSTRUCTION MAPS\n');
+        fprintf('\n\n');
+        printhdr('Permutation tests on source reconstruction maps');
+        fprintf('\n\n');
 
         % GET PROBABILITY FOR OBSERVED SOURCE RECONSTRUCTION WEIGHTS FROM PERMUTATON WEIGHTS
 
@@ -878,6 +909,10 @@ fprintf('\n\n');
         source_recon_perm_stats_obj.p = phat_srec';
         
         % VISUALIZE THRESHOLDED SOURCE RECONSTRUCTION RESULTS AFTER PERMUTATION
+        
+        fprintf('\n\n');
+        printhdr('Visualizing thresholded source reconstruction maps after permutation tests');
+        fprintf('\n\n');
 
         fprintf ('\nSHOWING PERMUTATION SOURCE RECONSTRUCTION %s RESULTS, %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
 

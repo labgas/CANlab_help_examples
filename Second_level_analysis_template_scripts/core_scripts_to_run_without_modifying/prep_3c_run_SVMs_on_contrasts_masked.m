@@ -8,12 +8,16 @@
 % 2) plots montages of the uncorrected results
 % 3) saves the results using standard naming and location
 %
-% - To specify analysis options, run a2_set_default_options
-% - To get results reports, run c2a_second_level_regression
+% Run this script with Matlab's publish function to generate html report of results:
+% publish('prep_3c_run_SVMs_on_contrasts_masked','outputDir',htmlsavedir)
+%
+% To get results reports after bootstrapping, publish c2_SVM_contrasts_masked
+%
 %
 % OPTIONS
 %
-% NOTE: defaults are specified in a2_set_default_options for any given model,
+% NOTE: 
+% defaults are specified in a2_set_default_options for any given model,
 % but if you want to run the same model with different options (for example
 % comparing different machine learning methods), you can make a copy of this script with
 % a letter index (e.g. _s6a_) and change the default option here
@@ -73,8 +77,8 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v3.1
-% last modified: 2022/08/16
+% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v3.2
+% last modified: 2022/08/25
 
 
 %% GET AND SET OPTIONS
@@ -194,25 +198,34 @@ end
 for c = 1:kc
     
     analysisname = DAT.contrastnames{c};
-    printhdr(analysisname);
+    
+    fprintf('\n\n');
+    printhdr(['CONTRAST #', num2str(c), ': ', upper(analysisname)]);
+    fprintf('\n\n');
     
     mycontrast = DAT.contrasts(c, :);
     wh = find(mycontrast); % wh is which conditions have non-zero contrast weights
     
     % CREATE COMBINED DATA OBJECT WITH INPUT IMAGES FOR BOTH CONDITIONS
     % ---------------------------------------------------------------------
+    
     [cat_obj, condition_codes] = cat(DATA_OBJ{wh}); 
     cat_obj = enforce_variable_types(cat_obj); % @lukasvo76 added as the fmri_data.cat function includes replace_empty on the objects, which causes problems later on with the stats_object output of predict
     
     % APPLY MASK IF SPECIFIED IN OPTIONS
     %----------------------------------------------------------------------
+    
+    fprintf('\n\n');
+    printhdr('Masking and scaling images if requested in options');
+    fprintf('\n\n');
+    
     if exist('svmmask', 'var')
-        fprintf('\nMasking data with %s\n',maskname_short);
+        fprintf('\nMasking data with %s\n\n',maskname_short);
         cat_obj = apply_mask(cat_obj, svmmask);
         cat_obj.mask_descrip = maskname_svm;
         
     else
-        fprintf('\nNo mask found; using full existing image data\n');
+        fprintf('\nNo mask found; using full existing image data\n\n');
         
     end
     
@@ -236,13 +249,13 @@ for c = 1:kc
     
             cat_obj = normalize_each_subject_by_l2norm(cat_obj, condition_codes);
             scaling_string = 'scaling_l2norm_subjects';
-            fprintf('\nNormalizing condition images for each subject by L2 norm of Condition 1 image before SVM\n')
+            fprintf('\nNormalizing condition images for each subject by L2 norm of Condition 1 image before SVM\n\n');
             
         case 'imagenorm'
          
             cat_obj = normalize_images_by_l2norm(cat_obj);
             scaling_string = 'scaling_l2norm_conditions';
-            fprintf('\nNormalizing each condition image for each subject by L2 norm before SVM\n')
+            fprintf('\nNormalizing each condition image for each subject by L2 norm before SVM\n\n');
     
     % Z-SCORE
     
@@ -251,17 +264,17 @@ for c = 1:kc
     % across studies but also removes information. Use judiciously.
     
         case 'zscoreimages'
-            fprintf('\nZ-scoring each condition image for each subject before SVM\n');
+            fprintf('\nZ-scoring each condition image for each subject before SVM\n\n');
             scaling_string = 'scaling_z_score_conditions';
             cat_obj = rescale(cat_obj, 'zscoreimages');
             
         case 'zscorevoxels'
-            fprintf('\nZ-scoring each condition image for each subject before SVM\n');
+            fprintf('\nZ-scoring each condition image for each subject before SVM\n\n');
             scaling_string = 'scaling_z_score_conditions';
             cat_obj = rescale(cat_obj, 'zscoreimages');
             
         otherwise
-            error('incorrect scaling option %s specified in myscaling_svm option in a2_set_default_options.\nChoose between "raw", "subjectnorm", "imagenorm", "zscoreimages", or "zscorevoxels"\n', myscaling_svm);
+            error('incorrect scaling option %s specified in myscaling_svm option in a2_set_default_options.\nChoose between "raw", "subjectnorm", "imagenorm", "zscoreimages", or "zscorevoxels"\n\n', myscaling_svm);
         
     end
     
@@ -278,7 +291,7 @@ for c = 1:kc
                 plugin_get_holdout_sets; % @lukasvo76: this is the original CANlab code which works fine if you do not have to balance your holdout sets for a group variable
 
             otherwise
-                error('\ninvalid option "%s" defined in holdout_set_method_svm variable, choose between "group" and "onesample"\n',holdout_set_method_svm);
+                error('\ninvalid option "%s" defined in holdout_set_method_svm variable, choose between "group" and "onesample"\n\n',holdout_set_method_svm);
 
         end
     
@@ -298,7 +311,9 @@ for c = 1:kc
     
     if all(cat_obj.Y > 0) || all(cat_obj.Y < 0)
         % Only positive or negative weights - nothing to compare
-        printhdr(' Only positive or negative weights - nothing to compare');
+        fprintf('\n');
+        warning(' Only positive or negative weights - nothing to compare');
+        fprintf('\n');
         
         continue    
         
@@ -306,6 +321,11 @@ for c = 1:kc
     
     % RUN PREDICTIVE SVM MODEL
     % --------------------------------------------------------------------
+    
+    fprintf('\n\n');
+    printhdr('Running cross-validated SVM');
+    fprintf('\n\n');
+    
     switch ml_method_svm
     
         case 'predict'
@@ -402,17 +422,21 @@ for c = 1:kc
             
             stats = struct('bo',bo,'cvGS',cvGS,'weight_obj',weight_obj);
 
-
         otherwise
 
-            error('\ninvalid option "%s" defined in ml_method_mvpa_svm variable, choose between "oofmridataobj" and "predict"\n',ml_method_svm);
+            error('\ninvalid option "%s" defined in ml_method_mvpa_svm variable, choose between "oofmridataobj" and "predict"\n\n',ml_method_svm);
 
     end % switch machine learning method
     
     
     % RUN SEARCHLIGHT SVM MODEL IF REQUESTED IN OPTIONS
     %----------------------------------------------------------------------
+    
     if dosearchlight_svm
+        
+        fprintf('\n\n');
+        printhdr('Running cross-validated searchlight SVM');
+        fprintf('\n\n');
         
         delete(gcp('nocreate'));
         clust = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
@@ -428,8 +452,12 @@ for c = 1:kc
     % ---------------------------------------------------------------------
     
     whmontage = 5;
+    
+    fprintf('\n\n');
+    printhdr('Visualizing cross-validated SVM results');
+    fprintf('\n\n');
 
-    fprintf ('\nShowing unthresholded SVM results, : %s\n%s\n\n', analysisname, mask_string);
+    fprintf ('\nMONTAGE UNTHRESHOLDED SVM RESULTS, CONTRAST: %s, %s, SCALING: %s\n\n', analysisname, mask_string, scaling_string);
     
         switch ml_method_svm
 
@@ -441,9 +469,9 @@ for c = 1:kc
         end
     
     o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-    o2 = title_montage(o2, whmontage, [analysisname ' unthresholded ' mask_string]);
+    o2 = title_montage(o2, whmontage, [analysisname ' unthresholded ' mask_string ' ' scaling_string]);
 
-    figtitle = sprintf('%s_unthresholded_montage_%s_%s', analysisname, scaling_string, mask_string);
+    figtitle = sprintf('%s_unthresholded_montage_%s_%s', analysisname, mask_string, scaling_string);
     set(gcf, 'Tag', figtitle, 'WindowState','maximized');
     drawnow, snapnow;
         if save_figures_svm
@@ -456,14 +484,14 @@ for c = 1:kc
     
     if dosearchlight_svm
 
-        fprintf ('\nShowing unthresholded searchlight SVM results, : %s\nEffect: %s\n\n', analysisname, mask_string);
+        fprintf ('\nMONTAGE UNTHRESHOLDED SEARCHLIGHT SVM RESULTS, CONTRAST: %s, %s, SCALING: %s\n\n', analysisname, mask_string, scaling_string);
 
         r = region(stats.weight_obj);
 
         o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-        o2 = title_montage(o2, whmontage, [analysisname ' unthresholded searchlight ' mask_string]);
+        o2 = title_montage(o2, whmontage, [analysisname ' unthresholded searchlight ' mask_string ' ' scaling_string]);
 
-        figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, scaling_string, mask_string);
+        figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, mask_string, scaling_string);
         set(gcf, 'Tag', figtitle, 'WindowState','maximized');
         drawnow, snapnow;
             if save_figures_svm
@@ -476,7 +504,12 @@ for c = 1:kc
     
     % BOOTSTRAP IF REQUESTED
     % --------------------------------------------------------------------
+    
     if dobootstrap_svm
+        
+        fprintf('\n\n');
+        printhdr('Bootstrapping SVM weights');
+        fprintf('\n\n');
         
         delete(gcp('nocreate'));
         c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
@@ -541,6 +574,11 @@ end  % loop over contrasts
 %--------------------------------------------------------------------------
 
 if dosavesvmstats
+    
+    fprintf('\n\n');
+    printhdr('Saving SVM results');
+    fprintf('\n\n');
+    
     if exist('maskname_short', 'var')
         savefilenamedata = fullfile(resultsdir, ['svm_stats_results_contrasts_', scaling_string, '_', maskname_short, '_', results_suffix,'.mat']);
     else

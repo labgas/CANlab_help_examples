@@ -17,8 +17,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v3.0
-% last modified: 2022/08/09
+% @(#)% a2_set_default_options.m         v3.1
+% last modified: 2022/08/25
 
 
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -191,8 +191,6 @@ nPDM = 10;                                                      % default 10    
 dobootstrap_pdm = false;                                        % default false     bootstrapping; takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to 10k samples
     boot_n_pdm = 5000;                                              % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
 dosourcerecon_pdm = false;                                      % default false     source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
-p_threshold_pdm = .005;                                         % default .005       threshold for FDR-corrected display items
-k_threshold_pdm = 10;                                           % default 10        extent threshold for FDR-corrected display items 
 dosavepdmstats = true;                                          % see saving options above
 
 

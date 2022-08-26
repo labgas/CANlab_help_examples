@@ -10,13 +10,12 @@
 % object if it is saved by the previous script.
 %
 % Options for this script are set in a2_set_default_options.m, see that
-% script for more info. Many of these options get passed into CANlab's
+% script and below for more info. Many of these options get passed into CANlab's
 % multivariateMediation function.
 %
-% To publish the results for a given contrast, run the following script
-% from the resultsdir for this contrast
-% https://github.com/canlab/MediationToolbox/blob/master/mediation_toolbox/publish_multivariate_mediation_report.m
-%
+% Run this script with Matlab's publish function to generate html report of
+% results:
+% publish('c2g_run_multivariate_mediation_single_trial','outputDir',htmlsavedir)
 %
 % TUTORIALS AND DOCUMENTATION
 % ---------------------------
@@ -35,7 +34,8 @@
 % OPTIONS
 % -------
 %
-% NOTE: defaults are specified in a2_set_default_options for any given model,
+% NOTE: 
+% defaults are specified in a2_set_default_options for any given model,
 % but if you want to run the same model with different options, 
 % you can make a copy of this script with a letter index (e.g. _s6a_) 
 % and change the default options below
@@ -52,22 +52,27 @@
 %
 % STATISTICS AND RESULTS VISUALIZATION OPTIONS
 % --------------------------------------------
+% nPDM = 10: default 10; number of PDMs to retain, chances are very low that meaningful variance is explained by PDM # > 10
+% dobootstrap_pdm: default false; bootstrapping, does not take an awful lot of time in this case
+%     boot_n_pdm: default 5000; number of bootstrap samples, reduce number for quick results, increase to 10k for publication
+% dosourcerecon_pdm: default false; source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
+% dosavepdmstats: default true; saves all results as .mat files
 %
 %__________________________________________________________________________
 %
 % author: lukas.vanoudenhove@kuleuven.be
 % date:   August, 2022
 %__________________________________________________________________________
-% @(#)% c2g_run_multivariate_mediation_single_trial     v1.1        
-% last modified: 2022/08/24
-%
-%
+% @(#)% c2g_run_multivariate_mediation_single_trial     v1.2        
+% last modified: 2022/08/25
+
+
 %% GET AND SET OPTIONS
 %--------------------------------------------------------------------------
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
-% a_set_up_paths_always_run_first;
+a_set_up_paths_always_run_first;
 
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
@@ -101,7 +106,8 @@ if ~exist('DSGN','var') || ~exist('DAT','var')
     load(fullfile(resultsdir,'image_names_and_setup.mat'));
 
     if ~isfield(DAT,'BEHAVIOR')
-        error('\n Behavioral data not yet added to DAT structure - run prep_1b script first')
+        fprintf('\n');
+        error('Behavioral data not yet added to DAT structure - run prep_1b script first')
     end
 
 end
@@ -183,7 +189,7 @@ fprintf('\n\n');
 if exist('maskname_pdm','var') && ~isempty(maskname_pdm) && exist(maskname_pdm, 'file')
 
     [~,maskname_short] = fileparts(maskname_pdm);
-    fprintf('\nMasking data with %s\n',maskname_short);
+    fprintf('\nMasking data with %s\n\n',maskname_short);
     mask_string = sprintf('masked with %s', maskname_short);
 
     pdmmask = fmri_mask_image(maskname_pdm);
@@ -192,7 +198,7 @@ if exist('maskname_pdm','var') && ~isempty(maskname_pdm) && exist(maskname_pdm, 
 
 else
 
-    fprintf('\nNo mask found; using full original image data\n');
+    fprintf('\nNo mask found; using full original image data\n\n');
     mask_string = sprintf('unmasked');
     
 
@@ -206,31 +212,31 @@ switch myscaling_pdm
 
     case 'raw'
 
-        fprintf('\nNo scaling of input images\n');
+        fprintf('\nNo scaling of input images\n\n');
 
     case 'centerimages'
 
         fmri_dat = fmri_dat.rescale('centerimages'); 
-        fprintf('\nCentering input images\n');
+        fprintf('\nCentering input images\n\n');
 
     case 'l2normimages'
 
         fmri_dat = fmri_dat.rescale('l2norm_images');
-        fprintf('\nNormalizing input images by l2norm\n');
+        fprintf('\nNormalizing input images by l2norm\n\n');
 
     case 'zscoreimages'
 
         fmri_dat = fmri_dat.rescale('zscoreimages');
-        fprintf('\nZ-scoring input images\n');
+        fprintf('\nZ-scoring input images\n\n');
 
     case 'zscorevoxels'
 
         fmri_dat = fmri_dat.rescale('zscorevoxels');
-        fprintf('\nZ-scoring voxels across input images\n');
+        fprintf('\nZ-scoring voxels across input images\n\n');
 
     otherwise 
 
-        error('\ninvalid scaling option %s specified in myscaling_pdm variable defined in a2_set_default_options CANlabhelpexamples script, please correct\n', myscaling_pdm)
+        error('\ninvalid scaling option %s specified in myscaling_pdm variable defined in a2_set_default_options script, please correct\n\n', myscaling_pdm)
 
 end % switch scaling
    
@@ -243,7 +249,7 @@ end % switch scaling
 if zscore_outcome_pdm
 
     fmri_dat.Y = zscore(fmri_dat.Y);
-    fprintf('\nZ-scoring outcome fmri_dat.Y across subjects\n');
+    fprintf('\nZ-scoring outcome fmri_dat.Y across subjects\n\n');
 
 end
 
@@ -325,14 +331,10 @@ clear sub
 %% SET UP AND RUN MULTIVARIATE MEDIATION
 %--------------------------------------------------------------------------
 
-fprintf('\n\n');
-printhdr('RUNNING MULTIVARIATE MEDIATION');
-fprintf('\n\n');
-
 for cont = 1:size(contrastnames2include,2)
     
     fprintf('\n\n');
-    printhdr(['CONTRAST: ',contrastnames2include{cont}]);
+    printhdr(['CONTRAST #', num2str(cont), ': ',upper(contrastnames2include{cont})]);
     fprintf('\n\n');
     
     % SET UP
@@ -353,6 +355,10 @@ for cont = 1:size(contrastnames2include,2)
     end
     
     if isempty(dir(fullfile(behavcontrastpdmmediationresultsdir,'PDM_*'))) || isempty(dir(fullfile(behavcontrastpdmmediationresultsdir,'data_objects_*')))
+        
+        fprintf('\n\n');
+        printhdr('Creating data objects');
+        fprintf('\n\n');
         
         for sub = 1:n_subj
             
@@ -380,7 +386,9 @@ for cont = 1:size(contrastnames2include,2)
         
         if dosavepdmstats
             
-            fprintf('\nSAVING DATA OBJECTS\n');
+            fprintf('\n\n');
+            printhdr('Saving data objects');
+            fprintf('\n\n');
         
             if exist('maskname_short', 'var')
                 savefilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', maskname_short, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
@@ -397,7 +405,9 @@ for cont = 1:size(contrastnames2include,2)
     % RUN MULTIVARIATE MEDIATION
     % --------------------------
     
-        fprintf('\nCALCULATING FULL PDM PATH COEFFICIENTS\n');
+        fprintf('\n\n');
+        printhdr('Calculating full PDM path coefficients');
+        fprintf('\n\n');
 
         pdm = multivariateMediation(X,Y,M,'nPDM',nPDM,'plots'); 
         set(gcf,'WindowState','maximized');
@@ -410,15 +420,19 @@ for cont = 1:size(contrastnames2include,2)
         idx_localmax = islocalmax(diff(absabpaths));
         first_localmax = find(idx_localmax);
         first_localmax = first_localmax(1,1);
-        nPDM2retain = first_localmax-1;
+        nPDM2retain = first_localmax;
         
-        fprintf('\nREDUCED PDM PATH COEFFICIENTS\n');
+        fprintf('\n\n');
+        printhdr('Path coefficients for PDMs to retain');
+        fprintf('\n\n');
         
         pdm = multivariateMediation(pdm,'nPDM',nPDM2retain);
         
         if dosavepdmstats
             
-            fprintf('\nSAVING PDM RESULTS\n');
+            fprintf('\n\n');
+            printhdr('Saving PDM results');
+            fprintf('\n\n');
         
             if exist('maskname_short', 'var')
                 savefilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', maskname_short, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
@@ -430,7 +444,9 @@ for cont = 1:size(contrastnames2include,2)
             
             if dobootstrap_pdm
                 
-                fprintf('\nBOOTSTRAPPING REDUCED PDM PATH COEFFICIENTS\n');
+                fprintf('\n\n');
+                printhdr('Bootstrapping path coefficients for PDMs to retain');
+                fprintf('\n\n');
                 
                 pdm = multivariateMediation(pdm, 'noPDMestimation','bootPDM',1:nPDM2retain,'bootjPDM','Bsamp',boot_n_pdm,'save2file',savefilename_pdm); 
                 
@@ -439,13 +455,15 @@ for cont = 1:size(contrastnames2include,2)
                     
             end
                 
-            save(savefilename_pdm,'pdmfull','pdm','-v7.3','-append');
+            save(savefilename_pdm,'pdmfull','pdm','-v7.3');
             
         else
             
             if dobootstrap_pdm
                 
-                fprintf('\nBOOTSTRAPPING REDUCED PDM PATH COEFFICIENTS\n');
+                fprintf('\n\n');
+                printhdr('Bootstrapping path coefficients for PDMs to retain');
+                fprintf('\n\n');
                 
                 pdm = multivariateMediation(pdm,'noPDMestimation','bootPDM',1:nPDM2retain,'bootjPDM','Bsamp',boot_n_pdm); 
                 
@@ -454,6 +472,10 @@ for cont = 1:size(contrastnames2include,2)
         end % if dosavepdmstats
         
     else
+        
+        fprintf('\n\n');
+        printhdr('Loading data objects & PDM results');
+        fprintf('\n\n');
         
         if exist('maskname_short', 'var')
             loadfilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', maskname_short, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
@@ -468,14 +490,18 @@ for cont = 1:size(contrastnames2include,2)
         load(loadfilename_data);
         load(loadfilename_pdm);
         
-        pdm = out;
-        clear out;
+%         pdm = out;
+%         clear out;
           
     end % if results files not yet available
     
     
     % PLOT MONTAGE OF UNTHRESHOLDED PDM RESULTS
     % ------------------------------------------
+    
+    fprintf('\n\n');
+    printhdr('Visualizing unthresholded PDM results');
+    fprintf('\n\n');
     
     whmontage = 5;
     
@@ -511,7 +537,9 @@ for cont = 1:size(contrastnames2include,2)
         % shows how much each voxel covaries with model prediction across images" - Bogdan
         % ref Haufe et al, NeuroImage 2014
         
-        fprintf('\nCALCULATING SOURCE RECONSTRUCTION MAPS\n');
+        fprintf('\n\n');
+        printhdr('Calculating source reconstruction maps');
+        fprintf('\n\n');
         
         if ~exist(fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']),'file') || ...
                 ~exist(fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']),'file')
@@ -544,7 +572,9 @@ for cont = 1:size(contrastnames2include,2)
 
             if dosavepdmstats
                 
-                fprintf('\nSAVING SOURCE RECONSTRUCTION RESULTS\n');
+                fprintf('\n\n');
+                printhdr('Saving source reconstruction results');
+                fprintf('\n\n');
 
                 if exist('maskname_short', 'var')
                     savefilename_source_recon = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']);
@@ -578,6 +608,10 @@ for cont = 1:size(contrastnames2include,2)
     % PLOT MONTAGE OF UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS
     % -----------------------------------------------------------
     
+    fprintf('\n\n');
+    printhdr('Visualizing unthresholded source reconstruction results');
+    fprintf('\n\n');
+    
     for comp = 1:size(pdm.Wfull,2)
 
         fprintf ('\nSHOWING UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS, CONTRAST: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
@@ -602,6 +636,10 @@ for cont = 1:size(contrastnames2include,2)
     % ----------------------------------------------------
     
     if dobootstrap_pdm
+        
+        fprintf('\n\n');
+        printhdr('Visualizing thresholded PDM results after bootstrapping');
+        fprintf('\n\n');
     
         % FDR-CORRECTED
 
@@ -688,7 +726,9 @@ for cont = 1:size(contrastnames2include,2)
             end
             
             fprintf('\n\n');
-            fprintf('\nSAVING REGION OBJECTS AND TABLES\n');
+            printhdr('Saving regions objects and tables');
+            fprintf('\n\n');
+            
             disp('dat_fdr, etc.  : cell array of thresholded data objects at FDR threshold');
             disp('dat_unc, etc.  : cell array of thresholded data objects at uncorrected threshold');
             disp('In cell arrays of data objects, dat_*{i}.dat contains thresholded data for the i-th pdm');
