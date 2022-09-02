@@ -1,11 +1,21 @@
 %% prep_2_load_image_data_and_save.m
-
-% This script 
-% 1) loads first-level beta/con images into CANlab's fmri_data objects, 
-% 2) performs quality control, including plots if requested in a2 script,
+%
+%
+% USAGE
+%
+% This prep script 
+% 1) loads first-level beta/con images into CANlab's fmri_data_st objects 
+% 2) performs quality control, including plots if requested in a2 script
 % 3) z-scores images and then repeats 1) and 2)
-% 4) saves the relevant resulting variables in a .mat file to resultsdir
-% 5) publishes an html report (if run using Matlab's publish function)
+% 4) saves the relevant resulting objects/variables in a .mat file to resultsdir
+% 5) publishes an html report (run using Matlab's publish function)
+%
+%
+% OPTIONS
+%
+% dofullplot: default true, can set to false to save time, but not recommended for quality control purposes
+% omit_histograms: default false, can set to false to save time, especially in case of large samples but not recommended for quality control purposes
+% dozipimages: default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
 %
 %__________________________________________________________________________
 %
@@ -13,8 +23,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_2_load_image_data_and_save.m         v1.1
-% last modified: 2022/08/16
+% @(#)% prep_2_load_image_data_and_save.m         v1.2
+% last modified: 2022/09/02
 
 
 %% SET DEFAULT OPTIONS IF NEEDED
@@ -39,6 +49,10 @@ plugin_get_options_for_analysis_script
 
 %% PREP AND CHECK IMAGES NAMES
 % -------------------------------------------------------------------------
+
+fprintf('\n\n');
+printhdr('PREP WORK');
+fprintf('\n\n');
 
 clear imgs cimgs
 
@@ -88,7 +102,7 @@ for i = 1:size(DAT.conditions,2)
     end
     
     %  check whether files exist
-    if isempty(cimgs{i}), fprintf('Looking in: %s\n', str)
+    if isempty(cimgs{i}), fprintf('\nLooking in: %s\n', str)
         error('CANNOT FIND IMAGES. Check path names and wildcards.'); 
     end
     
@@ -113,21 +127,25 @@ voxelsize = diag(test_image.volInfo.mat(1:3, 1:3))';
 
 if prod(abs(voxelsize)) < 8
     sample_type_string = 'sample2mask'; 
-    disp('Loading images into canonical mask space (2 x 2 x 2 mm)');
+    fprintf('\nLoading images into canonical mask space (2 x 2 x 2 mm)\n\n');
 else
     sample_type_string = 'native_image_space'; 
-    fprintf('Loading images in native space (%3.2f x %3.2f x %3.2f mm)\n', voxelsize);
+    fprintf('\nLoading images in native space (%3.2f x %3.2f x %3.2f mm)\n\n', voxelsize);
 
 end
 
 % LOAD IMAGES INTO FMRI_DATA_ST OBJECT
 %--------------------------------------------------------------------------
 
-printhdr('LOADING RAW IMAGES INTO FMRI_DATA_ST OBJECTS'); % @lukasvo76 added
+fprintf('\n\n');
+printhdr('LOADING RAW IMAGES INTO FMRI_DATA_ST OBJECTS');
+fprintf('\n\n');
 
 for i = 1:size(DAT.conditions,2)
     
-    printhdr(sprintf('Loading raw images: condition %3.0f, %s', i, DAT.conditions{i}));
+    fprintf('\n\n');
+    printhdr(sprintf('Loading raw images: condition #%d, %s', i, DAT.conditions{i}));
+    fprintf('\n\n');
     
     DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}, which('brainmask_canlab.nii'), sample_type_string); % @lukasvo76: changed to @bogpetre's improved data_st object class
     
@@ -146,16 +164,18 @@ for i = 1:size(DAT.conditions,2)
     
     % QUALITY CONTROL METRICS
     % ---------------------------------------------------------------------
-
-    printhdr(sprintf('QC metrics for images: condition %3.0f, %s', i, DAT.conditions{i}));
+    
+    fprintf('\n\n');
+    printhdr(sprintf('QC metrics for images: condition #%d, %s', i, DAT.conditions{i}));
+    fprintf('\n\n');
     
     [group_metrics,individual_metrics,values,gwcsf,gwcsfmean,gwcsfl2norm] = qc_metrics_second_level(DATA_OBJ{i});
     
     DAT.quality_metrics_by_condition{i} = group_metrics;
     DAT.gray_white_csf{i} = values;
     
-    disp('Saving quality control metrics in DAT.quality_metrics_by_condition');
-    disp('Saving gray, white, CSF means in DAT.gray_white_csf');
+    fprintf('\nSaving quality control metrics in DAT.quality_metrics_by_condition\n');
+    fprintf('\nSaving gray, white, CSF means in DAT.gray_white_csf\n\n');
     
     drawnow; snapnow
     
@@ -164,9 +184,13 @@ for i = 1:size(DAT.conditions,2)
     
     if dofullplot
         if ischar(DAT.functional_wildcard{i})
+            fprintf('\n');
             fprintf('%s\nPlot of raw images: %s\n%s\n', dashes, DAT.functional_wildcard{i}, dashes);  % This fails when trying to pass in a cell array of wildcards - Michael Sun 10/22/2021
+            fprintf('\n');
         elseif iscellstr(DAT.functional_wildcard{i}) || isstring(DAT.functional_wildcard{i})
+            fprintf('\n');
             fprintf('%s\nPlot of raw images: %s\n%s\n', dashes, DAT.conditions{i}, dashes);
+            fprintf('\n');
         end
         
         disp(DATA_OBJ{i}.fullpath)
@@ -202,14 +226,18 @@ end
 %% Z-SCORE IMAGES, LOAD INTO OBJECTS, AND QC
 % -------------------------------------------------------------------------
 
+fprintf('\n\n');
 printhdr('LOADING Z-SCORED IMAGES INTO FMRI_DATA_ST OBJECTS');
+fprintf('\n\n');
 
 for i=1:size(DAT.conditions,2)
     
     % Z-SCORING
     % ---------------------------------------------------------------------
     
-    printhdr(sprintf('Z-scoring images: condition %3.0f, %s', i, DAT.conditions{i}));
+    fprintf('\n\n');
+    printhdr(sprintf('Z-scoring images: condition %d, %s', i, DAT.conditions{i}));
+    fprintf('\n\n');
 
     DATA_OBJsc{i} = rescale(DATA_OBJ{i}, 'zscoreimages');
 
@@ -225,8 +253,8 @@ for i=1:size(DAT.conditions,2)
     DAT.sc_quality_metrics_by_condition{i} = group_metrics;
     DAT.sc_gray_white_csf{i} = values;
     
-    disp('Saving quality control metrics in DAT.sc_quality_metrics_by_condition');
-    disp('Saving gray, white, CSF means in DAT.sc_gray_white_csf');
+    fprintf('\nSaving quality control metrics in DAT.sc_quality_metrics_by_condition\n');
+    fprintf('\nSaving gray, white, CSF means in DAT.sc_gray_white_csf\n\n');
     
     drawnow; snapnow
     
@@ -235,9 +263,13 @@ for i=1:size(DAT.conditions,2)
     
     if dofullplot
         if ischar(DAT.functional_wildcard{i})
+            fprintf('\n');
             fprintf('%s\nPlot of z-scored images: %s\n%s\n', dashes, DAT.functional_wildcard{i}, dashes);  % This fails when trying to pass in a cell array of wildcards - Michael Sun 10/22/2021
+            fprintf('\n');
         elseif iscellstr(DAT.functional_wildcard{i}) || isstring(DAT.functional_wildcard{i})
+            fprintf('\n');
             fprintf('%s\nPlot of z-scored images: %s\n%s\n', dashes, DAT.conditions{i}, dashes);
+            fprintf('\n');
         end
 
         disp(DATA_OBJsc{i}.fullpath)
@@ -278,7 +310,9 @@ end
 %% SAVE RESULTS
 % -------------------------------------------------------------------------
 
-printhdr('Save updated DAT structure in images_names_and_setup.mat, and condition data objects in data_objects(_scaled).mat ');
+fprintf('\n\n');
+printhdr('SAVE UPDATED DAT STRUCTURE IN images_names_and_setup.mat, AND CONDITION DATA OBJECTS IN data_objects(_scaled).mat ');
+fprintf('\n\n');
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
 save(savefilename, '-append', 'DAT');

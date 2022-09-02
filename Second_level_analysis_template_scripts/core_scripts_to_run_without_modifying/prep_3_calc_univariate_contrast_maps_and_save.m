@@ -1,13 +1,27 @@
 %% prep_3_calc_univariate_contrast_maps_and_save.m
-
-% This script allows us to test within-person contrasts.
-% We can include image sets with different
+%
+%
+% USAGE
+%
+% This prep script 
+% 1) calculates contrast images from first-level beta/con condition images included in prep_2 script, and stores them as CANlab's fmri_data_st objects 
+% 2) performs l2norm-rescaling of resulting contrast images
+% 3) performs quality control, including plots if requested in a2 script
+% 4) saves the relevant resulting objects/variables in a .mat file to resultsdir
+% 5) publishes an html report (run using Matlab's publish function)
+%
+%
+% NOTE: We can include image sets with different
 % numbers of images, as occurs with between-person designs, as
 % long as the contrast weights are zero for all elements with
 % different numbers of images.
 %
-% @lukasvo76: added l2norm-rescaling of contrast images (in addition to contrasting
-% z-scored condition images from prep_2)
+%
+% OPTIONS
+%
+% dofullplot: default true, can set to false to save time, but not recommended for quality control purposes
+% omit_histograms: default false, can set to false to save time, especially in case of large samples but not recommended for quality control purposes
+% dozipimages: default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
 %
 %__________________________________________________________________________
 %
@@ -15,12 +29,17 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3_calc_univariate_contrast_maps_and_save.m         v1.1
-% last modified: 2022/08/16
+% @(#)% prep_3_calc_univariate_contrast_maps_and_save.m         v1.2
+% last modified: 2022/09/02
 
 
 %% RAW AND L2NORM-RESCALED CONTRAST IMAGES FROM RAW CONDITION IMAGES
 % -------------------------------------------------------------------------
+
+fprintf('\n\n');
+printhdr('CALCULATING CONTRAST IMAGES FROM RAW CONDITION IMAGES AND CONVERTING TO FMRI_DATA_ST OBJECTS');
+fprintf('\n\n');
+
 if ~isfield(DAT, 'contrasts') || isempty(DAT.contrasts)
     % skip
     return
@@ -59,11 +78,16 @@ for c = 1:size(DAT.contrasts, 1)
     
     % check sizes and make sure they are the same
     if ~all(sz(wh) == sz(wh(1)))
-        fprintf('Not all image set sizes are the same for contrast %3.0f\n', c);
+        fprintf('\nNot all image set sizes are the same for contrast %d\n\n', c);
     end
     
     % CREATE CONTRAST OBJECTS & RESCALE BY L2NORM
     % ---------------------------------------------------------------------
+    
+    fprintf('\n');
+    fprintf('%s\nCreating fmri_data_st object for raw contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+    fprintf('\n');
+    
     DATA_OBJ_CON{c} = DATA_OBJ{wh(1)};
     [DATA_OBJ_CON{c}.image_names, DATA_OBJ_CON{c}.fullpath] = deal([]);
         
@@ -83,8 +107,8 @@ for c = 1:size(DAT.contrasts, 1)
         end
         
         if size(condat, 2) ~= my_size
-            fprintf('Condition %3.0f : number of images does not match. Check DATA_OBJ images and contrasts.', i);
-            error('exiting.')
+            fprintf('\nCondition %d : number of images does not match. Check DATA_OBJ images and contrasts\n', i);
+            error('exiting...')
         end
         
         DATA_OBJ_CON{c}.dat = DATA_OBJ_CON{c}.dat + condat;
@@ -96,6 +120,10 @@ for c = 1:size(DAT.contrasts, 1)
     DATA_OBJ_CON{c}.source_notes = DAT.contrastnames;
     
     % rescale contrast objects by l2norm % added by @lukasvo76 01/03/21
+    fprintf('\n');
+    fprintf('%s\nRescaling fmri_data_st object by l2norm for raw contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+    fprintf('\n');
+    
     DATA_OBJ_CONscc{c} = rescale(DATA_OBJ_CON{c}, 'l2norm_images');
     
     % enforce variable types in objects to save space
@@ -107,7 +135,9 @@ for c = 1:size(DAT.contrasts, 1)
     % ------------------------------------------------------------------------
     
     % RAW CONTRAST OBJECTS
+    fprintf('\n');
     fprintf('%s\nQC metrics for raw contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+    fprintf('\n');
     
     % qc
     [group_metrics, individual_metrics, gwcsf, gwcsfmean] = qc_metrics_second_level(DATA_OBJ_CON{c});
@@ -115,7 +145,9 @@ for c = 1:size(DAT.contrasts, 1)
     
     % plot
     if dofullplot
+        fprintf('\n');
         fprintf('%s\nPlot of raw contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+        fprintf('\n');
         
         disp(DATA_OBJ_CON{c}.fullpath)
         
@@ -141,7 +173,9 @@ for c = 1:size(DAT.contrasts, 1)
     end
     
     % RESCALED CONTRAST OBJECTS
+    fprintf('\n');
     fprintf('%s\nQC metrics for l2norm-rescaled contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+    fprintf('\n');
     
     % qc
     [group_metrics, individual_metrics, gwcsf, gwcsfmean] = qc_metrics_second_level(DATA_OBJ_CONscc{c});
@@ -149,7 +183,9 @@ for c = 1:size(DAT.contrasts, 1)
     
     % plot
     if dofullplot
+        fprintf('\n');
         fprintf('%s\nPlot of l2norm-rescaled contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+        fprintf('\n');
         
         disp(DATA_OBJ_CONscc{c}.fullpath)
         
@@ -180,6 +216,10 @@ end
 %% CONTRAST IMAGES FROM Z-SCORED CONDITION IMAGES
 % -------------------------------------------------------------------------
 
+fprintf('\n\n');
+printhdr('CALCULATING CONTRAST IMAGES FROM Z-SCORED CONDITION IMAGES AND CONVERTING TO FMRI_DATA_ST OBJECTS');
+fprintf('\n\n');
+
 for i = 1:k
     DATA_OBJsc{i} = replace_empty(DATA_OBJsc{i});
 end
@@ -192,6 +232,10 @@ for c = 1:size(DAT.contrasts, 1)
     % PREP
     % ---------------------------------------------------------------------
     
+    fprintf('\n');
+    fprintf('%s\nCreating fmri_data_st object for z-scored contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+    fprintf('\n');
+    
     % initialize : shell object, keep same space/volume info
     wh = find(DAT.contrasts(c, :));
     
@@ -199,7 +243,7 @@ for c = 1:size(DAT.contrasts, 1)
     
     % check sizes and make sure they are the same
     if ~all(sz(wh) == sz(wh(1)))
-        fprintf('Not all image set sizes are the same for contrast %3.0f\n', c);
+        fprintf('\nNot all image set sizes are the same for contrast %d\n\n', c);
     end
     
     % CREATE CONTRAST OBJECTS
@@ -241,7 +285,9 @@ for c = 1:size(DAT.contrasts, 1)
     % QUALITY CONTROL METRICS & PLOT (OPTIONAL)
     % ------------------------------------------------------------------------
     
+    fprintf('\n');
     fprintf('%s\nQC metrics for contrast (from z-scored condition images): %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
+    fprintf('\n');
     
     % qc
     [group_metrics, individual_metrics, gwcsf, gwcsfmean] = qc_metrics_second_level(DATA_OBJ_CONsc{c});
@@ -249,6 +295,7 @@ for c = 1:size(DAT.contrasts, 1)
     
     % plot
     if dofullplot
+        fprintf('\n');
         fprintf('%s\nPlot of contrast (from z-scored condition images): %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
         disp(DATA_OBJ_CONsc{c}.fullpath)
         
@@ -279,7 +326,9 @@ end
 %% SAVE RESULTS
 % ------------------------------------------------------------------------
 
-printhdr('Save contrast data objects in contrast_data_objects.mat');
+fprintf('\n\n');
+printhdr('SAVE CONTRAST DATA OBJECTS IN contrast_data_objects.mat');
+fprintf('\n\n');
 
 savefilenamedata = fullfile(resultsdir, 'contrast_data_objects.mat');   % both unscaled and two versions of scaled
 save(savefilenamedata, 'DATA_OBJ_CON*', '-v7.3');                       % Note: 6/7/17 Tor switched to -v7.3 format by default 
@@ -287,6 +336,10 @@ save(savefilenamedata, 'DATA_OBJ_CON*', '-v7.3');                       % Note: 
 
 %% GET CONTRASTS IN GLOBAL GRAY, WHITE, CSF VALUES
 % -------------------------------------------------------------------------
+
+fprintf('\n\n');
+printhdr('CALCULATE CONTRASTS IN GRAY/WHITE/CSF VALUES');
+fprintf('\n\n');
 
 DAT.gray_white_csf_contrasts = {};
 
@@ -317,7 +370,9 @@ end
 %% ADD TO PREVIOUSLY SAVED RESULTS
 % -------------------------------------------------------------------------
 
-printhdr('added contrast gray/white/csf to DAT in image_names_and_setup.mat');
+fprintf('\n\n');
+printhdr('ADDED CONTRAST GRAY/WHITE/CSF TO DAT in image_names_and_setup.mat');
+fprintf('\n\n');
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
 save(savefilename, '-append', 'DAT');

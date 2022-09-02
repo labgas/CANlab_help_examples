@@ -1,4 +1,4 @@
-%%% c2g_run_multivariate_mediation_single_trial.m
+%% c2g_run_multivariate_mediation_single_trial.m
 %
 %
 % USAGE
@@ -63,12 +63,12 @@
 % author: lukas.vanoudenhove@kuleuven.be
 % date:   August, 2022
 %__________________________________________________________________________
-% @(#)% c2g_run_multivariate_mediation_single_trial     v1.2        
-% last modified: 2022/08/25
+% @(#)% c2g_run_multivariate_mediation_single_trial     v1.3        
+% last modified: 2022/09/02
 
 
 %% GET AND SET OPTIONS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
@@ -95,7 +95,7 @@ cond_identifier = 'trial_type'; % name of condition identifier variable in same 
 
 
 %% LOAD FMRI_DATA_ST OBJECT AND OTHER NECESSARY VARIABLES IF NEEDED
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 fprintf('\n\n');
 printhdr('LOADING DATA');
@@ -125,7 +125,7 @@ end
 
 
 %% DEFINE SUBJECT AND CONDITION IDENTIFIERS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 subject_id = fmri_dat.metadata_table.(subj_identifier);
 [uniq_subject_id, ~, subject_id] = unique(subject_id,'stable');
@@ -166,7 +166,7 @@ clear cont con
 
 
 %% CREATE DIRECTORY STRUCTURE TO WRITE RESULTS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 mediationresultsdir = fullfile(resultsdir,'mediation_analysis');
 pdmmediationresultsdir = fullfile(mediationresultsdir,'pdm');
@@ -177,7 +177,7 @@ if ~exist(mediationresultsdir,'dir')
 end
 
 %% SCALE AND/OR MASK IMAGES AND BEHAVIORAL OUTCOME ACCORDING TO OPTIONS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 fprintf('\n\n');
 printhdr('MASKING AND SCALING IMAGES IF REQUESTED IN OPTIONS');
@@ -255,7 +255,7 @@ end
 
 
 %% DATA VISUALISATION PRIOR TO MODEL BUILDING
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 fprintf('\n\n');
 printhdr('PLOTTING DATA');
@@ -329,7 +329,7 @@ clear sub
 
         
 %% SET UP AND RUN MULTIVARIATE MEDIATION
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 for cont = 1:size(contrastnames2include,2)
     

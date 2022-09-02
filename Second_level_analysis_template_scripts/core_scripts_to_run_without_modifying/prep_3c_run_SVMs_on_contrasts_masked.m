@@ -1,4 +1,5 @@
-%%% prep_3c_run_SVMs_on_contrasts_masked.m
+%% prep_3c_run_SVMs_on_contrasts_masked.m
+%
 %
 % USAGE
 %
@@ -82,7 +83,7 @@
 
 
 %% GET AND SET OPTIONS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % SET MANDATORY OPTIONS
 
@@ -125,7 +126,7 @@ plugin_get_options_for_analysis_script;
 
 
 %% LOAD NECESSARY VARIABLES IF NEEDED
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 if ~exist('DSGN','var') || ~exist('DAT','var')
     
@@ -142,6 +143,7 @@ end
 
 %% CHECK DEPENDENCIES
 % -------------------------------------------------------------------------
+
 switch ml_method_svm
     
     case 'predict'
@@ -571,7 +573,7 @@ end  % loop over contrasts
 
 
 %% SAVE RESULTS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 if dosavesvmstats
     
@@ -601,7 +603,7 @@ end
 
 
 %% SUBFUNCTIONS FOR NORMALIZING
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 function cat_obj = normalize_each_subject_by_l2norm(cat_obj, condition_codes)
 % normalize_each_subject_by_l2norm; can help with numerical scaling and inter-subject scaling diffs

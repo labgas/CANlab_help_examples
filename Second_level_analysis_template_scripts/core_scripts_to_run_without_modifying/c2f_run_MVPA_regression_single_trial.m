@@ -1,4 +1,4 @@
-%%% c2f_run_MVPA_regression_single_trial.m
+%% c2f_run_MVPA_regression_single_trial.m
 %
 %
 % USAGE
@@ -125,12 +125,12 @@
 % author: lukas.vanoudenhove@kuleuven.be, bogpetre@gmail.com
 % date:   April, 2021
 %__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v5.2        
-% last modified: 2022/08/25
+% @(#)% c2f_run_MVPA_regression_single_trial     v5.3        
+% last modified: 2022/09/02
 
 
 %% GET AND SET OPTIONS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
@@ -156,7 +156,7 @@ subj_identifier = 'participant_id'; % name of subject identifier variable in sam
 
 
 %% LOAD FMRI_DATA_ST OBJECT AND OTHER NECESSARY VARIABLES IF NEEDED
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 fprintf('\n\n');
 printhdr('LOADING DATA');
@@ -186,7 +186,7 @@ end
 
 
 %% DEFINE SUBJECT IDENTIFIERS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 subject_id = fmri_dat.metadata_table.(subj_identifier);
 [uniq_subject_id, ~, subject_id] = unique(subject_id,'stable');
@@ -195,7 +195,7 @@ n_subj = size(uniq_subject_id,1);
 
 
 %% SCALE AND/OR MASK IMAGES AND BEHAVIORAL OUTCOME ACCORDING TO OPTIONS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 fprintf('\n\n');
 printhdr('MASKING AND SCALING IMAGES IF REQUESTED IN OPTIONS');
@@ -271,7 +271,7 @@ fprintf('\n\n');
 
 
 %% DATA VISUALISATION PRIOR TO MODEL BUILDING
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 fprintf('\n\n');
 printhdr('PLOTTING DATA');
@@ -346,7 +346,7 @@ clear sub
 
         
 %% FIT SINGLE-LEVEL MVPA MODELS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % NOTE: algorithm choice set in a2_default_options.m
 
@@ -597,7 +597,7 @@ fprintf('\n\n');
 
 
 %% PERFORM BOOTSTRAPPING, AND/OR PERMUTATION TESTING ON SINGLE-LEVEL MVPA RESULTS IF REQUESTED
-%---------------------------------------------------------------------------------------------
+% --------------------------------------------------------------------------------------------
 
 % BOOTSTRAP IF REQUESTED
 %-----------------------
@@ -801,7 +801,7 @@ parpool(round(0.8*nw));
     
 
 %% PERFORM SOURCE RECONSTRUCTION AKA STRUCTURE COEFFICIENTS ON SINGLE LEVEL MVPA MODELS IF REQUESTED
-%---------------------------------------------------------------------------------------------------
+% --------------------------------------------------------------------------------------------------
 
     if dosourcerecon_mvpa_reg_st
         
@@ -937,7 +937,7 @@ parpool(round(0.8*nw));
     
     
 %% SAVE STATS FOR SINGLE LEVEL MODELS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 if dosavemvparegstats
     
@@ -988,7 +988,7 @@ end
         
 
 %% FIT MULTILEVEL MVPA MODEL
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 if domultilevel_mvpa_reg_st
 

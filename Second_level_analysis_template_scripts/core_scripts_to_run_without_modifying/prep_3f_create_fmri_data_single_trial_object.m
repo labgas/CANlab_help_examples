@@ -1,4 +1,5 @@
-%%% prep_3f_create_fmri_data_single_trial_object
+%% prep_3f_create_fmri_data_single_trial_object
+%
 %
 % USAGE
 %
@@ -41,7 +42,7 @@
 
 
 %% GET AND SET OPTIONS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % SET MANDATORY OPTIONS
 
@@ -69,7 +70,7 @@ a_set_up_paths_always_run_first;
 
 
 %% LOAD NECESSARY VARIABLES IF NEEDED AND DO PREP WORK
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
     
 if ~exist('DSGN','var') || ~exist('DAT','var')
     
@@ -134,7 +135,7 @@ end
 
     
 %% READ CON IMAGES AND VIFS AND ADD TO FMRI_DATA_ST OBJECT
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 conimgs = struct('conpath',{''},'conname',{''},'subjname',{''},'vifname',{''},'vifvalue',[]);
 
@@ -219,7 +220,7 @@ fprintf('\n');
 
 
 %% READ BEHAVIORAL RATINGS AND ADD TO METADATA FIELD OF FMRI_DATA_ST OBJECT
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 behav_dat = DAT.BEHAVIOR.behavioral_st_data_table;
 behav_dat = behav_dat(ismember(behav_dat.(subj_identifier),subjs2use),:); % exclude entire subjects to exclude because of lack of rating for all trials within a condition
@@ -268,7 +269,7 @@ fprintf('\n');
 
 
 %% ADD BEHAVIORAL OUTCOME TO Y FIELD OF FMRI_DATA_ST OBJECT
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 fmri_dat.Y = fmri_dat.metadata_table.(behav_outcome);
 fmri_dat.Y_descrip = behav_outcome;
@@ -278,7 +279,7 @@ fmri_dat = get_wh_image(fmri_dat,idx_Ynan);
 
 
 %% EXCLUDE TRIALS EXCEEDING VIF THRESHOLD AND MASK
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % DEFINE SUBJECT IDENTIFIERS PRIOR TO REMOVING BAD TRIALS
 
@@ -337,7 +338,7 @@ clear sub subject_id_vifs uniq_subject_id_vifs n_subj_vifs this_idx_vifs this_vi
 
 
 %% SAVE FMRI_DATA_ST OBJECT
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 if ~isempty(cons2exclude)
     savefilename = fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_exclude_cond_', char([cons2exclude{:}]), '_', results_suffix, '.mat']);

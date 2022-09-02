@@ -1,8 +1,13 @@
 %% a_set_up_paths_always_run_first.m
 %
-% Always run this first before you run other second level scripts.
+% 
+% USAGE
+% 
+% Always run this first before you run other CANlab_help_examples second level batch scripts.
 %
-% CANLAB NOTES:
+%
+% CANLAB NOTES
+%
 % - standard folders and variable names are created by these scripts
 %
 % - in "prep_" scripts: 
@@ -27,7 +32,9 @@
 %   figures
 %   html report with figures and stats, in "published_output"
 %
-% LaBGAS NOTES:
+%
+% LaBGAS NOTES
+%
 % - script to be run from rootdir of superdataset for your study
 % - DO NOT FORGET TO MAKE STUDY-SPECIFIC CHANGES INDICATED BELOW
 %
@@ -37,11 +44,12 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a_set_up_paths_always_run_first.m         v1.0
-% last modified: 2022/05/16
+% @(#)% a_set_up_paths_always_run_first.m         v1.1
+% last modified: 2022/09/02
 
 
 %% RUN PREP AND FIRST LEVEL DESIGN SCRIPT
+% -------------------------------------------------------------------------
 
 % check whether LaBGAScore_prep_s0_define_directories has been run
 % STUDY-SPECIFIC: replace LaBGAScore with study name in code below
@@ -65,7 +73,16 @@ end
 [~,modelname] = fileparts(DSGN.modeldir); 
 
 
+%% SET DEFAULT USER OPTIONS
+% -------------------------------------------------------------------------
+
+% STUDY-SPECIFIC: add study name and model name to script name
+
+a2_set_default_options;
+
+    
 %% MAKE SURE DEPENDENCIES ARE ON MATLAB PATH
+% -------------------------------------------------------------------------
 
 % check whether spm subdirs are on path, add if needed
 
@@ -174,7 +191,7 @@ spmtoolboxdir = fullfile(spmrootdir,'toolbox');
 
         
 %% SET BASE DIRECTORY AND CREATE STANDARD SUBDIR STRUCTURE
-% --------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % Base directory for second level model
 
@@ -219,15 +236,8 @@ htmlsavedir = fullfile(resultsdir,'html');
     end
 
     
-%% SET USER OPTIONS
-% --------------------------------------------------------
-% STUDY-SPECIFIC: add study name and model name to script name
-
-a2_set_default_options;
-
-    
-%% DISPLAY HELPER FUNCTION CALLED BY LATER SCRIPTS
-% --------------------------------------------------------
+%% DEFINE HELPER FUNCTION CALLED BY LATER SCRIPTS
+% -------------------------------------------------------------------------
 
 dashes = '----------------------------------------------';
 printstr = @(dashes) disp(dashes);

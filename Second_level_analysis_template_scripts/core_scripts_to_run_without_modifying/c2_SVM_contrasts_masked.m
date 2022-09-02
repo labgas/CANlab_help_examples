@@ -1,4 +1,4 @@
-%%% c2_SVM_contrasts_masked.m
+%% c2_SVM_contrasts_masked.m
 %
 %
 % USAGE
@@ -36,12 +36,12 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% c2_SVM_contrasts_masked.m         v3.1
-% last modified: 2022/08/25
+% @(#)% c2_SVM_contrasts_masked.m         v3.2
+% last modified: 2022/09/02
 
 
 %% GET AND SET OPTIONS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
@@ -107,7 +107,7 @@ else
 end 
     
 %% LOAD SVM RESULTS IF NEEDED
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 resultsvarname = 'svm_stats_results';
 resultsstring = 'svm_stats_results_contrasts_';
@@ -378,7 +378,7 @@ end  % loop over contrasts
 
 
 %% CROSS-CLASSIFICATION MATRIX
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % uses svm_dist_pos_neg_matrix from plugin
 

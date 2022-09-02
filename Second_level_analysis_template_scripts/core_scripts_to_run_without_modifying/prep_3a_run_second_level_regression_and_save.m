@@ -1,4 +1,4 @@
-%%% prep_3a_run_second_level_regression_and_save.m
+%% prep_3a_run_second_level_regression_and_save.m
 %
 %
 % USAGE
@@ -74,12 +74,12 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3a_run_second_level_regression_and_save.m         v3.1
-% last modified: 2022/08/25
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v3.2
+% last modified: 2022/09/02
 
 
 %% GET AND SET OPTIONS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % SET MANDATORY OPTIONS
 
@@ -143,7 +143,7 @@ end
 
 
 %% MASKING
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 fprintf('\n\n');
 printhdr('MASKING IMAGES IF REQUESTED IN OPTIONS');

@@ -1,4 +1,4 @@
-%%% c2a_second_level_regression.m
+%% c2a_second_level_regression.m
 %
 %
 % USAGE
@@ -43,12 +43,12 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% c2a_second_level_regression.m         v3.1
-% last modified: 2022/08/25
+% @(#)% c2a_second_level_regression.m         v3.2
+% last modified: 2022/09/02
 
 
 %% GET AND SET OPTIONS
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
@@ -110,7 +110,7 @@ end
 
 
 %% LOAD GLM RESULTS IF NEEDED
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 if ~dorobfit_parcelwise
     resultsvarname = 'regression_stats_results';
@@ -154,7 +154,7 @@ end
 
 
 %% VISUALIZE GLM RESULTS FOR EACH CONTRAST
-%--------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 for c = 1:size(results, 2) % number of contrasts or conditions
 
