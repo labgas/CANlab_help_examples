@@ -121,6 +121,29 @@ plugin_get_options_for_analysis_script;
 % design_matrix_type = 'onesample'/'group'/'custom';
 
 
+%% LOAD NECESSARY VARIABLES IF NEEDED
+% -------------------------------------------------------------------------
+
+if ~exist('DSGN','var') || ~exist('DAT','var')
+    
+    load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    
+end
+
+if ~exist('DATA_OBJ','var') || ~exist('DATA_OBJsc','var')
+    
+    load(fullfile(resultsdir,'data_objects.mat'));
+    load(fullfile(resultsdir,'data_objects_scaled.mat'));
+    
+end
+
+if ~exist('DATA_OBJ_CON','var') || ~exist('DATA_OBJ_CONsc','var') || ~exist('DATA_OBJ_CONscc','var')
+    
+    load(fullfile(resultsdir,'contrast_data_objects.mat'));
+    
+end
+
+
 %% CHECK REQUIRED DAT FIELDS
 % -------------------------------------------------------------------------
 
