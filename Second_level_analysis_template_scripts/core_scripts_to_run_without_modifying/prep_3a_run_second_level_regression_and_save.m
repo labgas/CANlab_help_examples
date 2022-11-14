@@ -42,6 +42,11 @@
 % - design_matrix_type: 'group', 'custom', or 'onesample'
 %                       Group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group;
 %                       Custom: use all columns of table object DAT.BETWEENPERSON.contrasts{c};
+%                               NOTE: you can flexibly use the columns as
+%                                       covariates by editing line 225 in the code below
+%                               EXAMPLE: if you only want to use the first
+%                                       column, you can change to
+%                                   table_obj = DAT.BETWEENPERSON.(mygroupnamefield){c}(:,1);
 %                       Onesample: use constant (i.e. intercept) only
 %
 %       - 'group' option 
@@ -74,8 +79,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3a_run_second_level_regression_and_save.m         v3.2
-% last modified: 2022/09/02
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v3.3
+% last modified: 2022/11/10
 
 
 %% GET AND SET OPTIONS
@@ -114,6 +119,29 @@ plugin_get_options_for_analysis_script;
 %   remove_outliers = true/false;
 % myscaling_glm = 'raw'/'scaled'/'scaled_contrasts';
 % design_matrix_type = 'onesample'/'group'/'custom';
+
+
+%% LOAD NECESSARY VARIABLES IF NEEDED
+% -------------------------------------------------------------------------
+
+if ~exist('DSGN','var') || ~exist('DAT','var')
+    
+    load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    
+end
+
+if ~exist('DATA_OBJ','var') || ~exist('DATA_OBJsc','var')
+    
+    load(fullfile(resultsdir,'data_objects.mat'));
+    load(fullfile(resultsdir,'data_objects_scaled.mat'));
+    
+end
+
+if ~exist('DATA_OBJ_CON','var') || ~exist('DATA_OBJ_CONsc','var') || ~exist('DATA_OBJ_CONscc','var')
+    
+    load(fullfile(resultsdir,'contrast_data_objects.mat'));
+    
+end
 
 
 %% CHECK REQUIRED DAT FIELDS
