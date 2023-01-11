@@ -3,20 +3,28 @@
 %
 % USAGE
 %
-% This script 
+% This script
+%
 % 1) runs second⁻level (i.e. across subjects) regression analyses
 %   for each within-subject CONTRAST or CONDITION registered in the DAT
 %   structure, either
+%
 %       a) voxel-wise, calling CANlab's regress() function under the hood,
 %       including its robust regression option if specified
+%
 %       b) parcel-wise, calling CANlab's robfit_parcelwise() function under the
 %       hood, which is robust by default
+%
+%   the option to convert t-maps into BayesFactor maps using CANlab's
+%   estimateBayesFactor() function is built in- see walkthrough 
+%   https://canlab.github.io/_pages/EmoReg_BayesFactor_walkthrough/EmoReg_BayesFactor_walkthrough.html
+%
 % 2) saves the results using standard naming and location
 % 
 % Run this script with Matlab's publish function to generate html report of results:
 % publish('prep_3a_run_second_level_regression_and_save','outputDir',htmlsavedir)
 %
-% To get results reports after bootstrapping, publish
+% To get results reports after thresholding, publish
 % c2a_second_level_regression
 %
 %
@@ -29,6 +37,7 @@
 % a letter index (e.g. _s6a_) and change the default option here
 %
 % - dorobust : robust regression or OLS (true/false)
+% - doBayes: convert t-maps into Bayes Factors % OPTION ADDED BY @LUKASVO76 JANUARY 2023
 % - dorobfit_parcelwise: voxel- or parcelwise regression (true/false) - % OPTION ADDED BY @LUKASVO76 MAY 2022
 %       - csf_wm_covs: true adds global wm & csf regressors at second level
 %       - remove_outliers: true removes outlier images/subjects based on mahalanobis distance 
@@ -79,8 +88,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3a_run_second_level_regression_and_save.m         v3.3
-% last modified: 2022/11/10
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v3.4
+% last modified: 2023/01/11
 
 
 %% GET AND SET OPTIONS
@@ -467,26 +476,39 @@ for c = 1:kc
             % out.t has t maps for all regressors, intercept is last
             switch mygroupnamefield
                 case 'contrasts'
-                    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nodisplay');
+                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nodisplay'); % trick to get unthresholded maps
                 case 'conditions'
-                    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.conditions{c}, 'variable_names', groupnames, 'nodisplay');
+                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.conditions{c}, 'variable_names', groupnames, 'nodisplay');
             end
         else
             % out.t has t maps for intercept only
             switch mygroupnamefield
                 case 'contrasts'
-                    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nointercept', 'nodisplay');
+                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nointercept', 'nodisplay');
                 case 'conditions'
-                    regression_stats = regress(cat_obj, .05, 'unc', robuststring, 'analysis_name', DAT.conditions{c}, 'variable_names', groupnames, 'nointercept', 'nodisplay');
+                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.conditions{c}, 'variable_names', groupnames, 'nointercept', 'nodisplay');
             end
         end
 
-        % Make sure variable types are right data formats
+        % make sure variable types are right data formats
         regression_stats.design_table = design_table;
         regression_stats.t = enforce_variable_types(regression_stats.t);
         regression_stats.b = enforce_variable_types(regression_stats.b);
         regression_stats.df = enforce_variable_types(regression_stats.df);
         regression_stats.sigma = enforce_variable_types(regression_stats.sigma);
+        
+        % calculate Bayes Factors from t-maps if requested and add to results
+        if doBayes
+            
+            fprintf('\n\n');
+            printhdr('Calculating Bayes Factor maps');
+            fprintf('\n\n');
+            
+            N = single(sum(~(isnan(cat_obj.dat') | cat_obj.dat' == 0) , 1)); % code from fmri_data.ttest to correct N in regressions_stat.t to make estimateBayesFactor function work on regress() output
+            t_for_Bayes = regression_stats.t;
+            t_for_Bayes.N = N';
+            regression_stats.BF = estimateBayesFactor(t_for_Bayes,'t');
+        end
 
         % add analysis name, regressor names and other meta-data
         switch mygroupnamefield
@@ -512,7 +534,7 @@ for c = 1:kc
         
         fprintf ('\nORTHVIEWS GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, %s, SCALING: %s\n\n', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
         
-        t = regression_stats.t;
+        t = threshold(regression_stats.t,.05,'unc');
             if maskname_short
                 t = apply_mask(t,glmmask);
             end
@@ -526,6 +548,26 @@ for c = 1:kc
                 end
             end
         drawnow;snapnow;
+        
+        if doBayes
+            fprintf ('\nORTHVIEWS BAYESIAN GLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, %s, SCALING: %s\n\n', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+        
+            BF = threshold(regression_stats.BF,[-2.1972 2.1972],'raw-outside');
+                if maskname_short
+                    BF = apply_mask(BF,glmmask);
+                end
+            orthviews(BF);
+                for kk = 1:length(regression_stats.variable_names)
+                    switch mygroupnamefield
+                        case 'contrasts'
+                            spm_orthviews_name_axis([regression_stats.variable_names{kk},' ',DAT.contrastnames{c}], kk);
+                        case 'conditions'
+                            spm_orthviews_name_axis([regression_stats.variable_names{kk},' ',DAT.conditions{c}], kk);
+                    end
+                end
+        drawnow;snapnow;
+            
+        end
 
         % KEEP RESULTS OBJECTS IN CELL ARRAY FOR SAVING
         % ---------------------------------------------------------------------
@@ -557,8 +599,21 @@ for c = 1:kc
         else
             parcelwise_stats = robfit_parcelwise(cat_obj,'names', groupnames,'doplot',false);
         end
+        
+        % calculate Bayes Factors from t-maps if requested and add to results
+        if doBayes
             
-
+            fprintf('\n\n');
+            printhdr('Calculating Bayes Factor maps');
+            fprintf('\n\n');
+            
+            N = single(size(cat_obj.dat,2).*(ones(size(parcelwise_stats.t_obj.dat,1),1))); % code from fmri_data.ttest to correct N in regressions_stat.t to make estimateBayesFactor function work on regress() output
+            t_for_Bayes = parcelwise_stats.t_obj;
+            t_for_Bayes.N = N;
+            parcelwise_stats.BF = estimateBayesFactor(t_for_Bayes,'t');
+            
+        end
+        
         % add design table
         parcelwise_stats.design_table = design_table;
 
@@ -656,6 +711,36 @@ for c = 1:kc
                 plugin_save_figure;
             end
         clear o2, clear figtitle, clear j, clear tj
+        
+        if doBayes
+           
+            fprintf ('\nMONTAGE BAYESIAN PARCELWISE GLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, %s, SCALING: %s\n\n', parcelwise_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+        
+            num_effects = size(parcelwise_stats.BF.dat, 2); % number of regressors
+            o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+
+            for j = 1:num_effects
+
+                BFj = get_wh_image(parcelwise_stats.BF, j);
+                    if maskname_short
+                        BFj = apply_mask(BFj, glmmask);
+                    end
+                BFj = threshold(BFj,[-2.1972 2.1972],'raw-outside'); 
+
+                o2 = addblobs(o2, region(BFj), 'wh_montages', (2*j)-1:2*j);
+                o2 = title_montage(o2, 2*j, [parcelwise_stats.analysis_name ' ' parcelwise_stats.variable_names{j} ' ' mask_string ' ' scaling_string]);
+
+            end
+
+            figtitle = sprintf('%s_BF_3_montage_%s_%s_%s', parcelwise_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            drawnow, snapnow;
+                if save_figures
+                    plugin_save_figure;
+                end
+            clear o2, clear figtitle, clear j, clear BFj
+            
+        end
 
         % KEEP RESULTS OBJECTS IN CELL ARRAY FOR SAVING
         % ---------------------------------------------------------------------

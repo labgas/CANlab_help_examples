@@ -23,8 +23,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v3.2
-% last modified: 2022/09/02
+% @(#)% a2_set_default_options.m         v3.3
+% last modified: 2023/01/11
 
 
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -38,7 +38,6 @@ dozipimages = false;        % default false to avoid load on data upload/downloa
 %% PREP_3A_RUN_SECOND_LEVEL_REGRESSION_AND_SAVE
 % --------------------------------------------
 
-dorobust = false;           % robust statistics for voxel-based GLM [true, false] -- default true
 maskname_glm = which('gray_matter_mask_sparse.img');
                             % default use of sparse gray matter mask
                             % model-specific maskdir defined in a_set_up_paths_always_run_first script
@@ -59,6 +58,8 @@ design_matrix_type = 'onesample';   % 'group', 'custom', or 'onesample'
                             % @lukasvo76: no group factor, no covariates -
                             % one sample t-test with robust option
                             % (contrary to c_univariate_contrast_maps.m)
+dorobust = true;            % robust statistics for voxel-based GLM [true, false] -- default true
+doBayes = true;            % converts t-maps into Bayes Factor maps -- default true
 dorobfit_parcelwise = false;  % true runs robust parcelwise regression (CANlab's robfit_parcelwise() function) rather than voxel-based GLM (CANlab's regress() function) % added by @lukasvo76 May 2022
     % robfit_parcelwise options
     csf_wm_covs = false; % true adds global wm & csf regressors at second level
