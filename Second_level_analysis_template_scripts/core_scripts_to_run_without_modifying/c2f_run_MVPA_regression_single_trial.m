@@ -119,6 +119,8 @@
 %
 % This script is work in progress, particularly the permutation and multilevel
 % options are still undergoing improvement and full testing
+% lukasvo76 note to self: see Bogdan's hyp_opt_and_mlpcr_demo script in
+% this repo to implement the latter!
 %
 %__________________________________________________________________________
 %
