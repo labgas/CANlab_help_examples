@@ -19,7 +19,10 @@
 %   estimateBayesFactor() function is built in- see walkthrough 
 %   https://canlab.github.io/_pages/EmoReg_BayesFactor_walkthrough/EmoReg_BayesFactor_walkthrough.html
 %
-% 2) saves the results using standard naming and location
+% 2) runs cross-validated MVPA regression models predicting continuous
+%   covariates if desired using CANlab's predict() function
+%
+% 3) saves the results using standard naming and location
 % 
 % Run this script with Matlab's publish function to generate html report of results:
 % publish('prep_3a_run_second_level_regression_and_save','outputDir',htmlsavedir)
@@ -37,7 +40,6 @@
 % a letter index (e.g. _s6a_) and change the default option here
 %
 % - dorobust : robust regression or OLS (true/false)
-% - doBayes: convert t-maps into Bayes Factors % OPTION ADDED BY @LUKASVO76 JANUARY 2023
 % - dorobfit_parcelwise: voxel- or parcelwise regression (true/false) - % OPTION ADDED BY @LUKASVO76 MAY 2022
 %       - csf_wm_covs: true adds global wm & csf regressors at second level
 %       - remove_outliers: true removes outlier images/subjects based on mahalanobis distance 
@@ -49,10 +51,10 @@
 %       - if you want to use a custom mask, put it in maskdir and change name here
 %       - only used for visualization of uncorrected results in this script
 % - design_matrix_type: 'group', 'custom', or 'onesample'
-%                       Group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group;
-%                       Custom: use all columns of table object DAT.BETWEENPERSON.contrasts{c};
+%                       Group: use DAT.BETWEENPERSON.group
+%                       Custom: use all columns of table object DAT.BETWEENPERSON.(mygroupnamefield){c}
 %                               NOTE: you can flexibly use the columns as
-%                                       covariates by editing line 225 in the code below
+%                                       covariates by editing line 272 in the code below
 %                               EXAMPLE: if you only want to use the first
 %                                       column, you can change to
 %                                   table_obj = DAT.BETWEENPERSON.(mygroupnamefield){c}(:,1);
@@ -77,10 +79,36 @@
 %
 %       NOTE: To set up group and custom variables, see prep_1b_prep_behavioral_data
 %
+% - doBayes: convert t-maps into Bayes Factors 
+%
+%       OPTION ADDED BY @LUKASVO76 JANUARY 2023
+%
+% - domvpa_reg_cov: run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
+%
+%   NOTE: THIS OPTION ONLY APPLIES WHEN DESIGN_MATRIX_TYPE = 'CUSTOM' SINCE OTHERWISE THERE IS NO CONTINUOUS OUTCOME TO PREDICT!
+%         TO CLASSIFY GROUPS USING MVPA MODELS, USE SVM SCRIPTS PREP_3C AND C2
+%     
+%     mvpa_reg_covariate options
+%       algorithm_mvpa_reg_cov = 'cv_pcr': will be passed into predict function (help fmri_data.predict for options)
+%       holdout_set_method_mvpa_reg_cov: 'group', or 'no_group'
+%                                        group: use DAT.BETWEENPERSON.group to balance holdout sets over groups
+%                                        no_group: no group factor, stratifies by subject (i.e.leave whole subject out) since data is purely between-subject
+%       nfolds_mvpa_reg_cov: number of cross-validation folds for kfold
+%       zscore_outcome_mvpa_reg_cov: zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
+%
+%       OPTION ADDED BY @LUKASVO76 JANUARY 2023
+%
+%
 % MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT
 %
 % - mygroupfieldname: 'contrasts' or 'conditions'
 % - results_suffix: name to add to results file to specify in case of multiple versions of model, e.g. 'covariate_rating'
+% 
+% MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT ONLY IF DOMVPA_REG_COV = true
+%
+% - behav_outcome: variable name in DAT.BETWEENPERSON.(mygroupnamefield){:}
+% - group_identifier = name of group identifier variable in same table 
+%
 %
 %__________________________________________________________________________
 %
@@ -88,8 +116,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3a_run_second_level_regression_and_save.m         v3.4
-% last modified: 2023/01/11
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v4.0
+% last modified: 2023/01/12
 
 
 %% GET AND SET OPTIONS
@@ -99,12 +127,18 @@
 
 mygroupnamefield = 'contrasts'; 
 results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
+
 % NOTE: do NOT delete the latter option, leave empty if not needed
 % NOTE: do NOT use to add a suffix specifying the regressors, scaling or masking option, this will be added automatically
+
+% MANDATORY OPTIONS IF DOMVPA_COV_REG = true
+
+behav_outcome = {'delta_intensity','delta_rating'}; % needs to correspond to variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} AND TO THE ORDER IN WHICH THEY APPEAR THERE
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
 a_set_up_paths_always_run_first;
+
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
 
@@ -128,6 +162,19 @@ plugin_get_options_for_analysis_script;
 %   remove_outliers = true/false;
 % myscaling_glm = 'raw'/'scaled'/'scaled_contrasts';
 % design_matrix_type = 'onesample'/'group'/'custom';
+% doBayes = true/false;
+% domvpa_reg_cov = true/false;
+%   algorithm_mvpa_reg_cov = ;
+%   holdout_set_mvpa_reg_cov = 'group'/'no_group';
+%   nfolds_mvpa_reg_cov = x;
+%   zscore_outcome_mvpa_reg_cov = true/false;
+
+% SANITY CHECK
+
+if ~strcmpi(design_matrix_type,'custom') && domvpa_reg_cov
+    error('\noption "%s" defined in design_matrix_type not compatible with do_mvpa_reg_cov, change design_matrix_type to "custom" or turn off do_mvpa_reg_cov\n', design_matrix_type);
+end
+    
 
 
 %% LOAD NECESSARY VARIABLES IF NEEDED
@@ -453,7 +500,32 @@ for c = 1:kc
         end
         
     end
-
+    
+    % ADD COVARIATE TO .Y FIELD OF CAT_OBJ FOR MVPA IF REQUESTED
+    % ---------------------------------------------------------------------
+    
+    if domvpa_reg_cov
+        
+        for covar = 1:size(behav_outcome,2)
+            if ~ismember(behav_outcome{covar},table_obj.Properties.VariableNames)
+                error('\nCovariate "%s" defined in behav_outcome not present in DAT.BETWEENPERSON.(mygroupfield){%d}, please correct before proceeding\n',behav_outcome{covar},covar);
+            end
+            
+            if ~strcmp(behav_outcome{covar},table_obj.Properties.VariableNames{covar})
+                error('\norder of covariates in behav_outcome not consistent with DAT.BETWEENPERSON.(mygroupfield){%d}, please correct before proceeding\n');
+            end
+            
+            mvpa_data_objects{covar} = cat_obj;
+            mvpa_data_objects{covar}.Y = table2array(table_obj(:,covar));
+            mvpa_data_objects{covar}.Y_names = behav_outcome{covar};
+            
+        end
+        
+        clear covar
+        
+    end
+        
+        
     % RUN GLM MODEL
     % ---------------------------------------------------------------------
     
@@ -667,15 +739,15 @@ for c = 1:kc
 
         % mark off who are outliers
         wh_out = find(parcelwise_stats.outliers_uncorr);
-        for i = 1:length(wh_out)
+            for i = 1:length(wh_out)
 
-            hh = plot_vertical_line(wh_out(i));
-            set(hh, 'Color', 'r', 'LineStyle', '--');
+                hh = plot_vertical_line(wh_out(i));
+                set(hh, 'Color', 'r', 'LineStyle', '--');
 
-            if i == 1
-                    legend({'Z(Weights)' 'Z(GM L1 norm)' 'Z(CSF L1 norm)' 'Mahal corr dist' 'Mahal cov dist' 'Mah. outliers p<.05 uncor'});
+                if i == 1
+                        legend({'Z(Weights)' 'Z(GM L1 norm)' 'Z(CSF L1 norm)' 'Mahal corr dist' 'Mahal cov dist' 'Mah. outliers p<.05 uncor'});
+                end
             end
-        end
 
         subplot(2, 2, 4)
         plot_correlation_matrix(parcelwise_stats.datmatrix, 'dofigure', false);
@@ -753,6 +825,169 @@ for c = 1:kc
         
     end % if loop voxel- versus parcelwise
     
+    
+    % RUN MVPA MODEL IF REQUESTED IN OPTIONS
+    % ---------------------------------------------------------------------
+    
+    if domvpa_reg_cov
+        
+        for covar = 1:size(mvpa_data_objects,2)
+            
+            mvpa_dat = mvpa_data_objects{covar};
+            
+            % DATA VISUALIZATION
+            
+            fprintf('\n\n');
+            printhdr('PLOTTING DATA');
+            fprintf('\n\n');
+
+                % con images
+
+                h1=figure;
+
+                    for subj = 1:size(mvpa_dat.dat,2)
+                        this_subj_dat = mvpa_dat.dat(:,subj);
+                        q(subj,:) = quantile(this_subj_dat(:),[0.025,0.5,0.975]);
+                        mu = mean(mean(this_subj_dat(:)));
+                        sd = std(this_subj_dat(:));
+                        h1 = plot([mu-sd, mu+sd],[subj,subj],'-');
+                        hold on;
+                        h2 = plot(mu,subj,'o');
+                        h2.Color = h1.Color;
+                    end
+
+                box off
+                title('Distribution of con weights');
+                xlabel('\beta');
+                ylabel('Subject');
+                hold off
+
+                p = get(gcf,'Position');
+                set(gcf,'Position',[p(1:2),1024,2048],'WindowState','Maximized');
+                drawnow, snapnow;
+
+                clear subj
+
+                % behavioral outcome
+
+                b1=figure;
+
+                hold off;
+                b1=histogram(mvpa_dat.Y);
+                box off
+                title(['Histogram of ' behav_outcome{covar}]);
+                xlabel(behav_outcome{covar});
+                ylabel('n(observations)');
+                set(gcf,'WindowState','Maximized');
+                drawnow, snapnow;
+            
+            % RUN MODEL
+            
+                % cross-validation fold selection
+
+                switch holdout_set_method_mvpa_reg_cov
+
+                    case 'no_group'
+
+                        if ~isempty(DAT.BETWEENPERSON.group)
+                            fprintf('\n');
+                            warning('DAT.BETWEENPERSON.group defines a grouping factor, please change holdout_set_method_mvpa_reg_cov to "group" for correctly stratified CV fold selection.');
+                            fprintf('\n');
+                        end
+
+                        cv=cvpartition(size(mvpa_dat.dat,2),'KFold',nfolds_mvpa_reg_cov);
+                        fold_labels = zeros(size(mvpa_dat.dat,2),1);
+                            for subj = 1:cv.NumTestSets
+                                fold_labels(cv.test(subj)) = subj;
+                            end
+                        clear subj
+
+                    case 'group'
+
+                        if ~isempty(DAT.BETWEENPERSON.group)
+                            group = DAT.BETWEENPERSON.group;
+                        else
+                            error('\nGroup not defined in DAT.BETWEENPERSON.group, which is required for option "%s" chosen in holdout_set_method_mvpa_reg_cov\n', holdout_set_method_mvpa_reg_cov);
+                        end
+
+                        cv = cvpartition(group, 'KFold',nfolds_mvpa_reg_cov);
+                            fold_labels = zeros(size(mvpa_dat.dat,2),1);
+                            for subj = 1:cv.NumTestSets
+                                fold_labels(cv.test(subj)) = subj;
+                            end
+                        clear subj
+
+                end % switch holdout set method
+
+                % fit model
+
+                t0 = tic;
+
+                [mvpa_cverr, mvpa_stats, mvpa_optout] = predict(mvpa_dat, 'algorithm_name', algorithm_mvpa_reg_cov, ...
+                            'nfolds', fold_labels, 'error_type', 'mse', 'parallel', 'verbose', 0);
+
+                t_end = toc(t0);  
+            
+            % VISUALIZE UNTHRESHOLDED RESULTS
+            
+            fprintf('\n\n');
+            printhdr('VISUALIZING RESULTS');
+            fprintf('\n\n');
+
+                % plot observed versus predicted
+
+                fprintf('\n\n');
+                printhdr('Plotting observed versus predicted');
+                fprintf('\n\n');
+
+                fprintf('\n%s r = %0.3f\n\n', algorithm_mvpa_reg_cov, corr(mvpa_stats.yfit, mvpa_dat.Y));
+                
+                observed = mvpa_dat.Y;
+                predicted = mvpa_stats.yfit;
+                tbl = table(observed, predicted);
+                mdl = fitlm(tbl,'predicted ~ observed');
+                
+                figure
+                
+                plot(mdl);
+                xlabel({['Observed ' behav_outcome{covar}]}); ylabel({['Estimated ' behav_outcome{covar}],'(cross validated)'})
+
+                set(gcf,'WindowState','Maximized');
+                drawnow, snapnow;
+
+                % plot montage of unthresholded weights
+
+                fprintf('\n\n');
+                printhdr('Plotting unthresholded weight maps');
+                fprintf('\n\n');
+
+                whmontage = 5;
+
+                fprintf ('\nSHOWING UNTHRESHOLDED %s RESULTS, %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
+
+                figure
+
+                o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+
+                w = region(mvpa_stats.weight_obj);
+
+                o2 = addblobs(o2, w);
+                o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' unthresholded ' mask_string]);
+
+                figtitle = sprintf('%s_unthresholded_montage_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
+                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                drawnow, snapnow;
+
+                clear w, clear o2, clear figtitle
+                    
+            % KEEP RESULTS IN CELL ARRAY FOR SAVING
+
+            mvpa_stats_and_maps{c,covar} = mvpa_stats;
+
+        end % for loop over covariates
+
+    end % if loop mvpa option
+
 end  % for loop over contrasts or conditions
 
 
@@ -775,4 +1010,14 @@ else
 end
 
 fprintf('\nFilename: %s\n', savefilenamedata);
+
+fprintf('\n\n');
+printhdr('SAVING MVPA RESULTS');
+fprintf('\n\n');
+
+savefilenamedata_mvpa = fullfile(resultsdir, ['mvpa_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
+save(savefilenamedata_mvpa, 'mvpa_stats_results', '-v7.3');
+fprintf('\nSaved mvpa_stats_results for %s\n', mygroupnamefield);
+
+fprintf('\nFilename: %s\n', savefilenamedata_mvpa);
 

@@ -14,7 +14,7 @@
 % 
 % - Always make a study-specific copy of this script in your code subdataset, do NOT edit in the repo!
 % - The below can be considered LaBGAS default options, but decisions will be study- or model-specific!
-% - Various options added by @lukasvo76 spring 21 and summer 22
+% - Various options added by @lukasvo76 spring 21, summer 22, and winter 23
 % - If the title of the section below is capitalized, the scripts and their options have been revamped by @lukasvo76 already
 %
 %__________________________________________________________________________
@@ -23,8 +23,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v3.3
-% last modified: 2023/01/11
+% @(#)% a2_set_default_options.m         v4.0
+% last modified: 2023/01/12
 
 
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -36,34 +36,46 @@ dozipimages = false;        % default false to avoid load on data upload/downloa
 
 
 %% PREP_3A_RUN_SECOND_LEVEL_REGRESSION_AND_SAVE
-% --------------------------------------------
+% ---------------------------------------------
 
 maskname_glm = which('gray_matter_mask_sparse.img');
-                            % default use of sparse gray matter mask
-                            % model-specific maskdir defined in a_set_up_paths_always_run_first script
-                            % if you do not want to mask, change to []
-                            % if you want to use a custom mask, put it in maskdir and change name here
-                            % used in this script only for visualization of unthresholded results
-myscaling_glm = 'raw';      % 'raw', 'scaled', or 'scaledcontrasts'; 
-                            % 'scaled': use z-scored condition images prior to computing contrasts
-                            % 'scaled_contrasts': l2norm contrasts after computing them
+                                    % default use of sparse gray matter mask
+                                    % model-specific maskdir defined in a_set_up_paths_always_run_first script
+                                    % if you do not want to mask, change to []
+                                    % if you want to use a custom mask, put it in maskdir and change name here
+                                    % used in this script only for visualization of unthresholded results
+myscaling_glm = 'raw';              % 'raw', 'scaled', or 'scaledcontrasts'; 
+                                    % 'scaled': use z-scored condition images prior to computing contrasts
+                                    % 'scaled_contrasts': l2norm contrasts after computing them
 design_matrix_type = 'onesample';   % 'group', 'custom', or 'onesample'
-                            % 'group': use DAT.BETWEENPERSON.group or 
-                            % DAT.BETWEENPERSON.contrasts{c}.group;
-                            % @lukasvo76: compare groups without controlling for covariates
-                            % 'custom': use all columns of table object 
-                            % DAT.BETWEENPERSON.contrasts{c};
-                            % @lukasvo76: covariates to control for in addition to a group factor
-                            % 'onesample': use intercept only
-                            % @lukasvo76: no group factor, no covariates -
-                            % one sample t-test with robust option
-                            % (contrary to c_univariate_contrast_maps.m)
-dorobust = true;            % robust statistics for voxel-based GLM [true, false] -- default true
-doBayes = true;            % converts t-maps into Bayes Factor maps -- default true
-dorobfit_parcelwise = false;  % true runs robust parcelwise regression (CANlab's robfit_parcelwise() function) rather than voxel-based GLM (CANlab's regress() function) % added by @lukasvo76 May 2022
+                                    % 'group': use DAT.BETWEENPERSON.group or 
+                                    % DAT.BETWEENPERSON.contrasts{c}.group;
+                                    % @lukasvo76: compare groups without controlling for covariates
+                                    % 'custom': use all columns of table object 
+                                    % DAT.BETWEENPERSON.contrasts{c};
+                                    % @lukasvo76: covariates to control for in addition to a group factor
+                                    % 'onesample': use intercept only
+                                    % @lukasvo76: no group factor, no covariates -
+                                    % one sample t-test with robust option
+                                    % (contrary to c_univariate_contrast_maps.m)
+dorobust = true;                    % robust statistics for voxel-based GLM [true, false] -- default true
+dorobfit_parcelwise = false;        % true runs robust parcelwise regression (CANlab's robfit_parcelwise() function) rather than voxel-based GLM (CANlab's regress() function) % added by @lukasvo76 May 2022
     % robfit_parcelwise options
-    csf_wm_covs = false; % true adds global wm & csf regressors at second level
-    remove_outliers = false; % true removes outlier images/subjects based on mahalanobis distance 
+    csf_wm_covs = false;                % true adds global wm & csf regressors at second level
+    remove_outliers = false;            % true removes outlier images/subjects based on mahalanobis distance 
+doBayes = true;                     % converts t-maps into Bayes Factor maps -- default true
+domvpa_reg_cov = false;             % run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
+    % mvpa_reg_covariate options
+    algorithm_mvpa_reg_cov = 'cv_pcr';              % default cv_pcr, will be passed into predict function (help fmri_data.predict for options)
+    holdout_set_method_mvpa_reg_cov = 'no_group';   % 'no_group', or 'group'
+                                                        % 'group': use DAT.BETWEENPERSON.group or 
+                                                            % DAT.BETWEENPERSON.contrasts{c}.group;
+                                                            % @lukasvo76: balances holdout sets over groups
+                                                        % 'no_group'
+                                                            % @lukasvo76: no group factor, stratifies by
+                                                            % subject (i.e.leave whole subject out) since data is purely between-subject
+    nfolds_mvpa_reg_cov = 5;                        % default 5; number of cross-validation folds for kfold
+    zscore_outcome_mvpa_reg_cov = false;            % default false; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
 
     
 %% C2A_SECOND_LEVEL_REGRESSION
