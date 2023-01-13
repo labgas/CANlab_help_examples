@@ -54,7 +54,7 @@
 %                       Group: use DAT.BETWEENPERSON.group
 %                       Custom: use all columns of table object DAT.BETWEENPERSON.(mygroupnamefield){c}
 %                               NOTE: you can flexibly use the columns as
-%                                       covariates by editing line 272 in the code below
+%                                       covariates by editing line 308 in the code below
 %                               EXAMPLE: if you only want to use the first
 %                                       column, you can change to
 %                                   table_obj = DAT.BETWEENPERSON.(mygroupnamefield){c}(:,1);
@@ -133,7 +133,7 @@ results_suffix = ''; % adds a suffix of your choice to .mat file with results th
 
 % MANDATORY OPTIONS IF DOMVPA_COV_REG = true
 
-behav_outcome = {'delta_intensity','delta_rating'}; % needs to correspond to variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} AND TO THE ORDER IN WHICH THEY APPEAR THERE
+behav_outcome_mvpa_reg_cov = {'delta_intensity','delta_rating'}; % needs to correspond to variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} AND TO THE ORDER IN WHICH THEY APPEAR THERE
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
@@ -487,16 +487,20 @@ for c = 1:kc
     % SANITY CHECK ON REGRESSORS, SKIP CONTRAST IF NEEDED
     % ---------------------------------------------------------------------
     
-    if ~strcmpi(design_matrix_type,'onesample')
+     if ~strcmpi(design_matrix_type,'onesample')
+        
+        for col = 1:size(cat_obj.X,2)
     
-        if all(cat_obj.X > 0) || all(cat_obj.X < 0)
-            % Only positive or negative weights - nothing to compare
+            if all(cat_obj.X(:,col) > 0) || all(cat_obj.X(:, col) < 0)
+                % Only positive or negative weights - nothing to compare
 
-            fprintf('\n');
-            warning('Only positive or negative regressor values - bad design, please check');
-            fprintf('\n');
+                fprintf('\n');
+                warning('Only positive or negative regressor values - bad design, please check');
+                fprintf('\n');
+
+                continue
+            end
             
-            continue
         end
         
     end
@@ -506,22 +510,35 @@ for c = 1:kc
     
     if domvpa_reg_cov
         
-        for covar = 1:size(behav_outcome,2)
-            if ~ismember(behav_outcome{covar},table_obj.Properties.VariableNames)
-                error('\nCovariate "%s" defined in behav_outcome not present in DAT.BETWEENPERSON.(mygroupfield){%d}, please correct before proceeding\n',behav_outcome{covar},covar);
+        for covar = 1:size(behav_outcome_mvpa_reg_cov,2)
+            
+            if ~ismember(behav_outcome_mvpa_reg_cov{covar},table_obj.Properties.VariableNames)
+                error('\nCovariate "%s" defined in behav_outcome not present in DAT.BETWEENPERSON.(mygroupfield){%d}, please correct before proceeding\n',behav_outcome_mvpa_reg_cov{covar},covar);
             end
             
-            if ~strcmp(behav_outcome{covar},table_obj.Properties.VariableNames{covar})
-                error('\norder of covariates in behav_outcome not consistent with DAT.BETWEENPERSON.(mygroupfield){%d}, please correct before proceeding\n');
-            end
+            if size(behav_outcome_mvpa_reg_cov,2) > 1
             
-            mvpa_data_objects{covar} = cat_obj;
-            mvpa_data_objects{covar}.Y = table2array(table_obj(:,covar));
-            mvpa_data_objects{covar}.Y_names = behav_outcome{covar};
+                if ~strcmp(behav_outcome_mvpa_reg_cov{covar},table_obj.Properties.VariableNames{covar})
+                    error('\norder of covariates in behav_outcome not consistent with DAT.BETWEENPERSON.(mygroupfield){%d}, please correct before proceeding\n');
+                end
+                
+                mvpa_data_objects{covar} = cat_obj;
+                mvpa_data_objects{covar}.Y = table2array(table_obj(:,covar));
+                mvpa_data_objects{covar}.Y_names = behav_outcome_mvpa_reg_cov{covar};
+   
+                
+            else 
+               
+                idx= ismember(table_obj.Properties.VariableNames,behav_outcome_mvpa_reg_cov{covar});
+                [~,covar_idx] = find(idx);
+                
+                mvpa_data_objects{covar} = cat_obj;
+                mvpa_data_objects{covar}.Y = table2array(table_obj(:,covar_idx));
+                mvpa_data_objects{covar}.Y_names = behav_outcome_mvpa_reg_cov{covar};
+                
+            end
             
         end
-        
-        clear covar
         
     end
         
@@ -875,8 +892,8 @@ for c = 1:kc
                 hold off;
                 b1=histogram(mvpa_dat.Y);
                 box off
-                title(['Histogram of ' behav_outcome{covar}]);
-                xlabel(behav_outcome{covar});
+                title(['Histogram of ' behav_outcome_mvpa_reg_cov{covar}]);
+                xlabel(behav_outcome_mvpa_reg_cov{covar});
                 ylabel('n(observations)');
                 set(gcf,'WindowState','Maximized');
                 drawnow, snapnow;
@@ -950,7 +967,7 @@ for c = 1:kc
                 figure
                 
                 plot(mdl);
-                xlabel({['Observed ' behav_outcome{covar}]}); ylabel({['Estimated ' behav_outcome{covar}],'(cross validated)'})
+                xlabel({['Observed ' behav_outcome_mvpa_reg_cov{covar}]}); ylabel({['Estimated ' behav_outcome_mvpa_reg_cov{covar}],'(cross validated)'})
 
                 set(gcf,'WindowState','Maximized');
                 drawnow, snapnow;
