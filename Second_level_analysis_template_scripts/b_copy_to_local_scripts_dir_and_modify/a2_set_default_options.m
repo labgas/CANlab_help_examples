@@ -59,7 +59,7 @@ design_matrix_type = 'onesample';   % 'group', 'custom', or 'onesample'
                                     % one sample t-test with robust option
                                     % (contrary to c_univariate_contrast_maps.m)
 dorobust = true;                    % robust statistics for voxel-based GLM [true, false] -- default true
-dorobfit_parcelwise = false;        % true runs robust parcelwise regression (CANlab's robfit_parcelwise() function) rather than voxel-based GLM (CANlab's regress() function) % added by @lukasvo76 May 2022
+dorobfit_parcelwise = false;        % true runs robust parcelwise regression (CANlab's robfit_parcelwise() function) rather than voxel-based GLM (CANlab's regress() function)
     % robfit_parcelwise options
     csf_wm_covs = false;                % true adds global wm & csf regressors at second level
     remove_outliers = false;            % true removes outlier images/subjects based on mahalanobis distance 
