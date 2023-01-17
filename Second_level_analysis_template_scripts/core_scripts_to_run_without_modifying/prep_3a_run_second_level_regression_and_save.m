@@ -120,8 +120,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3a_run_second_level_regression_and_save.m         v4.2
-% last modified: 2023/01/16
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v4.3
+% last modified: 2023/01/17
 
 
 %% GET AND SET OPTIONS
@@ -612,16 +612,14 @@ for c = 1:kc
             
         end
 
-        % add analysis name, regressor names and other meta-data
+        % add contrastname, regressor names and other meta-data
         switch mygroupnamefield
             case 'contrasts'
                 regression_stats.contrastname = DAT.contrastnames{c};
                 regression_stats.contrast = DAT.contrasts(c, :);
-                regression_stats.analysis_name = DAT.contrastnames{c};
             case 'conditions'
                 regression_stats.contrastname = DAT.conditions{c};
                 regression_stats.contrast = 1;
-                regression_stats.analysis_name = DAT.conditions{c};
         end
 
         % add names for variables 
@@ -638,7 +636,7 @@ for c = 1:kc
         printhdr('Plotting voxel-wise GLM results');
         fprintf('\n\n');
         
-        fprintf ('\nORTHVIEWS GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+        fprintf ('\nORTHVIEWS GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.contrastname, groupnames_string, mask_string, scaling_string);
         
         t = threshold(regression_stats.t,.05,'unc');
             if maskname_short
@@ -663,7 +661,7 @@ for c = 1:kc
             printhdr('Plotting voxel-wise Bayesian GLM results');
             fprintf('\n\n');
             
-            fprintf ('\nORTHVIEWS BAYESIAN GLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+            fprintf ('\nORTHVIEWS BAYESIAN GLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.contrastname, groupnames_string, mask_string, scaling_string);
             
             for img = 1:size(regression_stats.BF,2)
                 BF = threshold(regression_stats.BF(1,img),[-2.1972 2.1972],'raw-outside');
@@ -740,11 +738,9 @@ for c = 1:kc
             case 'contrasts'
                 parcelwise_stats.contrastname = DAT.contrastnames{c};
                 parcelwise_stats.contrast = DAT.contrasts(c, :);
-                parcelwise_stats.analysis_name = DAT.contrastnames{c};
             case 'conditions'
                 parcelwise_stats.contrastname = DAT.conditions{c};
                 parcelwise_stats.contrast = 1;
-                parcelwise_stats.analysis_name = DAT.conditions{c};
         end
 
         % add names for variables 
@@ -810,7 +806,7 @@ for c = 1:kc
         printhdr('Plotting parcel-wise GLM results');
         fprintf('\n\n');
         
-        fprintf ('\nMONTAGE PARCELWISE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', parcelwise_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+        fprintf ('\nMONTAGE PARCELWISE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
         
         num_effects = size(parcelwise_stats.t_obj.dat, 2); % number of regressors
         o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
@@ -824,14 +820,14 @@ for c = 1:kc
             tj = threshold(tj, .05, 'unc'); 
 
             o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j);
-            o2 = title_montage(o2, 2*j, [parcelwise_stats.analysis_name ' ' parcelwise_stats.variable_names{j} ' ' mask_string ' ' scaling_string]);
+            o2 = title_montage(o2, 2*j, [parcelwise_stats.contrastname ' ' parcelwise_stats.variable_names{j} ' ' mask_string ' ' scaling_string]);
 
         end
 
-        figtitle = sprintf('%s_05_unc_montage_%s_%s_%s', parcelwise_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+        figtitle = sprintf('%s_05_unc_montage_%s_%s_%s', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
         set(gcf, 'Tag', figtitle, 'WindowState','maximized');
         drawnow, snapnow;
-            if exist('save_figures','var')
+            if save_figures_glm
                 plugin_save_figure;
             end
         clear o2, clear figtitle, clear j, clear tj
@@ -842,7 +838,7 @@ for c = 1:kc
             printhdr('Plotting parcel-wise Bayesian GLM results');
             fprintf('\n\n');
            
-            fprintf ('\nMONTAGE BAYESIAN PARCELWISE GLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', parcelwise_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+            fprintf ('\nMONTAGE BAYESIAN PARCELWISE GLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
         
             o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
             
@@ -854,14 +850,14 @@ for c = 1:kc
                     end
                     
                 o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img);
-                o2 = title_montage(o2, 2*img, [parcelwise_stats.analysis_name ' ' parcelwise_stats.variable_names{img} ' ' mask_string ' ' scaling_string]);
+                o2 = title_montage(o2, 2*img, [parcelwise_stats.contrastname ' ' parcelwise_stats.variable_names{img} ' ' mask_string ' ' scaling_string]);
             
             end
 
-            figtitle = sprintf('%s_BF_3_montage_%s_%s_%s', parcelwise_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+            figtitle = sprintf('%s_BF_3_montage_%s_%s_%s', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
             set(gcf, 'Tag', figtitle, 'WindowState','maximized');
             drawnow, snapnow;
-                if exist('save_figures','var')
+                if save_figures_glm
                     plugin_save_figure;
                 end
             clear o2, clear figtitle, clear img, clear BF
@@ -1000,7 +996,8 @@ for c = 1:kc
 
                 t_end = toc(t0); 
                 
-                mvpa_stats.Y_names{covar} = mvpa_dat.Y_names;
+                mvpa_stats.Y_names = mvpa_dat.Y_names;
+                mvpa_stats.contrastname = cat_obj.image_names{c};
             
             % VISUALIZE UNTHRESHOLDED RESULTS
             
@@ -1033,7 +1030,7 @@ for c = 1:kc
 
                 whmontage = 5;
 
-                fprintf ('\nSHOWING UNTHRESHOLDED %s RESULTS, EFFECT: %s, MASK: %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mvpa_stats.Y_names{covar}, mask_string, myscaling_glm);
+                fprintf ('\nSHOWING UNTHRESHOLDED %s RESULTS, EFFECT: %s, MASK: %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mvpa_stats.Y_names, mask_string, myscaling_glm);
 
                 figure
 
