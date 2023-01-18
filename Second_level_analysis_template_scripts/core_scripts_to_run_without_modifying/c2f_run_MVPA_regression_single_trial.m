@@ -219,6 +219,7 @@ fprintf('\n\n');
     else
 
         fprintf('\nNo mask found; using full original image data\n\n');
+        mask_string = sprintf('without_masking');
 
     end % if loop mask
 
