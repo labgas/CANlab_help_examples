@@ -221,6 +221,7 @@ myscaling_pdm = 'raw';                                          % options are 'r
 nPDM = 10;                                                      % default 10        number of PDMs to retain, chances are very low that meaningful variance is explained by PDM # > 10
 dobootstrap_pdm = false;                                        % default false     bootstrapping; takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to 10k samples
     boot_n_pdm = 5000;                                              % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
+    k_threshold_pdm = 10;                                           % default 10        extent threshold for bootstrapped fdr-corrected results
 dosourcerecon_pdm = false;                                      % default false     source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
 dosavepdmstats = true;                                          % see saving options above
 
