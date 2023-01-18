@@ -53,7 +53,7 @@
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
-% a_set_up_paths_always_run_first;
+a_set_up_paths_always_run_first;
 
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
@@ -61,7 +61,7 @@
 % SET/COPY MANDATORY OPTIONS FROM CORRESPONDING PREP_3a_ SCRIPT
 
 mygroupnamefield = 'contrasts'; 
-results_suffix = 'test_allcov'; % suffix of your choice added to .mat file with saved results
+results_suffix = ''; % suffix of your choice added to .mat file with saved results
 myscaling_glm = 'raw';
 maskname_glm = which('gray_matter_mask_sparse.img'); % applied in this script before fdr thresholding
 
