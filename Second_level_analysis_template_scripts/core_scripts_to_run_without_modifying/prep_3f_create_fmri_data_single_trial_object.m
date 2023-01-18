@@ -301,7 +301,10 @@ ylabel('variance inflation factor');
 
 good_trials_idx = fmri_dat.metadata_table.vifvalue < vif_threshold_dat_st;
 bad_trials_perc = sum(~good_trials_idx)./size(fmri_dat.metadata_table.vifvalue,1).*100;
-sprintf('%4.2f percent of trials exceeds a vif threshold of %d, indicating multicollinearity with noise regressors; script will remove them',bad_trials_perc,vif_threshold_dat_st)
+sprintf('%4.2f percent of trials exceeds a vif threshold of %d, indicating multicollinearity with noise regressors; script will remove them',bad_trials_perc,vif_threshold_dat_st);
+
+set(gcf,'WindowState','Maximized');
+drawnow, snapnow;
 
 % per subject
 
@@ -326,6 +329,9 @@ v2=figure;
         ylabel('vif');
         
     end
+    
+set(gcf,'WindowState','Maximized');
+drawnow, snapnow;
 
 % REMOVE CON IMAGES CORRESPONDING TO TRIALS EXCEEDING VIF THRESHOLDS FROM
 % DATA OBJECT
