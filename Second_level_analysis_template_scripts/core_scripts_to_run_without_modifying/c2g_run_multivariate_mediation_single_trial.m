@@ -440,7 +440,7 @@ for cont = 1:size(contrastnames2include,2)
                 savefilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', maskname_short, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
                 
             else
-                savefilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+                savefilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', maskname_short, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
 
             end
             
@@ -603,35 +603,34 @@ for cont = 1:size(contrastnames2include,2)
             load(loadfilename_source_recon);
             
         end % if results files already exist
-        
-    end % if loop source reconstruction
-    
     
     % PLOT MONTAGE OF UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS
     % -----------------------------------------------------------
     
-    fprintf('\n\n');
-    printhdr('Visualizing unthresholded source reconstruction results');
-    fprintf('\n\n');
+        fprintf('\n\n');
+        printhdr('Visualizing unthresholded source reconstruction results');
+        fprintf('\n\n');
+
+        for comp = 1:size(pdm.Wfull,2)
+
+            fprintf ('\nSHOWING UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS, CONTRAST: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
+
+            reg_sc{comp} = region(source_obj_cont{comp});
+
+            o2 = montage(reg_sc{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+            o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' source reconstruction unthresholded PDM #' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
+
+            figtitle = sprintf('%s_unthresholded_montage_source_reconstruction_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
+            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            drawnow, snapnow;
+                if save_figures_pdm
+                    plugin_save_figure;
+                end
+            clear o2, clear figtitle
+
+        end
     
-    for comp = 1:size(pdm.Wfull,2)
-
-        fprintf ('\nSHOWING UNTHRESHOLDED SOURCE RECONSTRUCTION RESULTS, CONTRAST: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
-        
-        reg_sc{comp} = region(source_obj_cont{comp});
-
-        o2 = montage(reg_sc{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-        o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' source reconstruction unthresholded PDM #' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
-
-        figtitle = sprintf('%s_unthresholded_montage_source_reconstruction_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-        drawnow, snapnow;
-            if save_figures_pdm
-                plugin_save_figure;
-            end
-        clear o2, clear figtitle
-        
-    end
+    end % if loop source reconstruction
     
     
     % PLOT MONTAGES OF THRESHOLDED RESULTS IF BOOTSTRAPPED
