@@ -77,21 +77,23 @@ a_set_up_paths_always_run_first;
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
 
-% SET/COPY MANDATORY OPTIONS FROM CORRESPONDING PREP_3f_ SCRIPT
+% COPY MANDATORY OPTION FROM CORRESPONDING PREP_3f_ SCRIPT IF
 
 results_suffix = ''; % suffix of your choice added to .mat file with saved results
-cons2exclude_dat_st = {}; % cell array of condition names to exclude, separated by commas (or blanks); NOTE: you can expand this if you want to exclude more conditions at this stage
-behav_outcome_dat_st = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
-subj_identifier_dat_st = 'participant_id'; % name of subject identifier variable in same table
-cond_identifier_dat_st = 'trial_type'; % name of condition identifier variable in same table
+
+% COPY OPTIONS FROM CORRESPONDING PREP_3f_ SCRIPT
+
+% cons2exclude_dat_st = {}; % cell array of condition names to exclude, separated by commas (or blanks)
+% behav_outcome_dat_st = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+% subj_identifier_dat_st = 'participant_id'; % name of subject identifier variable in same table
 % group_identifier_dat_st = 'group'; % name of group identifier variable in same table; leave commented out if you don't have groups
 
-% SET CUSTOM OPTIONS
-
-% NOTE: only specify if you want to run a second version of your model with different options
-% than the defaults you set in your model-specific version of a2_set_default_options.m
-% 
+% SET CUSTOM OPTIONS FOR CURRENT SCRIPT
+ 
 % See documentation above and a2_set_default_options.m for list of options
+
+% NOTE: the latter two option categories only need to be specified if you want to run a second version of your model 
+% with different options than the defaults you set in your model-specific version of a2_set_default_options.m
 
 
 %% LOAD FMRI_DATA_ST OBJECT AND OTHER NECESSARY VARIABLES IF NEEDED
