@@ -23,8 +23,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v4.0
-% last modified: 2023/01/12
+% @(#)% a2_set_default_options.m         v4.1
+% last modified: 2023/01/18
 
 
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -154,12 +154,12 @@ myscaling_svm_between = 'raw'; % see above
 %% PREP_3F_CREATE_FMRI_DATA_SINGLE_TRIAL_OBJECT
 % ---------------------------------------------
 
-cons2exclude = {}; % cell array of condition names to exclude, separated by commas (or blanks)
-behav_outcome = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
-subj_identifier = 'participant_id'; % name of subject identifier variable in same table
-cond_identifier = 'trial_type'; % name of condition identifier variable in same table
-% group_identifier = 'group'; % name of group identifier variable in same table; leave commented out if you don't have groups
-vif_threshold = 4; % variance inflation threshold to exclude trials
+cons2exclude_dat_st = {}; % cell array of condition names to exclude, separated by commas (or blanks)
+behav_outcome_dat_st = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+subj_identifier_dat_st = 'participant_id'; % name of subject identifier variable in same table
+cond_identifier_dat_st = 'trial_type'; % name of condition identifier variable in same table
+% group_identifier_dat_st = 'group'; % name of group identifier variable in same table; leave commented out if you don't have groups
+vif_threshold_dat_st = 4; % variance inflation threshold to exclude trials
 
 
 %% C2F_RUN_MVPA_REGRESSION_SINGLE_TRIAL

@@ -127,8 +127,8 @@
 % author: lukas.vanoudenhove@kuleuven.be, bogpetre@gmail.com
 % date:   April, 2021
 %__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v5.3        
-% last modified: 2022/09/02
+% @(#)% c2f_run_MVPA_regression_single_trial     v5.4        
+% last modified: 2023/01/18
 
 
 %% GET AND SET OPTIONS
@@ -143,11 +143,11 @@ a_set_up_paths_always_run_first;
 
 % SET/COPY MANDATORY OPTIONS FROM CORRESPONDING PREP_3f_ SCRIPT
 
-cons2exclude = {}; % cell array of condition names to exclude, separated by commas (or blanks)
+cons2exclude_dat_st = {}; % cell array of condition names to exclude, separated by commas (or blanks)
 results_suffix = ''; % suffix of your choice added to .mat file with saved results
-behav_outcome = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
-subj_identifier = 'participant_id'; % name of subject identifier variable in same table
-% group_identifier = 'group'; % name of group identifier variable in same table; leave commented out if you don't have groups
+behav_outcome_dat_st = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+subj_identifier_dat_st = 'participant_id'; % name of subject identifier variable in same table
+% group_identifier_dat_st = 'group'; % name of group identifier variable in same table; leave commented out if you don't have groups
 
 % SET CUSTOM OPTIONS
 
@@ -177,11 +177,11 @@ end
 
 if ~exist('fmri_dat','var')
     
-    if ~isempty(cons2exclude)
-        load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_exclude_cond_', char([cons2exclude{:}]), '_', results_suffix, '.mat']));
+    if ~isempty(cons2exclude_dat_st)
+        load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '.mat']));
         
     else
-        load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_', results_suffix, '.mat']));
+        load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome_dat_st, '_', results_suffix, '.mat']));
 
     end
 end
@@ -190,7 +190,7 @@ end
 %% DEFINE SUBJECT IDENTIFIERS
 % -------------------------------------------------------------------------
 
-subject_id = fmri_dat.metadata_table.(subj_identifier);
+subject_id = fmri_dat.metadata_table.(subj_identifier_dat_st);
 [uniq_subject_id, ~, subject_id] = unique(subject_id,'stable');
 % fmri_dat.metadata_table.subject_id = subject_id; % not needed but does not harm
 n_subj = size(uniq_subject_id,1);
@@ -318,8 +318,8 @@ b1=figure;
 hold off;
 b1=histogram(fmri_dat.Y);
 box off
-title(['Histogram of single trial ' behav_outcome]);
-xlabel(behav_outcome);
+title(['Histogram of single trial ' behav_outcome_dat_st]);
+xlabel(behav_outcome_dat_st);
 ylabel('n(observations)');
 set(gcf,'WindowState','Maximized');
 drawnow, snapnow;
@@ -337,7 +337,7 @@ b2=figure;
         b2 = histogram(this_Y);
         box off
         title(uniq_subject_id{sub});
-        xlabel(behav_outcome);
+        xlabel(behav_outcome_dat_st);
         ylabel('n(obs)');
     end
 
@@ -373,7 +373,7 @@ fprintf('\n\n');
 
                 case 'group'
 
-                    group = fmri_dat.metadata_table.(group_identifier);
+                    group = fmri_dat.metadata_table.(group_identifier_dat_st);
                     cv = cvpartition2(group, 'Group',subject_id, 'GroupKFold', nfolds_mvpa_reg_st);
                         fold_labels = zeros(size(fmri_dat.dat,2),1);
                         for sub = 1:cv.NumTestSets
@@ -445,10 +445,10 @@ fprintf('\n\n');
             switch holdout_set_method_mvpa_reg_st
 
                 case 'group'
-                    innercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier));
+                    innercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier_dat_st), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st));
 
                 case 'onesample'
-                    innercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+                    innercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
 
             end
             % NOTE: we use metadata_table here, since the input to bo.fit is the
@@ -483,10 +483,10 @@ fprintf('\n\n');
             switch holdout_set_method_mvpa_reg_st
 
                 case 'group'
-                    outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier));
+                    outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier_dat_st), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st));
 
                 case 'onesample'
-                    outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+                    outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
 
             end
             % NOTE: we use metadata_table here, since the input to cvGS.do is the
@@ -538,7 +538,7 @@ fprintf('\n\n');
             figure
 
             line_plot_multisubject(fmri_dat.Y, stats.yfit, 'subjid', subject_id);
-            xlabel({['Observed ' behav_outcome],'(average over conditions)'}); ylabel({['Estimated ' behav_outcome],'(cross validated)'})
+            xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['Estimated ' behav_outcome_dat_st],'(cross validated)'})
 
             set(gcf,'WindowState','Maximized');
             drawnow, snapnow;
@@ -949,21 +949,21 @@ if dosavemvparegstats
     
     if exist('maskname_short', 'var')
         
-        if ~isempty(cons2exclude)
-            savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome, '_exclude_cond_', char([cons2exclude{:}]), '_', results_suffix, '_results.mat']);
+        if ~isempty(cons2exclude_dat_st)
+            savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '_results.mat']);
             
         else
-            savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome, '_', results_suffix, '_results.mat']);
+            savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_', results_suffix, '_results.mat']);
         
         end
         
     else
         
-        if ~isempty(cons2exclude)
-                        savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome, '_exclude_cond_', char([cons2exclude{:}]), '_', results_suffix, '_results.mat']);
+        if ~isempty(cons2exclude_dat_st)
+                        savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '_results.mat']);
             
         else
-            savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome, '_', results_suffix, '_results.mat']);
+            savefilename = fullfile(resultsdir, ['single_trial_', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_', results_suffix, '_results.mat']);
         
         end
     end
@@ -1013,7 +1013,7 @@ if domultilevel_mvpa_reg_st
     figure
 
     line_plot_multisubject(fmri_dat.Y, sl_stats.yfit, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome],'(average over conditions)'}); ylabel({['PCR Estimated ' behav_outcome],'(cross validated)'})
+    xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['PCR Estimated ' behav_outcome_dat_st],'(cross validated)'})
 
     set(gcf, 'WindowState','maximized');
     drawnow, snapnow;
@@ -1051,7 +1051,7 @@ if domultilevel_mvpa_reg_st
     figure
 
     line_plot_multisubject(fmri_dat.Y, ml_stats.yfit, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome],'(average over conditions)'}); ylabel({['MLPCR Estimated ' behav_outcome],'(cross validated)'})
+    xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['MLPCR Estimated ' behav_outcome_dat_st],'(cross validated)'})
 
     set(gcf, 'WindowState','maximized');
     drawnow, snapnow;
@@ -1105,11 +1105,11 @@ if domultilevel_mvpa_reg_st
 
     subplot(1,2,1)
     line_plot_multisubject(fmri_dat.Y, pred_bt, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome]}); ylabel('Between subject components'' prediction');
+    xlabel({['Observed ' behav_outcome_dat_st]}); ylabel('Between subject components'' prediction');
     axis square
     subplot(1,2,2)
     line_plot_multisubject(fmri_dat.Y, pred_wi, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome]}); ylabel('Within subject components'' prediction');
+    xlabel({['Observed ' behav_outcome_dat_st]}); ylabel('Within subject components'' prediction');
     axis square
 
     set(gcf, 'WindowState','maximized');
@@ -1143,7 +1143,7 @@ if domultilevel_mvpa_reg_st
     figure
 
     line_plot_multisubject(fmri_dat.Y, ml3_stats.yfit, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome],'(average over conditions)'}); ylabel({['MLPCR3 Estimated ' behav_outcome],'(cross validated)'})
+    xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['MLPCR3 Estimated ' behav_outcome_dat_st],'(cross validated)'})
 
     set(gcf, 'WindowState','maximized');
     drawnow, snapnow;
@@ -1182,7 +1182,7 @@ if domultilevel_mvpa_reg_st
     figure
 
     line_plot_multisubject(fmri_dat.Y, ml3rs_stats.yfit, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome],'(average over conditions)'}); ylabel({['MLPCR3 Estimated ' behav_outcome],'(cross validated)'})
+    xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['MLPCR3 Estimated ' behav_outcome_dat_st],'(cross validated)'})
 
     set(gcf, 'WindowState','maximized');
     drawnow, snapnow;

@@ -63,8 +63,8 @@
 % author: lukas.vanoudenhove@kuleuven.be
 % date:   August, 2022
 %__________________________________________________________________________
-% @(#)% c2g_run_multivariate_mediation_single_trial     v1.3        
-% last modified: 2022/09/02
+% @(#)% c2g_run_multivariate_mediation_single_trial     v1.4        
+% last modified: 2023/01/18
 
 
 %% GET AND SET OPTIONS
@@ -80,11 +80,11 @@ a_set_up_paths_always_run_first;
 % SET/COPY MANDATORY OPTIONS FROM CORRESPONDING PREP_3f_ SCRIPT
 
 results_suffix = ''; % suffix of your choice added to .mat file with saved results
-cons2exclude = {}; % cell array of condition names to exclude, separated by commas (or blanks); NOTE: you can expand this if you want to exclude more conditions at this stage
-behav_outcome = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
-subj_identifier = 'participant_id'; % name of subject identifier variable in same table
-cond_identifier = 'trial_type'; % name of condition identifier variable in same table
-% group_identifier = 'group'; % name of group identifier variable in same table; leave commented out if you don't have groups
+cons2exclude_dat_st = {}; % cell array of condition names to exclude, separated by commas (or blanks); NOTE: you can expand this if you want to exclude more conditions at this stage
+behav_outcome_dat_st = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+subj_identifier_dat_st = 'participant_id'; % name of subject identifier variable in same table
+cond_identifier_dat_st = 'trial_type'; % name of condition identifier variable in same table
+% group_identifier_dat_st = 'group'; % name of group identifier variable in same table; leave commented out if you don't have groups
 
 % SET CUSTOM OPTIONS
 
@@ -114,11 +114,11 @@ end
 
 if ~exist('fmri_dat','var')
     
-    if ~isempty(cons2exclude)
-        load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_exclude_cond_', char([cons2exclude{:}]), '_', results_suffix, '.mat']));
+    if ~isempty(cons2exclude_dat_st)
+        load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '.mat']));
         
     else
-        load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_', results_suffix, '.mat']));
+        load(fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome_dat_st, '_', results_suffix, '.mat']));
 
     end
 end
@@ -127,20 +127,20 @@ end
 %% DEFINE SUBJECT AND CONDITION IDENTIFIERS
 % -------------------------------------------------------------------------
 
-subject_id = fmri_dat.metadata_table.(subj_identifier);
+subject_id = fmri_dat.metadata_table.(subj_identifier_dat_st);
 [uniq_subject_id, ~, subject_id] = unique(subject_id,'stable');
 fmri_dat.metadata_table.subject_id = subject_id;
 n_subj = size(uniq_subject_id,1);
 
-cond_id = fmri_dat.metadata_table.(cond_identifier);
+cond_id = fmri_dat.metadata_table.(cond_identifier_dat_st);
 [uniq_cond_id, ~, cond_id] = unique(cond_id,'stable');
 fmri_dat.metadata_table.cond_id = cond_id;
 
-if ~isempty(cons2exclude)
+if ~isempty(cons2exclude_dat_st)
 
     for cont = 1:size(DAT.contrastnames,2)
-        for con = 1:size(cons2exclude,2)
-            cont2include(cont,con) = ~contains(DAT.contrastnames{1,cont},cons2exclude{con});
+        for con = 1:size(cons2exclude_dat_st,2)
+            cont2include(cont,con) = ~contains(DAT.contrastnames{1,cont},cons2exclude_dat_st{con});
         end
         idx_cont2include = all(cont2include,2);
     end
@@ -299,8 +299,8 @@ b1=figure;
 hold off;
 b1=histogram(fmri_dat.Y);
 box off
-title(['Histogram of single trial ' behav_outcome]);
-xlabel(behav_outcome);
+title(['Histogram of single trial ' behav_outcome_dat_st]);
+xlabel(behav_outcome_dat_st);
 ylabel('n(observations)');
 set(gcf,'WindowState','Maximized');
 drawnow, snapnow;
@@ -318,7 +318,7 @@ b2=figure;
         b2 = histogram(this_Y);
         box off
         title(uniq_subject_id{sub});
-        xlabel(behav_outcome);
+        xlabel(behav_outcome_dat_st);
         ylabel('n(obs)');
     end
 
@@ -348,7 +348,7 @@ for cont = 1:size(contrastnames2include,2)
         mkdir(contrastpdmmediationresultsdir);
     end
     
-    behavcontrastpdmmediationresultsdir = fullfile(contrastpdmmediationresultsdir,behav_outcome);
+    behavcontrastpdmmediationresultsdir = fullfile(contrastpdmmediationresultsdir,behav_outcome_dat_st);
     
     if ~exist(behavcontrastpdmmediationresultsdir,'dir')
         mkdir(behavcontrastpdmmediationresultsdir);
@@ -367,9 +367,9 @@ for cont = 1:size(contrastnames2include,2)
             fmri_dat_sub = get_wh_image(fmri_dat,idx_sub);
             
             for con = 1:size(condsincontrast,2)
-                idx_con = contains(fmri_dat_sub.metadata_table.(cond_identifier),condsincontrast{1,con});
+                idx_con = contains(fmri_dat_sub.metadata_table.(cond_identifier_dat_st),condsincontrast{1,con});
                 fmri_dat_sub_con = get_wh_image(fmri_dat_sub,idx_con);
-                Y_temp{con} = fmri_dat_sub_con.metadata_table.(behav_outcome);
+                Y_temp{con} = fmri_dat_sub_con.metadata_table.(behav_outcome_dat_st);
                 X_temp{con} = fmri_dat_sub_con.metadata_table.cond_id;
                 X_temp{con}(X_temp{con}==max(X_temp{con})) = 1;
                 X_temp{con}(X_temp{con}==min(X_temp{con})) = -1;
@@ -391,10 +391,10 @@ for cont = 1:size(contrastnames2include,2)
             fprintf('\n\n');
         
             if exist('maskname_short', 'var')
-                savefilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', maskname_short, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+                savefilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', maskname_short, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
 
             else
-                savefilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+                savefilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
 
             end
                 
@@ -435,10 +435,10 @@ for cont = 1:size(contrastnames2include,2)
             fprintf('\n\n');
         
             if exist('maskname_short', 'var')
-                savefilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', maskname_short, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+                savefilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', maskname_short, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
                 
             else
-                savefilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+                savefilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
 
             end
             
@@ -478,12 +478,12 @@ for cont = 1:size(contrastnames2include,2)
         fprintf('\n\n');
         
         if exist('maskname_short', 'var')
-            loadfilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', maskname_short, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
-            loadfilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', maskname_short, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+            loadfilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', maskname_short, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+            loadfilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', maskname_short, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
 
         else
-            loadfilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
-            loadfilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+            loadfilename_data = fullfile(behavcontrastpdmmediationresultsdir, ['data_objects_', myscaling_pdm, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+            loadfilename_pdm = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_results_', myscaling_pdm, '_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
                             
         end
         
@@ -541,15 +541,15 @@ for cont = 1:size(contrastnames2include,2)
         printhdr('Calculating source reconstruction maps');
         fprintf('\n\n');
         
-        if ~exist(fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']),'file') || ...
-                ~exist(fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']),'file')
+        if ~exist(fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']),'file') || ...
+                ~exist(fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']),'file')
     
             for comp = 1:size(pdm.Wfull,2)
 
                 fmri_dat_cont = fmri_dat;
 
                 for con = 1:size(condsincontrast,2)
-                        idx_con(:,con) = contains(fmri_dat_cont.metadata_table.(cond_identifier),condsincontrast{1,con});
+                        idx_con(:,con) = contains(fmri_dat_cont.metadata_table.(cond_identifier_dat_st),condsincontrast{1,con});
                 end
                 
                 idx_con = any(idx_con,2);
@@ -577,10 +577,10 @@ for cont = 1:size(contrastnames2include,2)
                 fprintf('\n\n');
 
                 if exist('maskname_short', 'var')
-                    savefilename_source_recon = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']);
+                    savefilename_source_recon = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']);
 
                 else
-                    savefilename_source_recon = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+                    savefilename_source_recon = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
 
                 end
 
@@ -591,10 +591,10 @@ for cont = 1:size(contrastnames2include,2)
         else
             
             if exist('maskname_short', 'var')
-                loadfilename_source_recon = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']);
+                loadfilename_source_recon = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']);
 
             else
-                loadfilename_source_recon = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+                loadfilename_source_recon = fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
 
             end
 
@@ -718,10 +718,10 @@ for cont = 1:size(contrastnames2include,2)
         if dosavepdmstats
         
             if exist('maskname_short', 'var')
-                savefilename_regions = fullfile(behavcontrastpdmmediationresultsdir, ['region_objects_tables_', behav_outcome, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']);
+                savefilename_regions = fullfile(behavcontrastpdmmediationresultsdir, ['region_objects_tables_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']);
 
             else
-                savefilename_regions = fullfile(behavcontrastpdmmediationresultsdir, ['region_objects_tables_', behav_outcome, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
+                savefilename_regions = fullfile(behavcontrastpdmmediationresultsdir, ['region_objects_tables_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']);
 
             end
             

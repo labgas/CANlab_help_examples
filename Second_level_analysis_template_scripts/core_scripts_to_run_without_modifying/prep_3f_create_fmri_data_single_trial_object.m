@@ -17,12 +17,12 @@
 % voxel- and parcelwise regression), you can make a copy of this script with
 % a letter index (e.g. _s6a_) and change the default option here
 %
-% cons2exclude: cell array of condition names to exclude, separated by commas (or blanks)
-% behav_outcome: name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
-% subj_identifier: name of subject identifier variable in same table
-% cond_identifier: name of condition identifier variable in same table
-% group_identifier: name of group identifier variable in same table; leave commented out if you don't have groups
-% vif_threshold: variance inflation threshold to exclude trials
+% cons2exclude_dat_st: cell array of condition names to exclude, separated by commas (or blanks)
+% behav_outcome_dat_st: name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+% subj_identifier_dat_st: name of subject identifier variable in same table
+% cond_identifier_dat_st: name of condition identifier variable in same table
+% group_identifier_dat_st: name of group identifier variable in same table; leave commented out if you don't have groups
+% vif_threshold_dat_st: variance inflation threshold to exclude trials
 %
 % MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT
 %
@@ -37,8 +37,8 @@
 % author: lukas.vanoudenhove@kuleuven.be
 % date:   Dartmouth, March, 2021
 %__________________________________________________________________________
-% @(#)% prep_3f_create_fmri_data_single_trial_object.m     v3.0       
-% last modified: 2022/08/09
+% @(#)% prep_3f_create_fmri_data_single_trial_object.m     v3.1       
+% last modified: 2023/01/18
 
 
 %% GET AND SET OPTIONS
@@ -61,12 +61,12 @@ a_set_up_paths_always_run_first;
 % NOTE: only specify if you want to run multiple versions of your model with different options
 % than the defaults you set in your model-specific version of a2_set_default_options.m
 
-% cons2exclude = {'varname1'}; % cell array of condition names to exclude, separated by commas (or blanks)
-% behav_outcome = 'varname2'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
-% subj_identifier = 'varname3'; % name of subject identifier variable in same table
-% cond_identifier = 'varname4'; % name of condition identifier variable in same table
-% group_identifier = 'varname5'; % name of group identifier variable in same table; leave commented out if you don't have groups
-% vif_threshold = x; % variance inflation threshold to exclude trials
+% cons2exclude_dat_st = {'varname1'}; % cell array of condition names to exclude, separated by commas (or blanks)
+% behav_outcome_dat_st = 'varname2'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+% subj_identifier_dat_st = 'varname3'; % name of subject identifier variable in same table
+% cond_identifier_dat_st = 'varname4'; % name of condition identifier variable in same table
+% group_identifier_dat_st = 'varname5'; % name of group identifier variable in same table; leave commented out if you don't have groups
+% vif_threshold_dat_st = x; % variance inflation threshold to exclude trials
 
 
 %% LOAD NECESSARY VARIABLES IF NEEDED AND DO PREP WORK
@@ -84,10 +84,10 @@ end
 
 [~,subjs] = fileparts(DSGN.subjects);
 
-if ~isempty(cons2exclude)
+if ~isempty(cons2exclude_dat_st)
 
-    for con2ex = 1:size(cons2exclude,2)
-        outcome_vars_between_idx(con2ex,:) = contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,behav_outcome) & ~contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,cons2exclude{con2ex});
+    for con2ex = 1:size(cons2exclude_dat_st,2)
+        outcome_vars_between_idx(con2ex,:) = contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,behav_outcome_dat_st) & ~contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,cons2exclude_dat_st{con2ex});
     end
     
     for out = 1:size(outcome_vars_between_idx,2)
@@ -104,7 +104,7 @@ if ~isempty(cons2exclude)
     
 else
     
-    outcome_vars_between_idx = contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,behav_outcome);
+    outcome_vars_between_idx = contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,behav_outcome_dat_st);
     outcome_vars_between = DAT.BEHAVIOR.behavioral_data_table(:,outcome_vars_between_idx);
     
     for var = 1:sum(outcome_vars_between_idx)
@@ -149,19 +149,19 @@ nr_cons_no_st = sum(cell2mat(DSGN.singletrials{1}) == 0); % number of conditions
         load(fullfile(char(subjdir),'diagnostics','vifs.mat'));
         subjconimgs = SPM.xCon;
         
-        if ~isempty(cons2exclude)
+        if ~isempty(cons2exclude_dat_st)
             subjconimgs = subjconimgs(nr_cons+1:end); % we only want to pick the con images corresponding to single trials
             subjvifnames = vifs.name(1,1:end-nr_cons_no_st); % same for vifs
             subjvifvalues = vifs.allvifs(1,1:end-nr_cons_no_st);
             
             for conimg = 1:size(subjconimgs,2)
-                for con2ex = 1:size(cons2exclude,2)
-                    idx_cons(conimg,con2ex) = ~contains(subjconimgs(conimg).name, char(cons2exclude{con2ex}));
+                for con2ex = 1:size(cons2exclude_dat_st,2)
+                    idx_cons(conimg,con2ex) = ~contains(subjconimgs(conimg).name, char(cons2exclude_dat_st{con2ex}));
                 end
-                idx_cons2(conimg) = logical(sum(idx_cons(conimg,:)) == size(cons2exclude,2));
+                idx_cons2(conimg) = logical(sum(idx_cons(conimg,:)) == size(cons2exclude_dat_st,2));
             end
             
-            subjconimgs = subjconimgs(idx_cons2'); % excluding cons2exclude
+            subjconimgs = subjconimgs(idx_cons2'); % excluding cons2exclude_dat_st
             subjvifnames = subjvifnames(idx_cons2);
             subjvifvalues = subjvifvalues(idx_cons2);
             
@@ -223,13 +223,13 @@ fprintf('\n');
 % -------------------------------------------------------------------------
 
 behav_dat = DAT.BEHAVIOR.behavioral_st_data_table;
-behav_dat = behav_dat(ismember(behav_dat.(subj_identifier),subjs2use),:); % exclude entire subjects to exclude because of lack of rating for all trials within a condition
+behav_dat = behav_dat(ismember(behav_dat.(subj_identifier_dat_st),subjs2use),:); % exclude entire subjects to exclude because of lack of rating for all trials within a condition
 
-    if ~isempty(cons2exclude)
-        behav_dat = behav_dat(~ismember(behav_dat.(cond_identifier),cons2exclude),:); % exclude conditions if specified
+    if ~isempty(cons2exclude_dat_st)
+        behav_dat = behav_dat(~ismember(behav_dat.(cond_identifier_dat_st),cons2exclude_dat_st),:); % exclude conditions if specified
     end
     
-behav_dat = sortrows(behav_dat,{subj_identifier,cond_identifier});
+behav_dat = sortrows(behav_dat,{subj_identifier_dat_st,cond_identifier_dat_st});
 
 % SANITY CHECK #3
 
@@ -246,7 +246,7 @@ fmri_dat.metadata_table = [fmri_dat.metadata_table behav_dat];
 % SANITY CHECK #4
 
 for row = height(fmri_dat.metadata_table)
-    if ~contains(fmri_dat.metadata_table.vifname{row}, fmri_dat.metadata_table.(cond_identifier){row})
+    if ~contains(fmri_dat.metadata_table.vifname{row}, fmri_dat.metadata_table.(cond_identifier_dat_st){row})
         error('\nvifname and trial_type do not match in row #%d of fmri_dat.metadata_table, please check before proceeding\n',row)
     end
 end
@@ -258,7 +258,7 @@ fprintf('\n');
 % SANITY CHECK #5
 
 for row = height(fmri_dat.metadata_table)
-    if ~isequal(fmri_dat.metadata_table.subjname{row}, fmri_dat.metadata_table.(subj_identifier){row})
+    if ~isequal(fmri_dat.metadata_table.subjname{row}, fmri_dat.metadata_table.(subj_identifier_dat_st){row})
         error('\nsubject identifiers from fmri_dat and behav_dat do not match in row #%d of fmri_dat.metadata_table, please check before proceeding\n',row)
     end
 end
@@ -271,8 +271,8 @@ fprintf('\n');
 %% ADD BEHAVIORAL OUTCOME TO Y FIELD OF FMRI_DATA_ST OBJECT
 % -------------------------------------------------------------------------
 
-fmri_dat.Y = fmri_dat.metadata_table.(behav_outcome);
-fmri_dat.Y_descrip = behav_outcome;
+fmri_dat.Y = fmri_dat.metadata_table.(behav_outcome_dat_st);
+fmri_dat.Y_descrip = behav_outcome_dat_st;
 idx_Ynan = ~isnan(fmri_dat.Y);
 fmri_dat = get_wh_image(fmri_dat,idx_Ynan); 
 % NOTE: @bogpetre's fmri_data_st object nicely excludes the right row in all fields - River Roost IPA earned ;)
@@ -283,7 +283,7 @@ fmri_dat = get_wh_image(fmri_dat,idx_Ynan);
 
 % DEFINE SUBJECT IDENTIFIERS PRIOR TO REMOVING BAD TRIALS
 
-subject_id_vifs = fmri_dat.metadata_table.(subj_identifier);
+subject_id_vifs = fmri_dat.metadata_table.(subj_identifier_dat_st);
 [uniq_subject_id_vifs, ~, subject_id_vifs] = unique(subject_id_vifs,'stable');
 n_subj_vifs = size(uniq_subject_id_vifs,1);
 
@@ -299,9 +299,9 @@ title('vif values over all trials');
 xlabel('trial');
 ylabel('variance inflation factor');
 
-good_trials_idx = fmri_dat.metadata_table.vifvalue < vif_threshold;
+good_trials_idx = fmri_dat.metadata_table.vifvalue < vif_threshold_dat_st;
 bad_trials_perc = sum(~good_trials_idx)./size(fmri_dat.metadata_table.vifvalue,1).*100;
-sprintf('%4.2f percent of trials exceeds a vif threshold of %d, indicating multicollinearity with noise regressors; script will remove them',bad_trials_perc,vif_threshold)
+sprintf('%4.2f percent of trials exceeds a vif threshold of %d, indicating multicollinearity with noise regressors; script will remove them',bad_trials_perc,vif_threshold_dat_st)
 
 % per subject
 
@@ -312,9 +312,9 @@ v2=figure;
         this_idx_vifs = find(sub == subject_id_vifs);
         this_vifs = fmri_dat.metadata_table.vifvalue(this_idx_vifs);
 
-        this_good_trials_idx = this_vifs < vif_threshold;
+        this_good_trials_idx = this_vifs < vif_threshold_dat_st;
         this_bad_trials_perc = sum(~this_good_trials_idx)./size(this_vifs,1).*100;
-        sprintf('%4.2f percent of trials for subject %s exceeds a vif threshold of %d, indicating multicollinearity with noise regressors; script will remove them',this_bad_trials_perc,uniq_subject_id_vifs{sub},vif_threshold)
+        sprintf('%4.2f percent of trials for subject %s exceeds a vif threshold of %d, indicating multicollinearity with noise regressors; script will remove them',this_bad_trials_perc,uniq_subject_id_vifs{sub},vif_threshold_dat_st)
 
         subplot(ceil(sqrt(n_subj_vifs)), ceil(n_subj_vifs/ceil(sqrt(n_subj_vifs))), sub);
         hold off
@@ -340,13 +340,13 @@ clear sub subject_id_vifs uniq_subject_id_vifs n_subj_vifs this_idx_vifs this_vi
 %% SAVE FMRI_DATA_ST OBJECT
 % -------------------------------------------------------------------------
 
-if ~isempty(cons2exclude)
-    savefilename = fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_exclude_cond_', char([cons2exclude{:}]), '_', results_suffix, '.mat']);
+if ~isempty(cons2exclude_dat_st)
+    savefilename = fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '.mat']);
 
 else
-    savefilename = fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome, '_', results_suffix, '.mat']);
+    savefilename = fullfile(resultsdir, ['single_trial_fmri_data_st_object_', behav_outcome_dat_st, '_', results_suffix, '.mat']);
 
 end
 
-save(savefilename, 'fmri_dat', 'cons2exclude', 'behav_outcome', 'subj_identifier', 'cond_identifier');
+save(savefilename, 'fmri_dat', 'cons2exclude_dat_st', 'behav_outcome_dat_st', 'subj_identifier_dat_st', 'cond_identifier_dat_st');
 
