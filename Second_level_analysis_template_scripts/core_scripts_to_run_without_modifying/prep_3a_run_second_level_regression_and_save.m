@@ -639,7 +639,7 @@ for c = 1:kc
         fprintf ('\nORTHVIEWS GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.contrastname, groupnames_string, mask_string, scaling_string);
         
         t = threshold(regression_stats.t,.05,'unc');
-            if maskname_short
+            if exist('maskname_short','var')
                 t = apply_mask(t,glmmask);
             end
             
@@ -665,7 +665,7 @@ for c = 1:kc
             
             for img = 1:size(regression_stats.BF,2)
                 BF = threshold(regression_stats.BF(1,img),[-2.1972 2.1972],'raw-outside');
-                    if maskname_short
+                    if exist('maskname_short','var')
                         BF = apply_mask(BF,glmmask);
                     end
                 orthviews(BF);
@@ -814,7 +814,7 @@ for c = 1:kc
         for j = 1:num_effects
 
             tj = get_wh_image(parcelwise_stats.t_obj, j);
-                if maskname_short
+                if exist('maskname_short','var')
                     tj = apply_mask(tj, glmmask);
                 end
             tj = threshold(tj, .05, 'unc'); 
@@ -845,7 +845,7 @@ for c = 1:kc
             for img = 1:size(parcelwise_stats.BF,2)
                 
                 BF = threshold(parcelwise_stats.BF(1,img),[-2.1972 2.1972],'raw-outside');
-                    if maskname_short
+                    if exist('maskname_short','var')
                         BF = apply_mask(BF,glmmask);
                     end
                     
