@@ -1036,8 +1036,14 @@ for c = 1:kc
 
                 o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
-                w = region(mvpa_stats.weight_obj);
-
+                w = mvpa_stats.weight_obj;
+                
+                    if exist('maskname_short','var')
+                        w = apply_mask(w,glmmask);
+                    end
+                    
+                w = region(w);
+                
                 o2 = addblobs(o2, w);
                 o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' unthresholded ' mvpa_stats.Y_names ' ' mask_string ' ' myscaling_glm]);
 
