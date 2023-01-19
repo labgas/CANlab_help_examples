@@ -97,7 +97,6 @@
 % myscaling_mvpa_reg_st: default 'raw'; options are 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
 %
 % STATISTICS AND RESULTS VISUALIZATION OPTIONS
-% --------------------------------------------
 %
 % dobootstrap_mvpa_reg_st: default false; true bootstraps weights - takes AN AWFUL LOT OF TIME, hence only use true for final analysis
 %    boot_n_mvpa_reg_st: default 5000; number of bootstrap samples, reduce number for quick results
@@ -127,8 +126,8 @@
 % author: lukas.vanoudenhove@kuleuven.be, bogpetre@gmail.com
 % date:   April, 2021
 %__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v5.4        
-% last modified: 2023/01/18
+% @(#)% c2f_run_MVPA_regression_single_trial     v5.5        
+% last modified: 2023/01/19
 
 
 %% GET AND SET OPTIONS
@@ -541,7 +540,7 @@ fprintf('\n\n');
 
             figure
 
-            line_plot_multisubject(fmri_dat.Y, stats.yfit, 'subjid', subject_id);
+            [~,~,~,slope_stats] = line_plot_multisubject(fmri_dat.Y, stats.yfit, 'subjid', subject_id, 'group_avg_ref_line');
             xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['Estimated ' behav_outcome_dat_st],'(cross validated)'})
 
             set(gcf,'WindowState','Maximized');
@@ -608,12 +607,12 @@ fprintf('\n\n');
 % BOOTSTRAP IF REQUESTED
 %-----------------------
 
-delete(gcp('nocreate'));
-c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
-nw = c.NumWorkers;
-parpool(round(0.8*nw));
-
     if dobootstrap_mvpa_reg_st
+        
+        delete(gcp('nocreate'));
+        c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
+        nw = c.NumWorkers;
+        parpool(round(0.8*nw));
         
         fprintf('\n\n');
         printhdr('BOOTSTRAPPING WEIGHT MAPS');
@@ -972,23 +971,35 @@ if dosavemvparegstats
         end
     end
     
-    save(savefilename, 'stats', '-v7.3');
-
-        if dobootstrap_mvpa_reg_st
-            save(savefilename,'bs_stats', '-append');
-        end
-
-        if doperm_mvpa_reg_st
-            save(savefilename,'perm_stats_obj', '-append');
-        end
+    
+    switch ml_method_mvpa_reg_st
         
-        if dosourcerecon_mvpa_reg_st
-            save(savefilename,'source_recon_data_obj', '-append');
-        end 
-        
-        if dosourcerecon_perm_mvpa_reg_st
-            save(savefilename,'source_recon_perm_stats_obj', '-append');
-        end 
+        case 'predict'
+    
+            save(savefilename, 'stats','slope_stats', '-v7.3');
+            
+        case 'oofmridataobj'
+            
+            save(savefilename, 'stats', '-v7.3');
+            
+    end
+    
+    
+    if dobootstrap_mvpa_reg_st
+        save(savefilename,'bs_stats', '-append');
+    end
+
+    if doperm_mvpa_reg_st
+        save(savefilename,'perm_stats_obj', '-append');
+    end
+
+    if dosourcerecon_mvpa_reg_st
+        save(savefilename,'source_recon_data_obj', '-append');
+    end 
+
+    if dosourcerecon_perm_mvpa_reg_st
+        save(savefilename,'source_recon_perm_stats_obj', '-append');
+    end 
         
 end
         
