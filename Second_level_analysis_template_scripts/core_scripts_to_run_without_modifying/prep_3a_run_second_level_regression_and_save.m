@@ -1085,12 +1085,16 @@ end
 
 fprintf('\nFilename: %s\n', savefilenamedata);
 
-fprintf('\n\n');
-printhdr('SAVING MVPA RESULTS');
-fprintf('\n\n');
+if domvpa_reg_cov
 
-savefilenamedata_mvpa = fullfile(resultsdir, ['mvpa_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
-save(savefilenamedata_mvpa, 'mvpa_stats_results', 'mvpa_dats','-v7.3');
-fprintf('\nSaved mvpa_stats_results for %s\n', mygroupnamefield);
+    fprintf('\n\n');
+    printhdr('SAVING MVPA RESULTS');
+    fprintf('\n\n');
 
-fprintf('\nFilename: %s\n', savefilenamedata_mvpa);
+    savefilenamedata_mvpa = fullfile(resultsdir, ['mvpa_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
+    save(savefilenamedata_mvpa, 'mvpa_stats_results', 'mvpa_dats','-v7.3');
+    fprintf('\nSaved mvpa_stats_results for %s\n', mygroupnamefield);
+
+    fprintf('\nFilename: %s\n', savefilenamedata_mvpa);
+    
+end
