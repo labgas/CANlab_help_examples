@@ -1014,7 +1014,7 @@ for c = 1:kc
                 observed = mvpa_dat.Y;
                 predicted = mvpa_stats.yfit;
                 tbl = table(observed, predicted);
-                mdl = fitlm(tbl,'predicted ~ observed');
+                mdl = fitlm(tbl,'predicted ~ observed','RobustOpts','on')
                 
                 figure
                 

@@ -197,7 +197,7 @@ if domvpa_reg_cov
     mvpa_resultsstring = 'mvpa_stats_and_maps_';
     mvpa_analysis_type = algorithm_mvpa_reg_cov;
 
-    if ~exist('mvpa_resultsvarname','var')
+    if ~exist(mvpa_resultsvarname,'var')
 
         fprintf('\n\n');
         printhdr('LOADING MVPA DATA');
@@ -205,9 +205,9 @@ if domvpa_reg_cov
 
         savefilenamedata_mvpa = fullfile(resultsdir, ['mvpa_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
 
-        if exist(savefilenamedata,'file')
+        if exist(savefilenamedata_mvpa,'file')
             fprintf('\nLoading %s mvpa regression results and maps from %s\n\n', mvpa_analysis_type, savefilenamedata_mvpa);
-            load(savefilenamedata_mvpa, mvpa_resultsvarname);
+            load(savefilenamedata_mvpa);
         else
             fprintf('\nNo saved results file %s. Skipping this analysis.', savefilenamedata_mvpa);
             fprintf('\nRun prep_3a_run_second_level_regression_and_save.m to get %s regression results first.\n', mvpa_analysis_type); 
