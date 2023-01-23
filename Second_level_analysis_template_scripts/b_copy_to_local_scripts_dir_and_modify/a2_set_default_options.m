@@ -234,11 +234,13 @@ similarity_metric_sigs = 'dotproduct';                          % default 'dotpr
 keyword_sigs = 'all';                                           % default 'all'             passed into load_image_set, help load_image_set for overview of many options
 
 
-%% D_SIGNATURE_RESPONSES_GENERIC 
+%% D_SIGNATURE_RESPONSES_GENERIC & D10_SIGNATURE_RIVERPLOTS
 % --------------------------------------------------------------------
 signatures_to_plot = {};                                        % default empty 
                                                                     % empty: include all signatures in DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).signaturenames
                                                                     % cell array of selected signatures in DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).signaturenames to plot, separated by commas (or blanks)
+                                                                        % NOTE:
+                                                                        % d10 script will not work with individual signatures, only with groups defined in load_image_set
 
 
 %% z_batch_publish_everything, z_batch_publish_analyses options 
