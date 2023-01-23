@@ -54,7 +54,7 @@ plugin_get_options_for_analysis_script
 % NOTE: only specify if you want to run multiple versions of your model with different options
 % than the defaults you set in your model-specific version of a2_set_default_options.m
 % 
-signatures_to_plot = {'NCS','NCSfood','NCSdrugs'};
+% signatures_to_plot = {'varname1','varname2',...};
 
 
 %% LOAD NECESSARY VARIABLES IF NEEDED
