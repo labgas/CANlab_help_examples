@@ -22,9 +22,10 @@
 % OPTIONS
 %
 % NOTE: 
-% defaults are specified in a2_set_default_options, but can be changed here
+% defaults are specified in a2_set_default_options, but can be changed below
 % in case you want to add signature responses calculated with different
-% options, e.g. scaling
+% options, e.g. scaling, and save your new version of the script with a
+% letter index
 %
 % myscaling_sigs = 'raw'/'scaled';
 % similarity_metric_sigs = 'dotproduct/'cosine_similarity','correlation';
@@ -46,7 +47,7 @@
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
-ery_4a_secondlevel_m6_s0_a_set_up_paths_always_run_first;
+a_set_up_paths_always_run_first;
 
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
