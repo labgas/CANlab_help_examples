@@ -155,7 +155,7 @@ myscaling_svm_between = 'raw'; % see above
 %% PREP_3F_CREATE_FMRI_DATA_SINGLE_TRIAL_OBJECT
 % ---------------------------------------------
 
-cons2exclude_dat_st = {};                                       % cell array of condition names to exclude, separated by commas (or blanks)
+cons2exclude_dat_st = {};                                       % default empty ~ include all conditions; cell array of condition names to exclude, separated by commas (or blanks)
 behav_outcome_dat_st = 'rating';                                % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
 subj_identifier_dat_st = 'participant_id';                      % name of subject identifier variable in same table
 cond_identifier_dat_st = 'trial_type';                          % name of condition identifier variable in same table
@@ -232,6 +232,13 @@ dosavepdmstats = true;                                          % see saving opt
 myscaling_sigs = 'raw';                                         % default 'raw'             'raw', or 'scaled', see myscaling_glm above
 similarity_metric_sigs = 'dotproduct';                          % default 'dotproduct'      other options 'cosine_similarity','correlation' - passed into apply_all_signatures
 keyword_sigs = 'all';                                           % default 'all'             passed into load_image_set, help load_image_set for overview of many options
+
+
+%% D_SIGNATURE_RESPONSES_GENERIC 
+% --------------------------------------------------------------------
+signatures_to_plot = {};                                        % default empty 
+                                                                    % empty: include all signatures in DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).signaturenames
+                                                                    % cell array of selected signatures in DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).signaturenames to plot, separated by commas (or blanks)
 
 
 %% z_batch_publish_everything, z_batch_publish_analyses options 
