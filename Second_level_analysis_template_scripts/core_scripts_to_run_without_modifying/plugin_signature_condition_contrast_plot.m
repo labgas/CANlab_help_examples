@@ -18,17 +18,12 @@ if isfield(DAT, 'BETWEENPERSON') && isfield(DAT.BETWEENPERSON, 'group')
 end
 
 % Format: The prep_4_apply_signatures_and_save script extracts signature responses and saves them.
-% These fields contain data tables:
-% DAT.SIG_conditions.(data scaling).(similarity metric).(signaturename)
-% DAT.SIG_contrasts.(data scaling).(similarity metric).(signaturename)
 %
-% signaturenames is any of those from load_image_set('npsplus')
-% (data scaling) is 'raw' or 'scaled', using DATA_OBJ or DATA_OBJsc
-% (similarity metric) is 'dotproduct' or 'cosine_sim'
-%
-% Each of by_condition and contrasts contains a data table whose columns
-% are conditions or contrasts, with variable names based on DAT.conditions
-% or DAT.contrastnames, but with spaces replaced with underscores.
+% These fields contain data tables whose columns are conditions or contrasts, 
+% with variable names based on DAT.conditions or DAT.contrastnames, 
+% but with spaces replaced with underscores:
+% DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).signature_name
+% DAT.SIG_contrasts.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).signature_name
 %
 % Convert these to numerical arrays using table2array:
 % table2array(DAT.SIG_contrasts.scaled.dotproduct.NPSneg)
@@ -47,8 +42,11 @@ mypointsize = get_point_size(nplots, k);
 %% Signature Response - conditions
 % ------------------------------------------------------------------------
 
-figtitle = sprintf('%s conditions %s %s', mysignames, myscaling, mymetric);
+figtitle = sprintf('%s CONDITIONS %s %s %s', mysignames, upper(myscaling_sigs), upper(similarity_metric_sigs), upper(keyword_sigs));
+
+fprintf('\n\n');
 printhdr(figtitle);
+fprintf('\n\n');
 
 fighan = create_figure(figtitle, 1, nplots);
 adjust_fig_position_for_long_xlabel_names(fighan);
@@ -57,10 +55,12 @@ clear axh
 
 for n = 1:nplots
     
+    printhdr(['SIGNATURE: ', signatures_to_plot{n}]);
+    
     axh(n) = subplot(1, nplots, n);
     
     mysignature = signatures_to_plot{n};
-    mydata = table2array(DAT.SIG_conditions.(myscaling).(mymetric).(mysignature));
+    mydata = table2array(DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).(mysignature));
     
     % get condition-specific group covariate data if any
     % this will not work yet, because barplot_columns cannot handle
@@ -71,17 +71,24 @@ for n = 1:nplots
     handles = barplot_columns(mydata, 'title', format_strings_for_legend(mysignature), 'colors', DAT.colors, 'MarkerSize', mypointsize, 'dolines', 'nofig', 'names', myaxislabels, 'covs', group, 'wh_reg', 0);
     
     set(axh(n), 'FontSize', myfontsize);
-    if n == 1, ylabel(format_strings_for_legend(mymetric)); else, ylabel(' '); end
-    xlabel('')
+    if n == 1
+        ylabel(format_strings_for_legend(similarity_metric_sigs));
+    else
+        ylabel(' ');
+    end
+    xlabel('');
         
     drawnow
 end
 
+set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+snapnow;
+
 % kludgy_fix_for_y_axis(axh); % lukasvo76: commented out because causing
 % errors in some situations
 
-plugin_save_figure;
-%close
+% plugin_save_figure;
+% close
 
 
 %% Signature Response - contrasts
@@ -99,8 +106,11 @@ end
 % ------------------------------------------------------------------------
 
 
-figtitle = sprintf('%s contrasts %s %s', mysignames, myscaling, mymetric);
+figtitle = sprintf('%s CONTRASTS %s %s %s', mysignames, upper(myscaling_sigs), upper(similarity_metric_sigs), upper(keyword_sigs));
+
+fprintf('\n\n');
 printhdr(figtitle);
+fprintf('\n\n');
 
 fighan = create_figure(figtitle, 1, nplots);
 adjust_fig_position_for_long_xlabel_names(fighan);
@@ -114,10 +124,12 @@ clear axh
 
 for n = 1:nplots
     
+    printhdr(['SIGNATURE: ', signatures_to_plot{n}]);
+    
     axh(n) = subplot(1, nplots, n);
     
     mysignature = signatures_to_plot{n};
-    mydata = table2array(DAT.SIG_contrasts.(myscaling).(mymetric).(mysignature));
+    mydata = table2array(DAT.SIG_contrasts.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).(mysignature));
     
     % get condition-specific group covariate data if any
     % this will not work yet, because barplot_columns cannot handle
@@ -128,16 +140,23 @@ for n = 1:nplots
     handles = barplot_columns(mydata, 'title', format_strings_for_legend(mysignature), 'colors', DAT.contrastcolors, 'MarkerSize', mypointsize, 'nofig', 'names', myaxislabels, 'covs', group, 'wh_reg', 0);
     
     set(axh(n), 'FontSize', myfontsize);
-    if n == 1, ylabel(format_strings_for_legend(mymetric)); else, ylabel(' '); end
-    xlabel('')
+    if n == 1
+        ylabel(format_strings_for_legend(similarity_metric_sigs)); 
+    else
+        ylabel(' '); 
+    end
+    xlabel('');
     
     drawnow
 end
 
+set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+snapnow;
+
 % kludgy_fix_for_y_axis(axh); % lukasvo76: commented out because causing
 % errors in some situations
 
-plugin_save_figure;
+% plugin_save_figure;
 %close
 
 %%
