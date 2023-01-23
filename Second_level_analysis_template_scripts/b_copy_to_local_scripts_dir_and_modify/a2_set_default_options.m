@@ -23,59 +23,58 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v4.1
-% last modified: 2023/01/18
+% @(#)% a2_set_default_options.m         v4.2
+% last modified: 2023/01/23
 
 
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
 % --------------------------------------------------------------------------------
 
-dofullplot = true;         % default true  Can set to false to save time
-omit_histograms = false;     % default false Histograms not useful for large samples 
-dozipimages = false;        % default false to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses; lukasvo76: changed from original CANlab default
+dofullplot = true;                                      % default true  Can set to false to save time
+omit_histograms = false;                                % default false Histograms not useful for large samples 
+dozipimages = false;                                    % default false to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses; lukasvo76: changed from original CANlab default
 
 
 %% PREP_3A_RUN_SECOND_LEVEL_REGRESSION_AND_SAVE
 % ---------------------------------------------
 
-maskname_glm = which('gray_matter_mask_sparse.img');
-                                    % default use of sparse gray matter mask
-                                    % model-specific maskdir defined in a_set_up_paths_always_run_first script
-                                    % if you do not want to mask, change to []
-                                    % if you want to use a custom mask, put it in maskdir and change name here
-                                    % used in this script only for visualization of unthresholded results
-myscaling_glm = 'raw';              % 'raw', 'scaled', or 'scaledcontrasts'; 
-                                    % 'scaled': use z-scored condition images prior to computing contrasts
-                                    % 'scaled_contrasts': l2norm contrasts after computing them
-design_matrix_type = 'onesample';   % 'group', 'custom', or 'onesample'
-                                    % 'group': use DAT.BETWEENPERSON.group or 
-                                    % DAT.BETWEENPERSON.contrasts{c}.group;
-                                    % @lukasvo76: compare groups without controlling for covariates
-                                    % 'custom': use all columns of table object 
-                                    % DAT.BETWEENPERSON.contrasts{c};
-                                    % @lukasvo76: covariates to control for in addition to a group factor
-                                    % 'onesample': use intercept only
-                                    % @lukasvo76: no group factor, no covariates -
-                                    % one sample t-test with robust option
-                                    % (contrary to c_univariate_contrast_maps.m)
-dorobust = true;                    % robust statistics for voxel-based GLM [true, false] -- default true
-dorobfit_parcelwise = false;        % true runs robust parcelwise regression (CANlab's robfit_parcelwise() function) rather than voxel-based GLM (CANlab's regress() function)
+maskname_glm = which('gray_matter_mask_sparse.img');    % default use of sparse gray matter mask
+                                                            % model-specific maskdir defined in a_set_up_paths_always_run_first script
+                                                            % if you do not want to mask, change to []
+                                                            % if you want to use a custom mask, put it in maskdir and change name here
+                                                            % used in this script only for visualization of unthresholded results
+myscaling_glm = 'raw';                                  % 'raw', 'scaled', or 'scaledcontrasts'; 
+                                                            % 'scaled': use z-scored condition images prior to computing contrasts
+                                                            % 'scaled_contrasts': l2norm contrasts after computing them
+design_matrix_type = 'onesample';                       % 'group', 'custom', or 'onesample'
+                                                            % 'group': use DAT.BETWEENPERSON.group or 
+                                                                % DAT.BETWEENPERSON.contrasts{c}.group;
+                                                                % @lukasvo76: compare groups without controlling for covariates
+                                                            % 'custom': use all columns of table object 
+                                                                % DAT.BETWEENPERSON.contrasts{c};
+                                                                % @lukasvo76: covariates to control for in addition to a group factor
+                                                            % 'onesample': use intercept only
+                                                                % @lukasvo76: no group factor, no covariates -
+                                                                % one sample t-test with robust option
+                                                                % (contrary to c_univariate_contrast_maps.m, which is being deprecated)
+dorobust = true;                                        % robust statistics for voxel-based GLM [true, false] -- default true
+dorobfit_parcelwise = false;                            % true runs robust parcelwise regression (CANlab's robfit_parcelwise() function) rather than voxel-based GLM (CANlab's regress() function)
     % robfit_parcelwise options
-    csf_wm_covs = false;                % true adds global wm & csf regressors at second level
-    remove_outliers = false;            % true removes outlier images/subjects based on mahalanobis distance 
-doBayes = true;                     % converts t-maps into Bayes Factor maps -- default true
-domvpa_reg_cov = false;             % run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
+    csf_wm_covs = false;                                        % true adds global wm & csf regressors at second level
+    remove_outliers = false;                                    % true removes outlier images/subjects based on mahalanobis distance 
+doBayes = true;                                         % converts t-maps into Bayes Factor maps -- default true
+domvpa_reg_cov = false;                                 % run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
     % mvpa_reg_covariate options
-    algorithm_mvpa_reg_cov = 'cv_pcr';              % default cv_pcr, will be passed into predict function (help fmri_data.predict for options)
-    holdout_set_method_mvpa_reg_cov = 'no_group';   % 'no_group', or 'group'
-                                                        % 'group': use DAT.BETWEENPERSON.group or 
-                                                            % DAT.BETWEENPERSON.contrasts{c}.group;
-                                                            % @lukasvo76: balances holdout sets over groups
-                                                        % 'no_group'
-                                                            % @lukasvo76: no group factor, stratifies by
-                                                            % subject (i.e.leave whole subject out) since data is purely between-subject
-    nfolds_mvpa_reg_cov = 5;                        % default 5; number of cross-validation folds for kfold
-    zscore_outcome_mvpa_reg_cov = false;            % default false; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
+    algorithm_mvpa_reg_cov = 'cv_pcr';                          % default cv_pcr, will be passed into predict function (help fmri_data.predict for options)
+    holdout_set_method_mvpa_reg_cov = 'no_group';               % 'no_group', or 'group'
+                                                                    % 'group': use DAT.BETWEENPERSON.group or 
+                                                                        % DAT.BETWEENPERSON.contrasts{c}.group;
+                                                                        % @lukasvo76: balances holdout sets over groups
+                                                                    % 'no_group'
+                                                                        % @lukasvo76: no group factor, stratifies by
+                                                                        % subject (i.e.leave whole subject out) since data is purely between-subject
+    nfolds_mvpa_reg_cov = 5;                                    % default 5; number of cross-validation folds for kfold
+    zscore_outcome_mvpa_reg_cov = false;                        % default false; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
 
     
 %% C2A_SECOND_LEVEL_REGRESSION
@@ -87,63 +86,64 @@ domvpa_reg_cov = false;             % run MVPA regression model to predict covar
 
 % GLM OPTIONS
 % -----------
-save_figures_glm = false; % true saves .svg files of all figures generated by c2a_second_level_regression.m (slow, takes up space) % added by @lukasvo76 May 2022
-q_threshold_glm = .05; % threshold for FDR-corrected display items
-p_threshold_glm = .005; % threshold for uncorrected display items
-k_threshold_glm = 10; % extent threshold for both corrected and uncorrected display items
-BF_threshold_glm = 10; % threshold for Bayes Factor maps, |BF| > 10 indicates strong evidence in favour of H1 (positive value) or H0 (negative value) - see help.statistic_image.estimateBayesFactor for details
+save_figures_glm = false;                                       % true saves .svg files of all figures generated by c2a_second_level_regression.m (slow, takes up space) % added by @lukasvo76 May 2022
+q_threshold_glm = .05;                                          % threshold for FDR-corrected display items
+p_threshold_glm = .005;                                         % threshold for uncorrected display items
+k_threshold_glm = 10;                                           % extent threshold for both corrected and uncorrected display items
+BF_threshold_glm = 10;                                          % threshold for Bayes Factor maps, |BF| > 10 indicates strong evidence in favour of H1 (positive value) or H0 (negative value) - see help.statistic_image.estimateBayesFactor for details
 
 % MVPA OPTIONS
 % ------------
 dobootstrap_mvpa_reg_cov = false;                                % default false     bootstrapping; takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to 10k samples
     % mvpa bootstrapping options
     boot_n_mvpa_reg_cov = 5000;                                      % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
-    parallelstr_mvpa_reg_cov = 'noparallel';                           % parallel proc for boot.   'parallel' or 'noparallel'
+    parallelstr_mvpa_reg_cov = 'noparallel';                         % parallel proc for boot.   'parallel' or 'noparallel'
     cons2boot = [];                                                  % default empty - bootstrap all conditions/contrasts in DAT.contrasts/conditions; specify indices for contrasts or conditions to bootstrap if you want to bootstrap a subset
     % mvpa thresholding options
     q_threshold_mvpa_reg_cov = .05;                                  % default .05       threshold for FDR-corrected display items
     k_threshold_mvpa_reg_cov = 10;                                   % default 10        extent threshold for FDR-corrected display items 
 
+    
 %% PREP_3C_RUN_SVMs_ON_CONTRASTS_MASKED 
 % --------------------------------------------------------------------
 
-ml_method_svm = 'predict';                              % 'oofmridataobj', or 'predict'
+ml_method_svm = 'predict';                                      % 'oofmridataobj', or 'predict'
                                                                     % 'oofmridataobj':
-                                                                    % use @bogpetre's object-oriented method
-                                                                    % https://github.com/canlab/ooFmriDataObjML
+                                                                        % use @bogpetre's object-oriented method
+                                                                        % https://github.com/canlab/ooFmriDataObjML
                                                                     % 'predict'
-                                                                    % use CANlab's predict function
-                                                                    % https://github.com/canlab/CanlabCore/blob/master/CanlabCore/%40fmri_data/predict.m
-holdout_set_method_svm = 'onesample';                   % 'group', or 'onesample'
-                                                            % 'group': use DAT.BETWEENPERSON.group or 
-                                                            % DAT.BETWEENPERSON.contrasts{c}.group;
-                                                            % @lukasvo76: balances holdout sets over groups
-                                                            % 'onesample': use subject id only
-                                                            % @lukasvo76: no group factor, stratifies by
-                                                            % subject (i.e. leave whole subject out)
-holdout_set_type_svm = 'kfold';                         % default kfold     cross-validation method: 'kfold' or 'leave_one_subject_out' - the latter is not recommended
-    nfolds_svm = 5;                                         % default 5         number of cross-validation folds for kfold
-maskname_svm = which('gray_matter_mask_sparse.img');    % default use of sparse gray matter mask; maskdir now defined in a_set_up_paths_always_run_first script; if you do not want to mask, change to []; if you want to use a custom mask, put it in maskdir and change name here.
-myscaling_svm = 'raw';                                  % options are 'raw','subjectnorm','imagenorm','zscoreimages','zscorevoxels'
-                                                            % subjectnorm: normalize_each_subject_by_l2norm; normalizes images for each subject by L2 norm of Condition 1 image; can help with numerical scaling and inter-subject scaling diffs
-                                                            % imagenorm: normalize_images_by_l2norm; normalizes each image separately, not each subject/pair
-                                                            % zscoreimages: Z-score each input image, removing image mean and forcing std to 1. Removes overall effects of image intensity and scale. Can be useful across studies but also removes information. Use judiciously. lukasvo76: corresponds to 'scaled' in myscaling_glm option in prep_3a
-                                                            % zscorevoxels: Z-score each voxel across images
-dosavesvmstats = true;                                  % default true      save statistics and weight map objects for SVM contrasts
-dobootstrap_svm = false;                                % default false     takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to the default 10k samples
-    boot_n_svm = 5000;                                      % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
-parallelstr = 'parallel';                               % parallel proc for boot.   'parallel' or 'noparallel'
-dosearchlight_svm = false;                              % default false     perform searchlight SVM analysis
-    searchlight_radius_svm = 3;                              % default 3         radius for searchlight sphere
+                                                                        % use CANlab's predict function
+                                                                        % https://github.com/canlab/CanlabCore/blob/master/CanlabCore/%40fmri_data/predict.m
+holdout_set_method_svm = 'onesample';                           % 'group', or 'onesample'
+                                                                    % 'group': use DAT.BETWEENPERSON.group or 
+                                                                        % DAT.BETWEENPERSON.contrasts{c}.group;
+                                                                        % @lukasvo76: balances holdout sets over groups
+                                                                    % 'onesample': use subject id only
+                                                                        % @lukasvo76: no group factor, stratifies by
+                                                                        % subject (i.e. leave whole subject out)
+holdout_set_type_svm = 'kfold';                                 % default kfold     cross-validation method: 'kfold' or 'leave_one_subject_out' - the latter is not recommended
+    nfolds_svm = 5;                                                 % default 5         number of cross-validation folds for kfold
+maskname_svm = which('gray_matter_mask_sparse.img');            % default use of sparse gray matter mask; maskdir now defined in a_set_up_paths_always_run_first script; if you do not want to mask, change to []; if you want to use a custom mask, put it in maskdir and change name here.
+myscaling_svm = 'raw';                                          % options are 'raw','subjectnorm','imagenorm','zscoreimages','zscorevoxels'
+                                                                    % subjectnorm: normalize_each_subject_by_l2norm; normalizes images for each subject by L2 norm of Condition 1 image; can help with numerical scaling and inter-subject scaling diffs
+                                                                    % imagenorm: normalize_images_by_l2norm; normalizes each image separately, not each subject/pair
+                                                                    % zscoreimages: Z-score each input image, removing image mean and forcing std to 1. Removes overall effects of image intensity and scale. Can be useful across studies but also removes information. Use judiciously. lukasvo76: corresponds to 'scaled' in myscaling_glm option in prep_3a
+                                                                    % zscorevoxels: Z-score each voxel across images
+dosavesvmstats = true;                                          % default true      save statistics and weight map objects for SVM contrasts
+dobootstrap_svm = false;                                        % default false     takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to the default 10k samples
+    boot_n_svm = 5000;                                              % default 5000      number of bootstrap samples, reduce number for quick results, increase to 10k for publication
+parallelstr = 'parallel';                                       % parallel proc for boot.   'parallel' or 'noparallel'
+dosearchlight_svm = false;                                          % default false     perform searchlight SVM analysis
+    searchlight_radius_svm = 3;                                     % default 3         radius for searchlight sphere
 
 
 %% C2_SVM_CONTRASTS_MASKED
 % ------------------------
 
-save_figures_svm = false; % true saves .svg files of all figures generated by c2a_second_level_regression.m (slow, takes up space) % added by @lukasvo76 May 2022
-q_threshold_svm = .05; % threshold for FDR-corrected display items
-p_threshold_svm = .005; % threshold for uncorrected display items
-k_threshold_svm = 10; % extent threshold for both corrected and uncorrected display items
+save_figures_svm = false;                                       % true saves .svg files of all figures generated by c2a_second_level_regression.m (slow, takes up space) % added by @lukasvo76 May 2022
+q_threshold_svm = .05;                                          % threshold for FDR-corrected display items
+p_threshold_svm = .005;                                         % threshold for uncorrected display items
+k_threshold_svm = 10;                                           % extent threshold for both corrected and uncorrected display items
 
 
 %% prep_3d_run_SVMs_betweenperson_contrasts options
@@ -155,12 +155,12 @@ myscaling_svm_between = 'raw'; % see above
 %% PREP_3F_CREATE_FMRI_DATA_SINGLE_TRIAL_OBJECT
 % ---------------------------------------------
 
-cons2exclude_dat_st = {}; % cell array of condition names to exclude, separated by commas (or blanks)
-behav_outcome_dat_st = 'rating'; % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
-subj_identifier_dat_st = 'participant_id'; % name of subject identifier variable in same table
-cond_identifier_dat_st = 'trial_type'; % name of condition identifier variable in same table
-% group_identifier_dat_st = 'group'; % name of group identifier variable in same table; leave commented out if you don't have groups
-vif_threshold_dat_st = 4; % variance inflation threshold to exclude trials
+cons2exclude_dat_st = {};                                       % cell array of condition names to exclude, separated by commas (or blanks)
+behav_outcome_dat_st = 'rating';                                % name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
+subj_identifier_dat_st = 'participant_id';                      % name of subject identifier variable in same table
+cond_identifier_dat_st = 'trial_type';                          % name of condition identifier variable in same table
+% group_identifier_dat_st = 'group';                            % name of group identifier variable in same table; leave commented out if you don't have groups
+vif_threshold_dat_st = 4;                                       % variance inflation threshold to exclude trials
 
 
 %% C2F_RUN_MVPA_REGRESSION_SINGLE_TRIAL
@@ -212,7 +212,7 @@ domultilevel_mvpa_reg_st = false;                               % default false;
 % GENERAL OPTIONS
 %----------------
 
-save_figures_pdm = false;                                        % default false; % true saves .svg files of all figures (slow, takes up space)
+save_figures_pdm = false;                                       % default false; % true saves .svg files of all figures (slow, takes up space)
 zscore_outcome_pdm = false;                                     % default false; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
 maskname_pdm = which('gray_matter_mask_sparse.img');            % see above
 myscaling_pdm = 'raw';                                          % options are 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
@@ -227,9 +227,11 @@ dosourcerecon_pdm = false;                                      % default false 
 dosavepdmstats = true;                                          % see saving options above
 
 
-%% prep_4_apply_signatures_and_save options 
+%% PREP_4_APPLY_SIGNATURES_AND_SAVE 
 % --------------------------------------------------------------------
-use_scaled_images = false; % @lukasvo76: change to true to use z-scored images - see above
+myscaling_sigs = 'raw';                                         % default 'raw'             'raw', or 'scaled', see myscaling_glm above
+similarity_metric_sigs = 'dotproduct';                          % default 'dotproduct'      other options 'cosine_similarity','correlation' - passed into apply_all_signatures
+keyword_sigs = 'all';                                           % default 'all'             passed into load_image_set, help load_image_set for overview of many options
 
 
 %% z_batch_publish_everything, z_batch_publish_analyses options 
