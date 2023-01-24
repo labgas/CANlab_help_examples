@@ -34,7 +34,7 @@
     % mvpa bootstrapping options
 %     boot_n_mvpa_reg_cov = x;                                      
 %     parallelstr_mvpa_reg_cov = 'parallel'/'noparallel';  
-%     cons2boot = [y1,y2,...];
+%     cons2boot_mvpa_reg_cov = [y1,y2,...];
     % mvpa thresholding options
 %     q_threshold_mvpa_reg_cov = .xx;                                  
 %     k_threshold_mvpa_reg_cov = y;
@@ -104,7 +104,7 @@ results_suffix = ''; % suffix of your choice added to .mat file with saved resul
 
 % NOTE: only specify if you want to run a second version of your model with different options
 % than the defaults you set in your model-specific version of a2_set_default_options.m
-% EXCEPTION: cons2boot, which is not in the a2 script, but can be used here
+% EXCEPTION: cons2boot_mvpa_reg_cov, which is not in the a2 script, but can be used here
 % if you do not want to bootstrap all contrasts
 
 % GLM options
@@ -121,7 +121,7 @@ results_suffix = ''; % suffix of your choice added to .mat file with saved resul
     % mvpa bootstrapping options
 %     boot_n_mvpa_reg_cov = x;                                      
 %     parallelstr_mvpa_reg_cov = 'parallel'/'noparallel'; 
-%     cons2boot = [y1,y2,...];
+%     cons2boot_mvpa_reg_cov = [y1,y2,...];
     % mvpa thresholding options
 %     q_threshold_mvpa_reg_cov = .yy;                                  
 %     k_threshold_mvpa_reg_cov = z; 
@@ -502,7 +502,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     
     if dobootstrap_mvpa_reg_cov
         
-        if isempty(cons2boot) || ismember(c,cons2boot)
+        if isempty(cons2boot_mvpa_reg_cov) || ismember(c,cons2boot_mvpa_reg_cov)
         
             mvpa_num_effects = size(mvpa_results,2);
 
@@ -560,7 +560,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             clear o2, clear figtitle, clear j, clear tj
         
-        end % if loop exist cons2boot
+        end % if loop exist cons2boot_mvpa_reg_cov
         
     end % if loop bootstrap
    
