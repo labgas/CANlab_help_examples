@@ -36,7 +36,7 @@
 % - dosavesvmstats: default true; Save statistics and weight map objects for SVM contrasts
 % - dobootstrap_svm: default false; Takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n_svm is set to the default 10k samples
 %       boot_n_svm: default 5000; number of bootstrap samples       Reduce number for quick results
-% - parallelstr: default 'parallel'; parallel processing for bootstrapping.   'parallel' or 'noparallel'
+% - parallelstr_svm: default 'parallel'; parallel processing for bootstrapping.   'parallel' or 'noparallel'
 % - holdout_set_method_svm: 'group', or 'onesample'
 %                       Group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group for balancing holdout set over groups;
 %                       Onesample: use subject identifier only for stratifying by subject (i.e. leave whole subject out)
@@ -120,7 +120,7 @@ plugin_get_options_for_analysis_script;
 % dosavesvmstats = true/false;
 % dobootstrap_svm = true/false;
 %    boot_n_svm = yyyy;
-% parallelstr = 'parallel'/'noparallel';
+% parallelstr_svm = 'parallel'/'noparallel';
 % dosearchlight_svm = true/false;
 %    searchlight_radius_svm = z;
 
@@ -335,7 +335,7 @@ for c = 1:kc
             % RUN MODEL USING CANLAB'S PREDICT FUNCTION
 
             [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, ...
-                'error_type', 'mcr', parallelstr, 'verbose' ,0);
+                'error_type', 'mcr', parallelstr_svm, 'verbose' ,0);
 
         case 'oofmridataobj'
 
@@ -524,12 +524,12 @@ for c = 1:kc
     
             case 'predict'
                 [~, bs_stats] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', 1, ...
-                    'bootsamples', boot_n_svm, 'error_type', 'mcr', parallelstr, 'verbose', 0);
+                    'bootsamples', boot_n_svm, 'error_type', 'mcr', parallelstr_svm, 'verbose', 0);
                 
             case 'oofmridataobj'
                 [~ , bs_stats] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', 1, ...
                     'bootsamples', boot_n_svm,  'C', bo_C, ...
-                    'error_type', 'mse', parallelstr, 'verbose', 0);
+                    'error_type', 'mse', parallelstr_svm, 'verbose', 0);
                 
         end
 
