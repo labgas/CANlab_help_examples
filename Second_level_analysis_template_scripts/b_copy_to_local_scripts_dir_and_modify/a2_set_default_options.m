@@ -23,8 +23,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a2_set_default_options.m         v4.3
-% last modified: 2023/01/24
+% @(#)% a2_set_default_options.m         v4.4
+% last modified: 2023/01/27
 
 
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -132,9 +132,11 @@ myscaling_svm = 'raw';                                          % 'raw','subject
 dosavesvmstats = true;                                          % default true                          save statistics and weight map objects for SVM contrasts
 dobootstrap_svm = false;                                        % default false                         takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n is set to the default 10k samples
     boot_n_svm = 5000;                                              % default 5000                          number of bootstrap samples, reduce number for quick results, increase to 10k for publication
+    cons2boot_svm = [];                                             % default empty                     bootstrap all contrasts in DAT.contrasts; specify indices for contrasts to bootstrap if you want to bootstrap a subset
 parallelstr_svm = 'noparallel';                                 % 'parallel', or 'noparallel'           default noparallel for now given memory issues during parallel processing
 dosearchlight_svm = false;                                          % default false                     perform searchlight SVM analysis
-    searchlight_radius_svm = 3;                                     % default 3                         radius for searchlight sphere
+    searchlight_radius_svm = 3;                                     % default 3                         radius for searchlight sphere, in voxels, passed into searchlight_disti()
+    cons2searchlight_svm = [];                                      % default empty                     run searchlight on all contrasts in DAT.contrasts; specify indices for contrasts to perform a searchlight analysis on if you only want to do this in a subset
 
 
 %% C2_SVM_CONTRASTS_MASKED
