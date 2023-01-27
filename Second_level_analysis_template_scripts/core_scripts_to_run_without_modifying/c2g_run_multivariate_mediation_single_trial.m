@@ -196,6 +196,7 @@ if exist('maskname_pdm','var') && ~isempty(maskname_pdm) && exist(maskname_pdm, 
 
     pdmmask = fmri_mask_image(maskname_pdm);
     fmri_dat = fmri_dat.apply_mask(pdmmask);
+    fmri_dat = trim_mask(fmri_dat);
     fmri_dat.mask_descrip = maskname_pdm;
 
 else

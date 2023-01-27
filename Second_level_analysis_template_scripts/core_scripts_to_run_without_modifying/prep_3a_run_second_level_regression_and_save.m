@@ -641,6 +641,7 @@ for c = 1:kc
         t = threshold(regression_stats.t,.05,'unc');
             if exist('maskname_short','var')
                 t = apply_mask(t,glmmask);
+                t = trim_mask(t);
             end
             
         orthviews(t);
@@ -667,6 +668,7 @@ for c = 1:kc
                 BF = threshold(regression_stats.BF(1,img),[-2.1972 2.1972],'raw-outside');
                     if exist('maskname_short','var')
                         BF = apply_mask(BF,glmmask);
+                        BF = trim_mask(BF);
                     end
                 orthviews(BF);
                     switch mygroupnamefield
@@ -816,6 +818,7 @@ for c = 1:kc
             tj = get_wh_image(parcelwise_stats.t_obj, j);
                 if exist('maskname_short','var')
                     tj = apply_mask(tj, glmmask);
+                    tj = trim_mask(tj);
                 end
             tj = threshold(tj, .05, 'unc'); 
 
@@ -847,6 +850,7 @@ for c = 1:kc
                 BF = threshold(parcelwise_stats.BF(1,img),[-2.1972 2.1972],'raw-outside');
                     if exist('maskname_short','var')
                         BF = apply_mask(BF,glmmask);
+                        BF = trim_mask(BF);
                     end
                     
                 o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img);
@@ -1040,6 +1044,7 @@ for c = 1:kc
                 
                     if exist('maskname_short','var')
                         w = apply_mask(w,glmmask);
+                        w = trim_mask(w);
                     end
                     
                 w = region(w);
