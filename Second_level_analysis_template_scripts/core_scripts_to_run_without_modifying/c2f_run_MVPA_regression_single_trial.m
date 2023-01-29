@@ -216,7 +216,6 @@ fprintf('\n\n');
 
         mvpamask = fmri_mask_image(maskname_mvpa_reg_st);
         fmri_dat = fmri_dat.apply_mask(mvpamask);
-        fmri_dat = trim_mask(fmri_dat);
         fmri_dat.mask_descrip = maskname_mvpa_reg_st;
 
     else
