@@ -25,19 +25,29 @@
 % p_threshold_svm: threshold for uncorrected display items
 % k_threshold_svm: extent threshold for both corrected and uncorrected display items
 %
-% MANDATORY OPTIONS TO COPY FROM CORRESPONDING PREP_3c_ SCRIPT
+% OPTIONS TO COPY FROM CORRESPONDING PREP_3c_ SCRIPT
 %
-% results_suffix: name added to results file by prep_3c script in case of multiple versions of model, e.g. 'covariate_rating'
-% myscaling_svm: 'raw','subjectnorm','imagenorm','zscoreimages', or 'zscorevoxels'
-% maskname_svm: mask applied by prep_3c script
+% Mandatory options
+%
+% - results_suffix: name added to results file by prep_3c script in case of multiple versions of model, e.g. 'covariate_rating'
+%
+% Options to copy if specified in prep_3c script
+%
+% - myscaling_svm: 'raw'/'subjectnorm'/'imagenorm'/'zscoreimages'/'zscorevoxels'
+% - maskname_svm: which('')
+% - dobootstrap_svm: true/false
+%       cons2boot_svm: []; vector of indices for contrasts to bootstrap if you want to bootstrap a subset
+% - dosearchlight_svm: true/false
+%       cons2searchlight_svm: vector of indices for contrasts to perform a searchlight analysis on if you only want to do this in a subset
+%
 %__________________________________________________________________________
 %
 % revamped by: Lukas Van Oudenhove
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% c2_SVM_contrasts_masked.m         v3.2
-% last modified: 2022/09/02
+% @(#)% c2_SVM_contrasts_masked.m         v4.0
+% last modified: 2023/01/30
 
 
 %% GET AND SET OPTIONS
@@ -45,18 +55,27 @@
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
-a_set_up_paths_always_run_first;
+ery_4a_secondlevel_m6_s0_a_set_up_paths_always_run_first;
 
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
 
-% SET/COPY MANDATORY OPTIONS FROM CORRESPONDING PREP_3c_ SCRIPT
+% COPY OPTIONS FROM CORRESPONDING PREP_3c_ SCRIPT
 
-results_suffix = ''; % suffix of your choice added to .mat file with saved results
-myscaling_svm = 'raw';
-maskname_svm = which('gray_matter_mask_sparse.img'); % mask applied by prep_3c script
+% Mandatory
 
-% SET CUSTOM OPTIONS
+results_suffix = ''; % suffix added to .mat file with saved results
+
+% Options to copy if specified in prep_3a script
+
+% myscaling_svm: 'raw'/'subjectnorm'/'imagenorm'/'zscoreimages'/'zscorevoxels'
+% maskname_svm: which('maskname');
+% dobootstrap_svm = true/false;
+%       cons2boot_svm = [contrast_indices];
+% - dosearchlight_svm: true/false
+%       cons2searchlight_svm: [contrast_indices]
+
+% SET CUSTOM OPTIONS FOR THIS SCRIPT
 
 % NOTE: only specify if you want to run a second version of your model with different options
 % than the defaults you set in your model-specific version of a2_set_default_options.m
@@ -106,6 +125,23 @@ else
     mask_string = sprintf('without_masking');
 end 
     
+
+%% LOAD NECESSARY VARIABLES IF NEEDED
+%--------------------------------------------------------------------------
+
+if ~exist('DSGN','var') || ~exist('DAT','var')
+    
+    load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    
+end
+
+if ~exist('DATA_OBJ','var')
+    
+    load(fullfile(resultsdir,'data_objects.mat'));
+    
+end
+
+
 %% LOAD SVM RESULTS IF NEEDED
 % -------------------------------------------------------------------------
 
@@ -126,7 +162,7 @@ if ~exist(resultsvarname,'var')
     
     if exist(savefilenamedata, 'file')
         fprintf('\nLoading SVM results from %s\n\n', savefilenamedata);
-        load(savefilenamedata, resultsvarname);
+        load(savefilenamedata);
     else
         fprintf('\nNo saved SVM results file %s. Skipping this analysis.\n\n', savefilenamedata)
         fprintf('\nRun prep_3c_run_SVMs_on_contrasts_masked.m to get svm results first.\n\n'); 
@@ -259,120 +295,251 @@ for c = 1:kc
         plugin_save_figure
     end
     
-%     close(gcf);
 
-    % PLOT THE SVM MAPS
-    % --------------------------------------------------------------------
-    
-    % Get the stats results for this contrast, with weight map
+    % PLOT THE THRESHOLDED SVM MAPS
+    % --------------------------------------------------------------------    
     
     if dobootstrap_svm
         
-    stats = bootstrap_svm_stats{c};
-    
-    fprintf('\n\n');
-    printhdr('FDR-corrected results');
-    fprintf('\n\n');
-    
-    % FDR-corrected
+        if isempty(cons2boot_svm) || ismember(c,cons2boot_svm)
         
-        % montage
-        
-        whmontage = 5; % montage to add title to
+            % get the stats results for this contrast, with weight map
 
-        fprintf ('\nMONTAGE SVM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+            bs_stats = bootstrap_svm_stats{c};
 
-        t = stats.weight_obj;
-        t = threshold(t, q_threshold_svm, 'fdr', 'k', k_threshold_svm); 
-        r = region(t,'noverbose');
+            % FDR-corrected
 
-        o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-        o2 = title_montage(o2, whmontage, [analysisname ' FDR ' num2str(q_threshold) ' ' mask_string ' ' scaling_string]);
+            fprintf('\n\n');
+            printhdr('FDR-corrected SVM results');
+            fprintf('\n\n');
 
-        figtitle = sprintf('%s_%s_%1.4f_FDR_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-        drawnow, snapnow;
-            if save_figures_svm
-                plugin_save_figure;
-            end
+                % montage
+
+                whmontage = 5; % montage to add title to
+
+                fprintf ('\nMONTAGE SVM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                t = bs_stats.weight_obj;
+                t = threshold(t, q_threshold_svm, 'fdr', 'k', k_threshold_svm); 
+                r = region(t,'noverbose');
+
+                o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                o2 = title_montage(o2, whmontage, [analysisname ' FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
+
+                figtitle = sprintf('%s_%s_%1.4f_FDR_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
+                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                drawnow, snapnow;
+                    if save_figures_svm
+                        plugin_save_figure;
+                    end
+
+                clear o2, clear figtitle
+
+                % table and montage of regioncenters
+
+                fprintf ('\nTABLE SVM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                r(cat(1, r.numVox) < k_threshold_svm) = [];
+                [rpos, rneg] = table(r);       % add labels
+                r = [rpos rneg];               % re-concatenate labeled regions
+
+                if ~isempty(r)
+
+                    fprintf ('\nMONTAGE REGIONCENTERS SVM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                    o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+
+                    % Activate, name, and save figure
+                    figtitle = sprintf('%s_%s_%1.4f_FDR_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
+                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    drawnow, snapnow;
+                        if save_figures_svm
+                            plugin_save_figure;
+                        end
+
+                    clear o3, clear figtitle, clear t, clear r
+
+                end % conditional montage plot if there are regions to show
+
+            % uncorrected
+
+            fprintf('\n\n');
+            printhdr('uncorrected SVM results');
+            fprintf('\n\n');
+
+                % montage
+
+                fprintf ('\nMONTAGE SVM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                t = bs_stats.weight_obj;
+                t = threshold(t, p_threshold_svm, 'unc', 'k', k_threshold_svm); 
+                r = region(t,'noverbose');
+
+                o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                o2 = title_montage(o2, whmontage, [analysisname ' unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
+
+                figtitle = sprintf('%s_%s_%1.4f_unc_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
+                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                drawnow, snapnow;
+                    if save_figures_svm
+                        plugin_save_figure;
+                    end
+
+                clear o2, clear figtitle
+
+                % table and montage of regioncenters
+
+                fprintf ('\nTABLE SVM RESULTS AT UNCORRECTED < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                r(cat(1, r.numVox) < k_threshold_svm) = [];
+                [rpos, rneg] = table(r);       % add labels
+                r = [rpos rneg];               % re-concatenate labeled regions
+
+                if ~isempty(r)
+
+                    fprintf ('\nMONTAGE REGIONCENTERS SVM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                    o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+
+                    % Activate, name, and save figure
+                    figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
+                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    drawnow, snapnow;
+                        if save_figures_svm
+                            plugin_save_figure;
+                        end
+
+                    clear o3, clear figtitle, clear t, clear r
+
+                end % conditional montage plot if there are regions to show
             
-        clear o2, clear figtitle
-        
-        % table and montage of regioncenters
-        
-        fprintf ('\nTABLE SVM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
-
-        r(cat(1, r.numVox) < k_threshold_svm) = [];
-        [rpos, rneg] = table(r);       % add labels
-        r = [rpos rneg];               % re-concatenate labeled regions
-
-        if ~isempty(r)
-            
-            fprintf ('\nMONTAGE REGIONCENTERS SVM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
-            
-            o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-
-            % Activate, name, and save figure
-            figtitle = sprintf('%s_%s_%1.4f_FDR_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-            drawnow, snapnow;
-                if save_figures_svm
-                    plugin_save_figure;
-                end
-                
-            clear o3, clear figtitle, clear t, clear r
-
-        end % conditional montage plot if there are regions to show
-    
-    % uncorrected
-        
-        % montage
-
-        fprintf ('\nMONTAGE SVM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
-
-        t = stats.weight_obj;
-        t = threshold(t, p_threshold_svm, 'unc', 'k', k_threshold_svm); 
-        r = region(t,'noverbose');
-
-        o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-        o2 = title_montage(o2, whmontage, [analysisname ' unc ' num2str(p_threshold) ' ' mask_string ' ' scaling_string]);
-
-        figtitle = sprintf('%s_%s_%1.4f_unc_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-        drawnow, snapnow;
-            if save_figures_svm
-                plugin_save_figure;
-            end
-            
-        clear o2, clear figtitle
-        
-        % table and montage of regioncenters
-        
-        fprintf ('\nTABLE SVM RESULTS AT UNCORRECTED < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
-
-        r(cat(1, r.numVox) < k_threshold_svm) = [];
-        [rpos, rneg] = table(r);       % add labels
-        r = [rpos rneg];               % re-concatenate labeled regions
-
-        if ~isempty(r)
-            
-            fprintf ('\nMONTAGE REGIONCENTERS SVM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
-            
-            o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-
-            % Activate, name, and save figure
-            figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-            drawnow, snapnow;
-                if save_figures_svm
-                    plugin_save_figure;
-                end
-                
-            clear o3, clear figtitle, clear t, clear r
-            
-        end % conditional montage plot if there are regions to show
+        end % if loop cons2boot
         
     end % if loop bootstrap
+    
+        
+    % PLOT THE THRESHOLDED SEARCHLIGHT MAPS
+    % --------------------------------------------------------------------    
+    
+    if dosearchlight_svm
+        
+        if isempty(cons2searchlight_svm) || ismember(c,cons2searchlight_svm)
+        
+            % get the stats results for this contrast, with accuracy map
+
+            sl_stats = searchlight_svm_stats{c};
+
+            % FDR-corrected
+            
+            fprintf('\n\n');
+            printhdr('FDR-corrected searchlight results');
+            fprintf('\n\n');
+
+                % montage
+
+                whmontage = 5; % montage to add title to
+
+                fprintf ('\nMONTAGE SVM SEARCHLIGHT ACCURACY RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                p = sl_stats.stat_img_obj;
+                p = threshold(t, q_threshold_svm, 'fdr', 'k', k_threshold_svm); 
+                r = region(p,'noverbose');
+
+                o2 = montage(p, 'maxcolor', [1 1 0], 'mincolor', [1 0 0], 'cmaprange', [min(sl_stats.stat_img_obj.dat) max(sl_stats.stat_img_obj.dat)]);
+                o2 = title_montage(o2, whmontage, [analysisname ' searchlight accuracy FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
+
+                figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
+                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                drawnow, snapnow;
+                    if save_figures_svm
+                        plugin_save_figure;
+                    end
+
+                clear o2, clear figtitle
+
+                % table and montage of regioncenters
+
+                fprintf ('\nTABLE SVM SEARCHLIGHT ACCURACY RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                r(cat(1, r.numVox) < k_threshold_svm) = [];
+                [rpos, rneg] = table(r);       % add labels
+                r = [rpos rneg];               % re-concatenate labeled regions
+
+                if ~isempty(r)
+
+                    fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT ACCURACY RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                    o3 = montage(r, 'maxcolor', [1 1 0], 'mincolor', [1 0 0], 'regioncenters', 'cmaprange', [min(sl_stats.stat_img_obj.dat) max(sl_stats.stat_img_obj.dat)]);
+
+                    % Activate, name, and save figure
+                    figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
+                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    drawnow, snapnow;
+                        if save_figures_svm
+                            plugin_save_figure;
+                        end
+
+                    clear o3, clear figtitle, clear t, clear r
+
+                end % conditional montage plot if there are regions to show
+
+            % uncorrected
+
+            fprintf('\n\n');
+            printhdr('FDR-corrected searchlight results');
+            fprintf('\n\n');
+
+                % montage
+
+                whmontage = 5; % montage to add title to
+
+                fprintf ('\nMONTAGE SVM SEARCHLIGHT ACCURACY RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                p = sl_stats.stat_img_obj;
+                p = threshold(t, p_threshold_svm, 'unc', 'k', k_threshold_svm); 
+                r = region(p,'noverbose');
+
+                o2 = montage(p, 'maxcolor', [1 1 0], 'mincolor', [1 0 0], 'cmaprange', [min(sl_stats.stat_img_obj.dat) max(sl_stats.stat_img_obj.dat)]);
+                o2 = title_montage(o2, whmontage, [analysisname ' searchlight accuracy unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
+
+                figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
+                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                drawnow, snapnow;
+                    if save_figures_svm
+                        plugin_save_figure;
+                    end
+
+                clear o2, clear figtitle
+
+                % table and montage of regioncenters
+
+                fprintf ('\nTABLE SVM SEARCHLIGHT ACCURACY RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                r(cat(1, r.numVox) < k_threshold_svm) = [];
+                [rpos, rneg] = table(r);       % add labels
+                r = [rpos rneg];               % re-concatenate labeled regions
+
+                if ~isempty(r)
+
+                    fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT ACCURACY RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                    o3 = montage(r, 'maxcolor', [1 1 0], 'mincolor', [1 0 0], 'regioncenters', 'cmaprange', [min(sl_stats.stat_img_obj.dat) max(sl_stats.stat_img_obj.dat)]);
+
+                    % Activate, name, and save figure
+                    figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_regions_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
+                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    drawnow, snapnow;
+                        if save_figures_svm
+                            plugin_save_figure;
+                        end
+
+                    clear o3, clear figtitle, clear t, clear r
+
+                end % conditional montage plot if there are regions to show
+            
+        end % if loop cons2searchlight
+        
+    end % if loop searchlight
     
 end  % loop over contrasts
 

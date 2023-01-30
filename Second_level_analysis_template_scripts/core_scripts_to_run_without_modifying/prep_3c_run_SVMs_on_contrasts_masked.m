@@ -36,6 +36,7 @@
 % - dosavesvmstats: default true; Save statistics and weight map objects for SVM contrasts
 % - dobootstrap_svm: default false; Takes a lot of time, hence only use true for final analysis, since this takes a lot of time, especially if boot_n_svm is set to the default 10k samples
 %       boot_n_svm: default 5000; number of bootstrap samples       Reduce number for quick results
+%       cons2boot_svm: vector of indices for contrasts to bootstrap if you want to bootstrap a subset
 % - parallelstr_svm: default 'parallel'; parallel processing for bootstrapping.   'parallel' or 'noparallel'
 % - holdout_set_method_svm: 'group', or 'onesample'
 %                       Group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group for balancing holdout set over groups;
@@ -57,9 +58,8 @@
 % - holdout_set_type_svm: 'kfold', or 'leave_one_subject_out': default 'kfold'; choose between kfold or leave one subject out cross-validation - the latter is not recommended
 %       nfolds_svm: default 5, number of folds for kfold CV
 % - dosearchlight_svm: perform searchlight SVM analysis 
-%       searchlight_radius_svm: radius for searchlight sphere
-%       IMPORTANT NOTE: searchlight option is currently not working because of
-%                       weird memory issues in fmri_data.searchlight - DO NOT USE UNTIL FIXED
+%       searchlight_radius_svm: radius for searchlight sphere, in voxels
+%       cons2searchlight_svm: vector of indices for contrasts to perform a searchlight analysis on if you only want to do this in a subset
 % - ml_method_svm: 'oofmridataobj', or 'predict'
 %       'oofmridataobj' option:
 %           use @bogpetre's object-oriented method
@@ -78,8 +78,8 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v3.2
-% last modified: 2022/08/25
+% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v4.1
+% last modified: 2023/01/30
 
 
 %% GET AND SET OPTIONS
@@ -88,12 +88,14 @@
 % SET MANDATORY OPTIONS
 
 results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
+
 % NOTE: do NOT delete this option, leave empty if not needed
 % NOTE: do NOT use to add a suffix specifying the scaling or masking option, this will be added automatically
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
 a_set_up_paths_always_run_first;
+
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT!
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
 
@@ -120,9 +122,11 @@ plugin_get_options_for_analysis_script;
 % dosavesvmstats = true/false;
 % dobootstrap_svm = true/false;
 %    boot_n_svm = yyyy;
-% parallelstr_svm = 'parallel'/'noparallel';
+%    cons2boot_svm = [con_indices];
+% parallelstr = 'parallel'/'noparallel';
 % dosearchlight_svm = true/false;
 %    searchlight_radius_svm = z;
+%    cons2searchlight_svm = [con_indices];
 
 
 %% LOAD NECESSARY VARIABLES IF NEEDED
@@ -168,6 +172,7 @@ end
 % -------------------------------------------------------------------------
 
 if exist('maskname_svm', 'var') && ~isempty(maskname_svm) 
+    
     svmmask = fmri_mask_image(maskname_svm, 'noverbose');
     [~,maskname_short] = fileparts(maskname_svm);
     mask_string = sprintf('masked with %s', maskname_short);
@@ -184,13 +189,6 @@ svm_stats_results = cell(1, kc);
 
 if dosearchlight_svm
     searchlight_svm_stats = cell(1, kc);
-    searchlight_svm_objs = cell(1, kc);
-    
-    for cond = 1:size(DATA_OBJ,2) % need to convert our fmri_data_st objects to fmri_data to prevent searchlight function from breaking on some removed voxel issue
-        DATA_OBJ{1,cond} = fmri_data(DATA_OBJ{1,cond});
-    
-    end
-    
 end
 
 if dobootstrap_svm
@@ -224,6 +222,7 @@ for c = 1:kc
     if exist('svmmask', 'var')
         fprintf('\nMasking data with %s\n\n',maskname_short);
         cat_obj = apply_mask(cat_obj, svmmask);
+        cat_obj = trim_mask(cat_obj);
         cat_obj.mask_descrip = maskname_svm;
         
     else
@@ -436,19 +435,63 @@ for c = 1:kc
     
     if dosearchlight_svm
         
-        fprintf('\n\n');
-        printhdr('Running cross-validated searchlight SVM');
-        fprintf('\n\n');
+        if isempty(cons2searchlight_svm) || ismember(c,cons2searchlight_svm)
         
-        delete(gcp('nocreate'));
-        clust = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
-        nw = clust.NumWorkers;
-        parpool(round(0.8*nw));
+            fprintf('\n\n');
+            printhdr('Running cross-validated searchlight SVM');
+            fprintf('\n\n');
+
+            if strcmp(parallelstr,'parallel')
+
+                delete(gcp('nocreate'));
+                clust = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
+                nw = clust.NumWorkers;
+                parpool(round(0.8*nw));
+
+            end
+            
+            t0_sl = tic;
+
+    %         [searchlight_obj, searchlight_stats, ~] = searchlightLukas(cat_obj, 'algorithm_name', 'cv_svm', ...
+    %             'r', searchlight_radius_svm, 'holdout_set', holdout_set, 'do_online', 'no_weights');
+    %         alternative with fmri_data.searchlightLukas, which is a version
+    %         of fmri_data.searchlight debugged by Phil Kragel and Lukas Van
+    %         Oudenhove, but produces less useful output, hence should probably
+    %         be replaced
+
+            dist_idx = true(size(cat_obj.dat,1),1); 
+
+            varargin = {'algorithm_name', 'cv_svm', 'r', searchlight_radius_svm, 'cv_assign', holdout_set};
+
+            sl_stats = searchlight_disti(cat_obj, svmmask, dist_idx, varargin);
+
+            % the searchlight_disti() function is written by Wani with the
+            % purpose of running different scripts calling it in parallel for
+            % different chunks of the brain on an HPC cluster
+            % these scripts can be generated by searchlight_dream(), but here
+            % we trick the function to run on all voxels within our mask
+            
+            t_end_sl = toc(t0_sl);
+            
+            [hour, minute, second] = sec2hms(t_end_sl);
+            fprintf(1,'Done in %3.0f hours %3.0f min %2.0f sec\n', hour, minute, second);
+                      
+            cat_obj_sl = cat_obj;
+            cat_obj_sl.dat = sl_stats.test_results{1}.acc;
+            
+            filename = fullfile(resultsdir,'cat_obj_sl.nii');
+            write(cat_obj_sl,'fname',filename);
+            cat_obj_sl = statistic_image(filename);
+            cat_obj_sl = apply_mask(cat_obj_sl, svmmask);
+            cat_obj_sl.p = sl_stats.test_results{1}.p;
+            delete(filename);
+            
+            sl_stats.stat_img_obj = cat_obj_sl;
         
-        [searchlight_obj, searchlight_stats, ~] = searchlightLukas(cat_obj, 'algorithm_name', 'cv_svm', ...
-            'r', searchlight_radius_svm, 'holdout_set', holdout_set, 'do_online', 'no_weights');
+        end % if loop cons2searchlight_svm
+        
+    end % if loop dosearchlight_svm
     
-    end
     
     % PLOT MONTAGE OF UNTHRESHOLDED SVM RESULTS
     % ---------------------------------------------------------------------
@@ -486,22 +529,26 @@ for c = 1:kc
     
     if dosearchlight_svm
 
-        fprintf ('\nMONTAGE UNTHRESHOLDED SEARCHLIGHT SVM RESULTS, CONTRAST: %s, %s, SCALING: %s\n\n', analysisname, mask_string, scaling_string);
+        if isempty(cons2searchlight_svm) || ismember(c,cons2searchlight_svm)
 
-        r = region(stats.weight_obj);
+            fprintf ('\nMONTAGE SEARCHLIGHT SVM ACCURACY RESULTS, CONTRAST: %s, %s, SCALING: %s\n\n', analysisname, mask_string, scaling_string);
 
-        o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-        o2 = title_montage(o2, whmontage, [analysisname ' unthresholded searchlight ' mask_string ' ' scaling_string]);
+            s = threshold(cat_obj_sl,[0.5, max(cat_obj_sl.dat)],'raw-between');
+            
+            o3 = montage(s, 'maxcolor', [1 1 0], 'mincolor', [1 0 0], 'cmaprange', [0.5 max(cat_obj_sl.dat)]);
+            o3 = title_montage(o3, whmontage, [analysisname ' searchlight accuracy > 50% ' mask_string ' ' scaling_string]);
 
-        figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, mask_string, scaling_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-        drawnow, snapnow;
-            if save_figures_svm
-                plugin_save_figure;
-            end
-        clear o2, clear figtitle
+            figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, mask_string, scaling_string);
+            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            drawnow, snapnow;
+                if save_figures_svm
+                    plugin_save_figure;
+                end
+            clear o3, clear figtitle
+
+        end
         
-    end % if loop bootstrap
+    end
     
     
     % BOOTSTRAP IF REQUESTED
@@ -509,62 +556,74 @@ for c = 1:kc
     
     if dobootstrap_svm
         
-        fprintf('\n\n');
-        printhdr('Bootstrapping SVM weights');
-        fprintf('\n\n');
+        if isempty(cons2boot_svm) || ismember(c,cons2boot_svm)
         
-        delete(gcp('nocreate'));
-        c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
-        nw = c.NumWorkers;
-        parpool(round(0.8*nw));
-        
-        t0_boot = tic;
+            fprintf('\n\n');
+            printhdr('Bootstrapping SVM weights');
+            fprintf('\n\n');
 
-        switch ml_method_svm
-    
-            case 'predict'
-                [~, bs_stats] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', 1, ...
-                    'bootsamples', boot_n_svm, 'error_type', 'mcr', parallelstr_svm, 'verbose', 0);
-                
-            case 'oofmridataobj'
-                [~ , bs_stats] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', 1, ...
-                    'bootsamples', boot_n_svm,  'C', bo_C, ...
-                    'error_type', 'mse', parallelstr_svm, 'verbose', 0);
-                
-        end
+            if strcmp(parallelstr,'parallel')
 
-        t_end_boot = toc(t0_boot);
-        disp('Cumulative run time:');
-        toc(t_end_boot); 
+                delete(gcp('nocreate'));
+                clust = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
+                nw = clust.NumWorkers;
+                parpool(round(0.8*nw));
+
+            end
+
+            t0_boot = tic;
+
+            switch ml_method_svm
+
+                case 'predict'
+                    [~, bs_stats] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', 1, ...
+                        'bootsamples', boot_n_svm, 'error_type', 'mcr', parallelstr, 'verbose', 0);
+
+                case 'oofmridataobj'
+                    [~ , bs_stats] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', 1, ...
+                        'bootsamples', boot_n_svm,  'C', bo_C, ...
+                        'error_type', 'mse', parallelstr, 'verbose', 0);
+
+            end
+
+            t_end_boot = toc(t0_boot);
+            
+            [hour, minute, second] = sec2hms(t_end_boot);
+            fprintf(1,'Done in %3.0f hours %3.0f min %2.0f sec\n',hour, minute, second);
         
-        
+        end % if loop cons2boot_svm
+            
     end % if loop bootstrap
     
     
     % STORE STATISTIC OBJECTS IN CELL ARRAY
     % --------------------------------------------------------------------
     
-%     stats.weight_obj = enforce_variable_types(stats.weight_obj);
     svm_stats_results{c} = stats;
-
-    
+   
     if dosearchlight_svm
-        searchlight_svm_stats{c} = searchlight_stats;
-        searchlight_svm_objs{c} = searchlight_svm_obj;
+        if isempty(cons2searchlight_svm) || ismember(c,cons2searchlight_svm)
+            searchlight_svm_stats{c} = sl_stats;
+        end
     end
     
     if dobootstrap_svm
-        bootstrap_svm_stats{c} = bs_stats;
+        if isempty(cons2boot_svm) || ismember(c,cons2boot_svm)
+            bootstrap_svm_stats{c} = bs_stats;
+        end
     end
         
     if exist('svmmask', 'var')
-%         svm_stats_results{c}.mask = svmmask;
         svm_stats_results{c}.maskname = maskname_svm;
         if dosearchlight_svm
-            searchlight_svm_stats{c}.maskname = maskname_svm;
+            if isempty(cons2searchlight_svm) || ismember(c,cons2searchlight_svm)
+                searchlight_svm_stats{c}.maskname = maskname_svm;
+            end
         end
         if dobootstrap_svm
-            bootstrap_svm_stats{c}.maskname = maskname_svm;
+            if isempty(cons2boot_svm) || ismember(c,cons2boot_svm)
+                bootstrap_svm_stats{c}.maskname = maskname_svm;
+            end
         end
             
     end
@@ -590,7 +649,7 @@ if dosavesvmstats
     fprintf('\nSaved svm_stats_results_contrasts\n');
     
     if dosearchlight_svm
-        save(savefilenamedata, 'searchlight_svm_stats','searchlight_svm_objs','-append');
+        save(savefilenamedata, 'searchlight_svm_stats','-append');
         fprintf('\nAdded searchlight results to saved svm_stats_results_contrasts\n');
     end
     
