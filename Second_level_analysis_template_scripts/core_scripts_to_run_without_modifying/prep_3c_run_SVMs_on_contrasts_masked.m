@@ -84,8 +84,8 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v4.2
-% last modified: 2023/01/31
+% @(#)% prep_3c_run_SVMs_on_contrasts_masked.m         v4.3
+% last modified: 2023/02/07
 
 
 %% GET AND SET OPTIONS
@@ -539,6 +539,8 @@ for c = 1:kc
         if isempty(cons2searchlight_svm) || ismember(c,cons2searchlight_svm)
 
             fprintf ('\nMONTAGE SEARCHLIGHT SVM ACCURACY RESULTS, CONTRAST: %s, %s, SCALING: %s\n\n', analysisname, mask_string, scaling_string);
+            
+            figure;
 
             s = threshold(cat_obj_sl,[0.5, max(cat_obj_sl.dat)],'raw-between');
             
