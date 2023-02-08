@@ -228,6 +228,7 @@ for c = 1:kc
     
     if exist('svmmask', 'var')
         fprintf('\nMasking data with %s\n\n',maskname_short);
+        svmmask = resample_space(svmmask,cat_obj); % resample to space of data object
         cat_obj = apply_mask(cat_obj, svmmask);
         cat_obj = trim_mask(cat_obj);
         cat_obj.mask_descrip = maskname_svm;
