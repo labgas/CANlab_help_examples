@@ -59,8 +59,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% c2a_second_level_regression.m         v4.1
-% last modified: 2023/01/20
+% @(#)% c2a_second_level_regression.m         v5.0
+% last modified: 2023/02/10
 
 
 %% GET AND SET OPTIONS
@@ -91,6 +91,8 @@ results_suffix = ''; % suffix of your choice added to .mat file with saved resul
 % dorobfit_parcelwise = true/false;
 %   csf_wm_covs = true/false;
 %   remove_outliers = true/false;
+% atlasname_glm = 'atlas_name';
+% maskname_glm = 'mask_name';
 % myscaling_glm = 'raw'/'scaled'/'scaled_contrasts';
 % design_matrix_type = 'custom'/'group'/'onesample';
 % doBayes = true/false;
@@ -150,15 +152,68 @@ end
 
 % GET MASKING OPTION
 
-if exist('maskname_glm', 'var') && ~isempty(maskname_glm) && exist(maskname_glm, 'file')
-    apply_mask_before_fdr = true;
-    [~,maskname_short] = fileparts(maskname_glm);
-    mask_string = sprintf('masked_with_%s', maskname_short);
-    glmmask = fmri_mask_image(maskname_glm, 'noverbose'); 
+% NOTE: In case of parcelwise regression, masking is already done in prep_3a script as part of robfit_parcelwise, but we need the atlas object and define mask_string var
+
+if ~dorobfit_parcelwise
+
+    if exist('maskname_glm', 'var') && ~isempty(maskname_glm) && exist(maskname_glm, 'file')
+
+        apply_mask_before_fdr = true;
+        [~,maskname_short] = fileparts(maskname_glm);
+        mask_string = sprintf('masked with %s', maskname_short);
+        glmmask = fmri_mask_image(maskname_glm, 'noverbose'); 
+
+    else
+
+        apply_mask_before_fdr = false;
+        mask_string = sprintf('without masking');
+
+    end  
+    
+end
+
+if exist('atlasname_glm','var') && ~isempty(atlasname_glm) && exist(atlasname_glm, 'file')
+
+    if contains(atlasname_glm,'.mat')
+        
+        load(atlasname_glm);
+        clear mask
+        
+        if dorobfit_parcelwise
+            [~,maskname_short] = fileparts(atlasname_glm);
+            mask_string = sprintf('masked with %s', maskname_short);
+            
+        end
+        
+        fprintf('\nLabeling regions using custom-made atlas %s\n\n', maskname_short);
+
+    elseif ischar(atlasname_glm)
+
+        combined_atlas = load_atlas(atlasname_glm);
+        
+        if dorobfit_parcelwise
+            mask_string = sprintf('in atlas %s',atlasname_glm);
+            
+        end
+        
+        fprintf('\nLabeling regions using custom-made atlas %s\n\n', maskname_short);
+
+    else
+
+         error('\ninvalid option "%s" defined in atlasname_glm variable, should be a keyword for load_atlas.m or a .mat file containing an atlas object, check docs"\n\n',atlasname_glm)
+
+    end
+
 else
-    apply_mask_before_fdr = false;
-    mask_string = sprintf('without_masking');
-end  
+
+    if dorobfit_parcelwise
+        mask_string = sprintf('without masking');
+        
+        fprintf('\nShowing parcelwise results without masking in 489 parcels of canlab_2018 atlas\n\n');
+        
+    end
+
+end 
 
 
 %% LOAD RESULTS IF NEEDED
@@ -168,13 +223,17 @@ end
 % -------------------------------------------------------------------------
 
 if ~dorobfit_parcelwise
+    
     resultsvarname = 'regression_stats_results';
     resultsstring = 'regression_stats_and_maps_';
     analysis_type = 'voxel-wise';
+    
 else
+    
     resultsvarname = 'parcelwise_stats_results';
     resultsstring = 'parcelwise_stats_and_maps_';
     analysis_type = 'parcel-wise';
+    
 end
 
 if ~exist(resultsvarname, 'var')
@@ -200,9 +259,11 @@ else
 end
 
 if ~dorobfit_parcelwise    
+    
     results = regression_stats_results;
 
 else
+    
     results = parcelwise_stats_results;
 
 end
@@ -210,7 +271,8 @@ end
 % MVPA
 % -------------------------------------------------------------------------
 
-if domvpa_reg_cov
+if dobootstrap_mvpa_reg_cov
+    
     mvpa_resultsvarname = 'mvpa_stats_results';
     mvpa_resultsstring = 'mvpa_stats_and_maps_';
     mvpa_analysis_type = algorithm_mvpa_reg_cov;
@@ -242,6 +304,19 @@ end
 %% VISUALIZE GLM RESULTS FOR EACH CONTRAST
 % -------------------------------------------------------------------------
 
+if ~dorobfit_parcelwise
+    
+    region_objs_fdr = cell(1,size(results,2));
+    
+end
+
+region_objs_unc = cell(1,size(results,2));
+
+    if doBayes
+        region_objs_Bayes = cell(1,size(results,2));
+    end
+
+    
 for c = 1:size(results, 2) % number of contrasts or conditions
 
     analysisname = results{c}.contrastname;
@@ -254,25 +329,37 @@ for c = 1:size(results, 2) % number of contrasts or conditions
         end
     
         if ~dorobfit_parcelwise
-            t = results{c}.t;
+
+            t = results{c}.t; % NOTE: this statistic_object is unthresholded AND unmasked
+            glmmask = resample_space(glmmask,t);
+
+                if apply_mask_before_fdr
+                    t = apply_mask(t, glmmask);
+                end
+
         else
-            t = results{c}.t_obj;
+
+            t = results{c}.t_obj; % NOTE: this statistic_object is thresholded at FDR q < 0.05, resampled to the space of the fmri_data_object and masked in the previous script!
+
         end
-        
-    if doBayes
-        
-        BF = results{c}.BF;
-        
-    end
-    
-    if domvpa_reg_cov
-        
-        for covar = 1:size(mvpa_stats_results,2)
-            mvpa_results{covar} = mvpa_stats_results{c,covar};
-            mvpa_fmri_dats{covar} = mvpa_dats{c,covar};
-        end
-        
-    end
+
+        if doBayes
+
+            BF = results{c}.BF; % NOTE: unthresholded in both cases, masked in case of parcelwise only
+
+            if ~dorobfit_parcelwise
+
+                if apply_mask_before_fdr
+
+                    for j = 1:size(BF,2)
+                        BF(j) = apply_mask(BF(j), glmmask);
+
+                    end
+                end
+
+            end
+
+        end 
     
     fprintf('\n\n');
     printhdr(['CONTRAST #', num2str(c), ': ', upper(analysisname)]);
@@ -296,17 +383,27 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     
     fprintf ('\nMONTAGE GLM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, REGRESSORS: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, analysisname, names_string, mask_string, scaling_string);
     
-    o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+    o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
     
         for j = 1:num_effects
 
             tj = get_wh_image(t, j);
-                if apply_mask_before_fdr
-                    tj = apply_mask(tj, glmmask);
+            
+                if ~dorobfit_parcelwise
+                    
+                    tj = threshold(tj, q_threshold_glm, 'fdr', 'k', k_threshold_glm); 
+                    
+                else
+                    
+                    if q_threshold_glm ~= .05 % already thresholded at q < 0.05
+                        
+                        tj = threshold(tj, q_threshold_glm, 'fdr', 'k', k_threshold_glm); 
+                        
+                    end
+                        
                 end
-            tj = threshold(tj, q_threshold_glm, 'fdr', 'k', k_threshold_glm); 
 
-            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j);
+            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
             o2 = title_montage(o2, 2*j, [analysisname ' FDR ' num2str(q_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
 
         end % for loop over regressors in model
@@ -323,20 +420,44 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     
     fprintf ('\nTABLES AND MONTAGE REGIONCENTERS GLM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, REGRESSORS: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, analysisname, names_string, mask_string, scaling_string);
     
+        if ~dorobfit_parcelwise
+            region_fdr = cell(1,num_effects);
+        end
+        
         for j = 1:num_effects
 
             fprintf ('\nTABLE GLM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
 
             tj = get_wh_image(t, j);
-                if apply_mask_before_fdr
-                    tj = apply_mask(tj, glmmask);
+            
+                if ~dorobfit_parcelwise
+                    
+                    tj = threshold(tj, q_threshold_glm, 'fdr', 'k', k_threshold_glm); 
+                    
+                else
+                    
+                    if q_threshold_glm ~= .05
+                        
+                        tj = threshold(tj, q_threshold_glm, 'fdr', 'k', k_threshold_glm); 
+                        
+                    end
+                        
                 end
-            tj = threshold(tj, q_threshold_glm, 'fdr', 'k', k_threshold_glm); 
 
             r = region(tj, 'noverbose');
             r(cat(1, r.numVox) < k_threshold_glm) = [];
-            [rpos, rneg] = table(r);       % add labels
-            r = [rpos rneg];               % re-concatenate labeled regions
+            
+                if exist('combined_atlas','var')
+                    [rpos, rneg] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
+                else
+                    [rpos, rneg] = table(r);                            % add labels from default canlab_2018 atlas                               
+                end
+                
+            r = [rpos rneg];                                        % re-concatenate labeled regions
+            
+            if ~dorobfit_parcelwise % in parcelwise case, these region_objects are already stored in parcelwise_stats.region_objects
+                region_fdr{j} = r;
+            end
 
             % Montage of regions in table (plot and save)
             if ~isempty(r)
@@ -357,8 +478,13 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             end % conditional montage plot if there are regions to show
             
         end % for loop over regressors in model
+        
+        if ~dorobfit_parcelwise
 
-    
+            region_objs_fdr{c} = region_fdr;
+            
+        end
+  
     % BETWEEN-SUBJECT REGRESSORS & INTERCEPT: uncorrected
     % ---------------------------------------------------------------------
     
@@ -368,17 +494,15 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     
     fprintf ('\nMONTAGE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, REGRESSORS: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_glm, analysisname, names_string, mask_string, scaling_string);
     
-    o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5,'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+    o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
     
         for j = 1:num_effects
 
             tj = get_wh_image(t, j);
-                if apply_mask_before_fdr
-                    tj = apply_mask(tj, glmmask);
-                end
+            
             tj = threshold(tj, p_threshold_glm, 'unc', 'k', k_threshold_glm); 
 
-            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j);
+            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
             o2 = title_montage(o2, 2*j, [analysisname ' unc ' num2str(p_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
         
         end % for loop over regressors in model
@@ -395,20 +519,28 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     
     fprintf ('\nTABLES AND MONTAGE REGIONCENTERS GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, REGRESSORS: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_glm, analysisname, names_string, mask_string, scaling_string);
         
+        region_unc = cell(1,num_effects);
+    
         for j = 1:num_effects
 
             fprintf ('\nTABLE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
 
             tj = get_wh_image(t, j);
-                if apply_mask_before_fdr
-                    tj = apply_mask(tj, glmmask);
-                end
+
             tj = threshold(tj, p_threshold_glm, 'unc', 'k', k_threshold_glm); 
 
             r = region(tj, 'noverbose');
             r(cat(1, r.numVox) < k_threshold_glm) = [];
-            [rpos, rneg] = table(r);       % add labels
-            r = [rpos rneg];               % re-concatenate labeled regions
+            
+                if exist('combined_atlas','var')
+                    [rpos, rneg] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
+                else
+                    [rpos, rneg] = table(r);                            % add labels from default canlab_2018 atlas                               
+                end
+            
+            r = [rpos rneg];                                        % re-concatenate labeled regions
+            
+            region_unc{j} = r;
 
             % Montage of regions in table (plot and save)
             if ~isempty(r)
@@ -430,71 +562,88 @@ for c = 1:size(results, 2) % number of contrasts or conditions
         
         end % loop over regressors
         
-        
+    region_objs_unc{c} = region_unc;
+                
     % BETWEEN-SUBJECT REGRESSORS & INTERCEPT: Bayesian
     % ---------------------------------------------------------------------
     
-    fprintf('\n\n');
-    printhdr('BAYESIAN GLM RESULTS');
-    fprintf('\n\n');
+    if doBayes
     
-    fprintf ('\nMONTAGE BAYESIAN GLM RESULTS AT |BF| > %1.2f, CONTRAST: %s, REGRESSORS: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, analysisname, names_string, mask_string, scaling_string);
-    
-    o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'outline', 'linewidth', 0.5,'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
-    
-        for j = 1:num_effects
+        fprintf('\n\n');
+        printhdr('BAYESIAN GLM RESULTS');
+        fprintf('\n\n');
 
-            BFj = BF(1,j);
-            BFj = threshold(BFj, [-2*(log(BF_threshold_glm)) 2*(log(BF_threshold_glm))], 'raw-outside'); 
+        fprintf ('\nMONTAGE BAYESIAN GLM RESULTS AT |BF| > %1.2f, CONTRAST: %s, REGRESSORS: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, analysisname, names_string, mask_string, scaling_string);
 
-            o2 = addblobs(o2, region(BFj), 'wh_montages', (2*j)-1:2*j);
-            o2 = title_montage(o2, 2*j, [analysisname ' |BF| > ' num2str(BF_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
-        
-        end % for loop over regressors in model
-    
-    figtitle = sprintf('%s_%s_%1.4f_unc_montage_%s_%s_%S', analysisname, results_suffix, BF_threshold_glm, names_string, mask_string, scaling_string);
-    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-    drawnow, snapnow;
-    
-        if save_figures_glm
-            plugin_save_figure;
-        end
-        
-    clear o2, clear figtitle, clear j, clear BFj
-    
-    fprintf ('\nTABLES AND MONTAGE REGIONCENTERS BAYESIAN GLM RESULTS AT |BF| > %1.2f, k = %d, CONTRAST: %s, REGRESSORS: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, k_threshold_glm, analysisname, names_string, mask_string, scaling_string);
-        
-        for j = 1:num_effects
+        o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img'); 
 
-            fprintf ('\nTABLE BAYESIAN GLM RESULTS AT |BF| > %1.2f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
+            for j = 1:num_effects
 
-            BFj = BF(1,j);
-            BFj = threshold(BFj, [-2*(log(BF_threshold_glm)) 2*(log(BF_threshold_glm))], 'raw-outside'); 
-
-            r = region(BFj, 'noverbose');
-            r(cat(1, r.numVox) < k_threshold_glm) = [];
-            [rpos, rneg] = table(r);       % add labels
-            r = [rpos rneg];               % re-concatenate labeled regions
-
-            % Montage of regions in table (plot and save)
-            if ~isempty(r)
+                BFj = BF(1,j);
                 
-                fprintf ('\nMONTAGE REGIONCENTERS BAYESIAN GLM RESULTS AT |BF| > %1.2f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
-                
-                o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                BFj = threshold(BFj, [-2*(log(BF_threshold_glm)) 2*(log(BF_threshold_glm))], 'raw-outside'); 
 
-                % Activate, name, and save figure
-                figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s_%s', analysisname, results_suffix, p_threshold_glm, names{j}, mask_string, scaling_string);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                drawnow, snapnow;
-                    if save_figures_glm
-                        plugin_save_figure;
+                o2 = addblobs(o2, region(BFj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]}); % red in favor of H0, green in favor of H1 for BF maps
+                o2 = title_montage(o2, 2*j, [analysisname ' |BF| > ' num2str(BF_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
+
+            end % for loop over regressors in model
+
+        figtitle = sprintf('%s_%s_%1.4f_unc_montage_%s_%s_%s', analysisname, results_suffix, BF_threshold_glm, names_string, mask_string, scaling_string);
+        set(gcf,'Tag', figtitle, 'WindowState','maximized');
+        drawnow, snapnow;
+
+            if save_figures_glm
+                plugin_save_figure;
+            end
+
+        clear o2, clear figtitle, clear j, clear BFj
+
+        fprintf ('\nTABLES AND MONTAGE REGIONCENTERS BAYESIAN GLM RESULTS AT |BF| > %1.2f, k = %d, CONTRAST: %s, REGRESSORS: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, k_threshold_glm, analysisname, names_string, mask_string, scaling_string);
+
+            region_Bayes = cell(1,num_effects);
+        
+            for j = 1:num_effects
+
+                fprintf ('\nTABLE BAYESIAN GLM RESULTS AT |BF| > %1.2f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
+
+                BFj = BF(1,j);
+                BFj = threshold(BFj, [-2*(log(BF_threshold_glm)) 2*(log(BF_threshold_glm))], 'raw-outside'); 
+
+                r = region(BFj, 'noverbose');
+                
+                r(cat(1, r.numVox) < k_threshold_glm) = [];
+                    if exist('combined_atlas','var')
+                        [rpos, rneg] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
+                    else
+                        [rpos, rneg] = table(r);                            % add labels from default canlab_2018 atlas                               
                     end
-                clear o3, clear figtitle, clear j, clear tj, clear r
+                    
+                r = [rpos rneg];                                        % re-concatenate labeled regions
+                region_Bayes{j} = r;
 
-            end % if loop regions in results
-        
-        end % for loop over regressors
+                % Montage of regions in table (plot and save)
+                if ~isempty(r)
+
+                    fprintf ('\nMONTAGE REGIONCENTERS BAYESIAN GLM RESULTS AT |BF| > %1.2f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
+
+                    o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});
+
+                    % Activate, name, and save figure
+                    figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s_%s', analysisname, results_suffix, p_threshold_glm, names{j}, mask_string, scaling_string);
+                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    drawnow, snapnow;
+                        if save_figures_glm
+                            plugin_save_figure;
+                        end
+                    clear o3, clear figtitle, clear j, clear tj, clear r
+
+                end % if loop regions in results
+
+            end % for loop over regressors
+            
+        region_objs_Bayes{c} = region_Bayes;
+            
+    end % if loop doBayes
         
         
     % BETWEEN-SUBJECT REGRESSORS: MVPA
@@ -502,14 +651,27 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     
     if dobootstrap_mvpa_reg_cov
         
-        if isempty(cons2boot_mvpa_reg_cov) || ismember(c,cons2boot_mvpa_reg_cov)
+        mvpa_bs_stats_results = cell(1,size(results,2));
+        
+        for covar = 1:size(mvpa_stats_results,2)
+            mvpa_results{covar} = mvpa_stats_results{c,covar};
+            mvpa_fmri_dats{covar} = mvpa_dats{c,covar};
+        end
+        
+        if isempty(cons2boot) || ismember(c,cons2boot)
         
             mvpa_num_effects = size(mvpa_results,2);
 
-            delete(gcp('nocreate'));
-            cores = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
-            nw = cores.NumWorkers;
-            parpool(round(0.8*nw));
+            mvpa_bs_stats = cell(1,mvpa_num_effects);
+
+            if strcmp(parallelstr_mvpa_reg_cov,'parallel')
+
+                delete(gcp('nocreate'));
+                c = parcluster('local'); % determine local number of cores, and initiate parallel pool with 80% of them
+                nw = c.NumWorkers;
+                parpool(round(0.8*nw));
+
+            end
 
             for j = 1:mvpa_num_effects
 
@@ -535,7 +697,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             fprintf ('\nMONTAGE BOOTSTRAPPED %s RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, REGRESSORS: %s, MASK: %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_cov), q_threshold_mvpa_reg_cov, k_threshold_mvpa_reg_cov, analysisname, names_string, mask_string, scaling_string);
 
-            o2 = canlab_results_fmridisplay([], 'multirow', mvpa_num_effects, 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+            o2 = canlab_results_fmridisplay([], 'multirow', mvpa_num_effects, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
                 for j = 1:mvpa_num_effects
 
@@ -545,7 +707,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         end
                     tj = threshold(tj, q_threshold_glm, 'fdr', 'k', k_threshold_glm); 
 
-                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j);
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor', {[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
                     o2 = title_montage(o2, 2*j, [analysisname ' FDR ' num2str(q_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
 
                 end % for loop over regressors
@@ -560,7 +722,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             clear o2, clear figtitle, clear j, clear tj
         
-        end % if loop exist cons2boot_mvpa_reg_cov
+        end % if loop exist cons2boot
         
     end % if loop bootstrap
    
@@ -570,14 +732,64 @@ end % for loop over contrasts/conditions
 %% SAVE RESULTS
 % -------------------------------------------------------------------------
 
+fprintf('\n\n');
+printhdr('APPENDING REGION OBJECTS TO SAVED RESULTS');
+fprintf('\n\n');
+    
+    if ~dorobfit_parcelwise
+    
+        savefilenamedata_region = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
+        
+        if ~doBayes
+            save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr','-append');
+            
+        else
+            save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr', 'region_objs_Bayes', '-append');
+            
+        end
+        
+    else
+        
+        savefilenamedata_region = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
+        
+        if ~doBayes
+            
+            if q_threshold_glm ~= .05  
+                save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr','-append');
+                
+            else
+                save(savefilenamedata_region, 'region_objs_unc', '-append');
+                
+            end
+            
+        else
+            
+            if q_threshold_glm ~= .05  
+                save(savefilenamedata_region, 'region_objs_unc', 'region_objs_Bayes', 'region_objs_fdr','-append');
+                
+            else
+                save(savefilenamedata_region, 'region_objs_unc', 'region_objs_Bayes', '-append');
+                
+            end
+            
+        end
+        
+    end
+        
+        
+    fprintf('\nAdded region objects for %s\n', mygroupnamefield);
+
+    fprintf('\nFilename: %s\n', savefilenamedata_region);
+    
+
 if dobootstrap_mvpa_reg_cov
     
     fprintf('\n\n');
-    printhdr('SAVING BOOTSTRAPPED MVPA RESULTS');
+    printhdr('APPENDING BOOTSTRAPPED MVPA RESULTS');
     fprintf('\n\n');
     
     savefilenamedata_mvpa = fullfile(resultsdir, ['mvpa_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
-    save(savefilenamedata_mvpa, 'mvpa_bs_stats','-append');
+    save(savefilenamedata_mvpa, 'mvpa_bs_stats_results','-append');
     fprintf('\nSaved mvpa_stats_results for %s\n', mygroupnamefield);
 
     fprintf('\nFilename: %s\n', savefilenamedata_mvpa);
