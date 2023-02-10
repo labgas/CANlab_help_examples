@@ -545,7 +545,7 @@ for c = 1:kc
 
             s = threshold(cat_obj_sl,[0.5, max(cat_obj_sl.dat)],'raw-between');
             
-            o3 = montage(s, 'maxcolor', [1 1 0], 'mincolor', [1 0 0], 'cmaprange', [0.5 max(cat_obj_sl.dat)]);
+            o3 = montage(s, 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [0.5 max(cat_obj_sl.dat)]); % colormap ~ inferno in MRIcroGL
             o3 = title_montage(o3, whmontage, [analysisname ' searchlight accuracy > 50% ' mask_string ' ' scaling_string]);
 
             figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, mask_string, scaling_string);
