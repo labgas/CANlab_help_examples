@@ -195,6 +195,7 @@ if exist('maskname_pdm','var') && ~isempty(maskname_pdm) && exist(maskname_pdm, 
     mask_string = sprintf('masked with %s', maskname_short);
 
     pdmmask = fmri_mask_image(maskname_pdm);
+    pdmmask = resample_space(pdmmask,fmri_dat); % resample mask space to fmri_data obj space
     fmri_dat = fmri_dat.apply_mask(pdmmask);
     fmri_dat.mask_descrip = maskname_pdm;
 

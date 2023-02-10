@@ -215,6 +215,7 @@ fprintf('\n\n');
         mask_string = sprintf('masked with %s', maskname_short);
 
         mvpamask = fmri_mask_image(maskname_mvpa_reg_st);
+        mvpamask = resample_space(mvpamask,fmri_dat); % resample mask to fmri_data obj space
         fmri_dat = fmri_dat.apply_mask(mvpamask);
         fmri_dat.mask_descrip = maskname_mvpa_reg_st;
 
@@ -579,7 +580,7 @@ fprintf('\n\n');
 
     figure
 
-    o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+    o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
         switch ml_method_mvpa_reg_st
 
@@ -591,7 +592,7 @@ fprintf('\n\n');
 
         end
 
-    o2 = addblobs(o2, w);
+    o2 = addblobs(o2, w, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
     o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' unthresholded ' mask_string]);
 
     figtitle = sprintf('%s_unthresholded_montage_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
@@ -764,13 +765,13 @@ fprintf('\n\n');
 
         figure
 
-        o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
         t = bs_stats.weight_obj;
         t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
         r = region(t);
 
-        o2 = addblobs(o2, r);
+        o2 = addblobs(o2, r, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
         o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' bootstrapped ' mask_string]);
 
         figtitle = sprintf('%s_%1.4f_bootstrap_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
@@ -787,13 +788,13 @@ fprintf('\n\n');
 
         figure
 
-        o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
         t = perm_stats_obj;
         t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
         r = region(t);
 
-        o2 = addblobs(o2, r);
+        o2 = addblobs(o2, r, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
         o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' permutation ' mask_string]);
 
         figtitle = sprintf('%s_%1.4f_permutation_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
@@ -867,11 +868,11 @@ fprintf('\n\n');
 
         figure
 
-        o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
         w = region(source_recon_data_obj);
 
-        o2 = addblobs(o2, w);
+        o2 = addblobs(o2, w, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
         o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' unthresholded source reconstruction' mask_string]);
 
         figtitle = sprintf('%s_unthresholded_source_reconstruction_montage_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
@@ -923,13 +924,13 @@ fprintf('\n\n');
 
         figure
 
-        o2 = canlab_results_fmridisplay([], 'compact', 'outline', 'linewidth', 0.5, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
 
         t = source_recon_perm_stats_obj;
         t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
         r = region(t);
 
-        o2 = addblobs(o2, r);
+        o2 = addblobs(o2, r, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
         o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' permutation source reconstruction ' mask_string]);
 
         figtitle = sprintf('%s_%1.4f_permutation_source_reconstruction_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
