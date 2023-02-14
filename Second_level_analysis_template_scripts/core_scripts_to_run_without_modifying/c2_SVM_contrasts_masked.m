@@ -54,8 +54,8 @@
 % date:   KU Leuven, July, 2022
 %
 %__________________________________________________________________________
-% @(#)% c2_SVM_contrasts_masked.m         v5.0
-% last modified: 2023/02/10
+% @(#)% c2_SVM_contrasts_masked.m         v5.1
+% last modified: 2023/02/14
 
 
 %% GET AND SET OPTIONS
@@ -302,6 +302,8 @@ if dobootstrap_svm
     
     region_objs_bs_fdr = cell(1,kc);
     region_objs_bs_unc = cell(1,kc);
+    region_tables_bs_fdr = cell(1,kc);
+    region_tables_bs_unc = cell(1,kc);
     
 end
 
@@ -309,6 +311,8 @@ if dosearchlight_svm
     
     region_objs_sl_fdr = cell(1,kc);
     region_objs_sl_unc = cell(1,kc);
+    region_tables_sl_fdr = cell(1,kc);
+    region_tables_sl_unc = cell(1,kc);
     
 end
 
@@ -395,16 +399,18 @@ for c = 1:kc
 
                 r(cat(1, r.numVox) < k_threshold_svm) = [];
                 
-                    if exist('combined_atlas','var')
-                        [rpos, rneg] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
-                    else
-                        [rpos, rneg] = table(r);                            % add labels from default canlab_2018 atlas                               
-                    end
-                
-                r = [rpos rneg];               % re-concatenate labeled regions
-                region_objs_bs_fdr{c} = r;
-
                 if ~isempty(r)
+            
+                        if exist('combined_atlas','var')
+                            [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
+                            r = [rpos rneg];                                    % re-concatenate labeled regions
+                        else
+                            [rpos, rneg, r_table] = table(r);                            % add labels from default canlab_2018 atlas 
+                            r = [rpos rneg];                                    % re-concatenate labeled regions
+                        end
+                
+                    region_objs_bs_fdr{c} = r;
+                    region_tables_bs_fdr{c} = r_table;
 
                     fprintf ('\nMONTAGE REGIONCENTERS SVM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
@@ -418,7 +424,7 @@ for c = 1:kc
                             plugin_save_figure;
                         end
 
-                    clear o3, clear figtitle, clear t, clear r
+                    clear o3, clear figtitle, clear t, clear r, clear r_table
 
                 end % conditional montage plot if there are regions to show
 
@@ -454,18 +460,21 @@ for c = 1:kc
 
                 r(cat(1, r.numVox) < k_threshold_svm) = [];
                 
-                    if exist('combined_atlas','var')
-                        [rpos, rneg] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
-                    else
-                        [rpos, rneg] = table(r);                            % add labels from default canlab_2018 atlas                               
-                    end
-                    
-                r = [rpos rneg];               % re-concatenate labeled regions
-                region_objs_bs_unc{c} = r;             % re-concatenate labeled regions
-
                 if ~isempty(r)
+                
+                    if exist('combined_atlas','var')
+                        [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
+                        r = [rpos rneg];                                    % re-concatenate labeled regions
+                    else
+                        [rpos, rneg, r_table] = table(r);                            % add labels from default canlab_2018 atlas 
+                        r = [rpos rneg];                                    % re-concatenate labeled regions
+                    end
 
-                    fprintf ('\nMONTAGE REGIONCENTERS SVM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                    region_objs_bs_unc{c} = r;
+                    region_tables_bs_unc{c} = r_table;
+
+
+                    fprintf ('\nMONTAGE REGIONCENTERS SVM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
                     o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
 
@@ -477,7 +486,7 @@ for c = 1:kc
                             plugin_save_figure;
                         end
 
-                    clear o3, clear figtitle, clear t, clear r
+                    clear o3, clear figtitle, clear t, clear r, clear r_table
 
                 end % conditional montage plot if there are regions to show
             
@@ -515,7 +524,7 @@ for c = 1:kc
                 
                 figure;
 
-                o2 = montage(r, 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]); % colormap ~ inferno in MRIcroGL
+                o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]); % colormap ~ inferno in MRIcroGL
                 o2 = title_montage(o2, whmontage, [analysisname ' searchlight accuracy FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                 figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
@@ -533,20 +542,20 @@ for c = 1:kc
 
                 r(cat(1, r.numVox) < k_threshold_svm) = [];
                 
-                    if exist('combined_atlas','var')
-                        [rpos, rneg] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
-                    else
-                        [rpos, rneg] = table(r);                            % add labels from default canlab_2018 atlas                               
-                    end
-                
-                r = [rpos rneg];               % re-concatenate labeled regions
-                region_objs_sl_fdr{c} = r;
-
                 if ~isempty(r)
-
+                
+                    if exist('combined_atlas','var')
+                        [r, r_table] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
+                    else
+                        [r, r_table] = table(r);                            % add labels from default canlab_2018 atlas 
+                    end
+ 
+                    region_objs_sl_fdr{c} = r;
+                    region_tables_sl_fdr{c} = r_table;
+                
                     fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT ACCURACY RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
-                    o3 = montage(r, 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]);
+                     o3 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]); % colormap as above does not function well, maybe because how stats_img_obj is created in previous script
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
@@ -556,7 +565,7 @@ for c = 1:kc
                             plugin_save_figure;
                         end
 
-                    clear o3, clear figtitle, clear p, clear r
+                    clear o3, clear figtitle, clear p, clear r, clear r_table
 
                 end % conditional montage plot if there are regions to show
 
@@ -578,7 +587,7 @@ for c = 1:kc
                 
                 figure;
 
-                o2 = montage(p, 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]);
+                o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]);
                 o2 = title_montage(o2, whmontage, [analysisname ' searchlight accuracy unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                 figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
@@ -596,20 +605,20 @@ for c = 1:kc
 
                 r(cat(1, r.numVox) < k_threshold_svm) = [];
                 
-                    if exist('combined_atlas','var')
-                        [rpos, rneg] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
-                    else
-                        [rpos, rneg] = table(r);                            % add labels from default canlab_2018 atlas                               
-                    end
-                
-                r = [rpos rneg];               % re-concatenate labeled regions
-                region_objs_bs_unc{c} = r;
-
                 if ~isempty(r)
+                
+                    if exist('combined_atlas','var')
+                        [r, r_table] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
+                    else
+                        [r, r_table] = table(r);                            % add labels from default canlab_2018 atlas 
+                    end
+ 
+                    region_objs_sl_unc{c} = r;
+                    region_tables_sl_unc{c} = r_table;
 
                     fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT ACCURACY RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
-                    o3 = montage(r, 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]);
+                    o3 = montage(r, 'regioncenters', 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]);
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_regions_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
@@ -619,7 +628,7 @@ for c = 1:kc
                             plugin_save_figure;
                         end
 
-                    clear o3, clear figtitle, clear p, clear r
+                    clear o3, clear figtitle, clear p, clear r, clear r_table
 
                 end % conditional montage plot if there are regions to show
             
@@ -646,12 +655,12 @@ if dosavesvmstats
     end
     
     if dosearchlight_svm
-        save(savefilenamedata, 'region_objs_sl_fdr', 'region_objs_sl_unc','-append');
+        save(savefilenamedata, 'region_objs_sl_fdr', 'region_objs_sl_unc', 'region_tables_sl_fdr', 'region_tables_sl_unc','-append');
         fprintf('\nAdded searchlight results to saved svm_stats_results\n');
     end
     
     if dobootstrap_svm
-        save(savefilenamedata, 'region_objs_bs_fdr', 'region_objs_bs_unc', '-append');
+        save(savefilenamedata, 'region_objs_bs_fdr', 'region_objs_bs_unc', 'region_tables_bs_fdr', 'region_tables_bs_unc','-append');
         fprintf('\nAdded bootstrapped results to saved svm_stats_results\n');
     end
     
