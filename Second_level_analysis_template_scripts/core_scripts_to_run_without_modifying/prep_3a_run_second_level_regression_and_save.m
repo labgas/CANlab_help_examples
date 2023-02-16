@@ -134,8 +134,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_3a_run_second_level_regression_and_save.m         v5.0
-% last modified: 2023/02/10
+% @(#)% prep_3a_run_second_level_regression_and_save.m         v5.1
+% last modified: 2023/02/15
 
 
 %% GET AND SET OPTIONS
@@ -375,7 +375,7 @@ for c = 1:kc
             
         case 'conditions'
             fprintf('\n\n');
-            printhdr(['CONTRAST #', num2str(c), ': ', upper(DAT.conditions{c})]);
+            printhdr(['CONDITION #', num2str(c), ': ', upper(DAT.conditions{c})]);
             fprintf('\n\n');
     
     end
