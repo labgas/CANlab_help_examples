@@ -4,29 +4,29 @@
 % USAGE
 %
 % This prep script 
-% 1) loads first-level beta/con images into CANlab's fmri_data_st objects 
-% 2) performs quality control, including plots if requested in a2 script
-% 3) z-scores images and then repeats 1) and 2)
-% 4) saves the relevant resulting objects/variables in a .mat file to resultsdir
-% 5) publishes an html report (run using Matlab's publish function)
+% # loads first-level beta/con images into CANlab's fmri_data_st objects 
+% # performs quality control, including plots if requested in a2 script
+% # z-scores images and then repeats 1) and 2)
+% # saves the relevant resulting objects/variables in a .mat file to resultsdir
+% # publishes an html report (run using Matlab's publish function)
 %
 %
 % OPTIONS
 %
-% dofullplot: default true, can set to false to save time, but not recommended for quality control purposes
-% omit_histograms: default false, can set to false to save time, especially in case of large samples but not recommended for quality control purposes
-% dozipimages: default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
+% * dofullplot: default true, can set to false to save time, but not recommended for quality control purposes
+% * omit_histograms: default false, can set to false to save time, especially in case of large samples but not recommended for quality control purposes
+% * dozipimages: default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
 %
-%__________________________________________________________________________
+% -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
 % date:   Dartmouth, May, 2022
 %
-%__________________________________________________________________________
-% @(#)% prep_2_load_image_data_and_save.m         v1.2
-% last modified: 2022/09/02
-
-
+% -------------------------------------------------------------------------
+% prep_2_load_image_data_and_save.m         v1.3
+% last modified: 2023/02/16
+%
+%
 %% SET DEFAULT OPTIONS IF NEEDED
 % -------------------------------------------------------------------------
 
@@ -116,7 +116,7 @@ end
 %% LOAD FULL OBJECTS AND QC
 % -------------------------------------------------------------------------
 
-% PREP SAMPLING
+% <H2>PREP SAMPLING</H2>
 %--------------------------------------------------------------------------
 
 % Determine whether we want to sample to the mask (2 x 2 x 2 mm) or native
@@ -134,7 +134,7 @@ else
 
 end
 
-% LOAD IMAGES INTO FMRI_DATA_ST OBJECT
+% <H2>LOAD IMAGES INTO FMRI_DATA_ST OBJECT</H2>
 %--------------------------------------------------------------------------
 
 fprintf('\n\n');
@@ -162,7 +162,7 @@ for i = 1:size(DAT.conditions,2)
         end 
     end
     
-    % QUALITY CONTROL METRICS
+    % <H2>QUALITY CONTROL METRICS</H2>
     % ---------------------------------------------------------------------
     
     fprintf('\n\n');
@@ -179,7 +179,7 @@ for i = 1:size(DAT.conditions,2)
     
     drawnow; snapnow
     
-    % PLOT (OPTIONAL)
+    % <H2>PLOT (OPTIONAL)</H2>
     % ---------------------------------------------------------------------
     
     if dofullplot
@@ -211,7 +211,7 @@ for i = 1:size(DAT.conditions,2)
         
     end
     
-    % DERIVED MEASURES
+    % <H2>DERIVED MEASURES</H2>
     % ---------------------------------------------------------------------
     
     DATA_OBJ{i} = remove_empty(DATA_OBJ{i});
@@ -232,7 +232,7 @@ fprintf('\n\n');
 
 for i=1:size(DAT.conditions,2)
     
-    % Z-SCORING
+    % <H2>Z-SCORING</H2>
     % ---------------------------------------------------------------------
     
     fprintf('\n\n');
@@ -243,7 +243,7 @@ for i=1:size(DAT.conditions,2)
 
     DATA_OBJsc{i} = enforce_variable_types(DATA_OBJsc{i});
 
-    % QUALITY CONTROL METRICS
+    % </H2>QUALITY CONTROL METRICS</H2>
     % ---------------------------------------------------------------------
 
     printhdr(sprintf('QC metrics for z-scored images: condition %3.0f, %s', i, DAT.conditions{i}));
@@ -258,7 +258,7 @@ for i=1:size(DAT.conditions,2)
     
     drawnow; snapnow
     
-    % PLOT (OPTIONAL)
+    % </H2>PLOT (OPTIONAL)</H2>
     % ---------------------------------------------------------------------
     
     if dofullplot
@@ -295,7 +295,7 @@ for i=1:size(DAT.conditions,2)
         
     end
     
-    % DERIVED MEASURES
+    % </H2>DERIVED MEASURES</H2>
     %----------------------------------------------------------------------
     
     DATA_OBJsc{i} = remove_empty(DATA_OBJsc{i});

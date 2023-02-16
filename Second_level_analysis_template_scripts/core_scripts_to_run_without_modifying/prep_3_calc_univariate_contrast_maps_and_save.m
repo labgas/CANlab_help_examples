@@ -4,11 +4,11 @@
 % USAGE
 %
 % This prep script 
-% 1) calculates contrast images from first-level beta/con condition images included in prep_2 script, and stores them as CANlab's fmri_data_st objects 
-% 2) performs l2norm-rescaling of resulting contrast images
-% 3) performs quality control, including plots if requested in a2 script
-% 4) saves the relevant resulting objects/variables in a .mat file to resultsdir
-% 5) publishes an html report (run using Matlab's publish function)
+% # calculates contrast images from first-level beta/con condition images included in prep_2 script, and stores them as CANlab's fmri_data_st objects 
+% # performs l2norm-rescaling of resulting contrast images
+% # performs quality control, including plots if requested in a2 script
+% # saves the relevant resulting objects/variables in a .mat file to resultsdir
+% # publishes an html report (run using Matlab's publish function)
 %
 %
 % NOTE: We can include image sets with different
@@ -19,20 +19,20 @@
 %
 % OPTIONS
 %
-% dofullplot: default true, can set to false to save time, but not recommended for quality control purposes
-% omit_histograms: default false, can set to false to save time, especially in case of large samples but not recommended for quality control purposes
-% dozipimages: default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
+% * dofullplot: default true, can set to false to save time, but not recommended for quality control purposes
+% * omit_histograms: default false, can set to false to save time, especially in case of large samples but not recommended for quality control purposes
+% * dozipimages: default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
 %
-%__________________________________________________________________________
+% -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
 % date:   Dartmouth, May, 2022
 %
-%__________________________________________________________________________
-% @(#)% prep_3_calc_univariate_contrast_maps_and_save.m         v1.2
-% last modified: 2022/09/02
-
-
+% -------------------------------------------------------------------------
+% prep_3_calc_univariate_contrast_maps_and_save.m         v1.3
+% last modified: 2023/02/16
+%
+%
 %% RAW AND L2NORM-RESCALED CONTRAST IMAGES FROM RAW CONDITION IMAGES
 % -------------------------------------------------------------------------
 
@@ -47,7 +47,7 @@ end
 
 k = size(DAT.conditions,2);
 
-% GET SIZES OF DATA_OBJ
+% <H2>GET SIZES OF DATA_OBJ</H2>
 % -------------------------------------------------------------------------
 
 clear sz
@@ -63,12 +63,12 @@ for i = 1:k
 end
 
 
-% CREATE DATA_OBJ_CON, RESCALE, AND QC
+% <H2>CREATE DATA_OBJ_CON, RESCALE, AND QC</H2>
 % -------------------------------------------------------------------------
 
 for c = 1:size(DAT.contrasts, 1)
     
-    % PREP
+    % <H3>PREP</H3>
     % ---------------------------------------------------------------------
     
     % initialize : shell object, keep same space/volume info
@@ -81,7 +81,7 @@ for c = 1:size(DAT.contrasts, 1)
         fprintf('\nNot all image set sizes are the same for contrast %d\n\n', c);
     end
     
-    % CREATE CONTRAST OBJECTS & RESCALE BY L2NORM
+    % <H3>CREATE CONTRAST OBJECTS & RESCALE BY L2NORM</H3>
     % ---------------------------------------------------------------------
     
     fprintf('\n');
@@ -115,11 +115,10 @@ for c = 1:size(DAT.contrasts, 1)
         
     end
     
-%     DATA_OBJ_CON{c} = remove_empty(DATA_OBJ_CON{c}); % lukasvo76: redundant since fmri_data.enforce_variable_types below includes remove_empty
     DATA_OBJ_CON{c}.image_names = DAT.contrastnames;
     DATA_OBJ_CON{c}.source_notes = DAT.contrastnames;
     
-    % rescale contrast objects by l2norm % added by @lukasvo76 01/03/21
+    % rescale contrast objects by l2norm    % added by @lukasvo76 01/03/21
     fprintf('\n');
     fprintf('%s\nRescaling fmri_data_st object by l2norm for raw contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
     fprintf('\n');
@@ -131,10 +130,10 @@ for c = 1:size(DAT.contrasts, 1)
     DATA_OBJ_CONscc{c} = enforce_variable_types(DATA_OBJ_CONscc{c}); 
     
     
-    % QUALITY CONTROL METRICS & PLOT (OPTIONAL)
+    % <H3>QUALITY CONTROL METRICS & PLOT (OPTIONAL)</H3>
     % ------------------------------------------------------------------------
     
-    % RAW CONTRAST OBJECTS
+    % <H4>RAW CONTRAST OBJECTS</H4>
     fprintf('\n');
     fprintf('%s\nQC metrics for raw contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
     fprintf('\n');
@@ -156,12 +155,6 @@ for c = 1:size(DAT.contrasts, 1)
         drawnow; snapnow
         
         if ~omit_histograms
-              
-          % @lukasvo76 commented out since this is redundant (already
-          % included as subplot in output of plot() function above
-%             hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'singleaxis');
-%             title([DAT.contrastnames{c} ' histograms for each raw contrast image']);
-%             drawnow; snapnow
             
             create_figure('histogram');
             set(gcf,'WindowState','maximized');
@@ -172,7 +165,7 @@ for c = 1:size(DAT.contrasts, 1)
         
     end
     
-    % RESCALED CONTRAST OBJECTS
+    % <H4>RESCALED CONTRAST OBJECTS</H4>
     fprintf('\n');
     fprintf('%s\nQC metrics for l2norm-rescaled contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
     fprintf('\n');
@@ -194,12 +187,6 @@ for c = 1:size(DAT.contrasts, 1)
         drawnow; snapnow
         
         if ~omit_histograms
-            
-          % @lukasvo76 commented out since this is redundant (already
-          % included as subplot in output of plot() function above
-%             hist_han = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'singleaxis');
-%             title([DAT.contrastnames{c} ' histograms for each l2norm-rescaled contrast image']);
-%             drawnow; snapnow
             
             create_figure('histogram_l2norm');
             set(gcf,'WindowState','maximized');
@@ -224,12 +211,12 @@ for i = 1:k
     DATA_OBJsc{i} = replace_empty(DATA_OBJsc{i});
 end
 
-% CREATE DATA_OBJ_CONsc, AND QC
+% <H2>CREATE DATA_OBJ_CONsc, AND QC</H2>
 % -------------------------------------------------------------------------
 
 for c = 1:size(DAT.contrasts, 1)
 
-    % PREP
+    % <H3>PREP</H3>
     % ---------------------------------------------------------------------
     
     fprintf('\n');
@@ -246,7 +233,7 @@ for c = 1:size(DAT.contrasts, 1)
         fprintf('\nNot all image set sizes are the same for contrast %d\n\n', c);
     end
     
-    % CREATE CONTRAST OBJECTS
+    % <H4>CREATE CONTRAST OBJECTS</H4>
     DATA_OBJ_CONsc{c} = DATA_OBJsc{wh(1)};
     [DATA_OBJ_CONsc{c}.image_names, DATA_OBJ_CONsc{c}.fullpath] = deal([]);
     DATA_OBJ_CONsc{c}.dat = zeros(size(DATA_OBJsc{wh(1)}.dat));
@@ -274,7 +261,6 @@ for c = 1:size(DAT.contrasts, 1)
         
     end
     
-%     DATA_OBJ_CONsc{c} = remove_empty(DATA_OBJ_CONsc{c}); % lukasvo76: redundant since fmri_data.enforce_variable_types below includes remove_empty
     DATA_OBJ_CONsc{c}.image_names = DAT.contrastnames;
     DATA_OBJ_CONsc{c}.source_notes = DAT.contrastnames;
     
@@ -282,7 +268,7 @@ for c = 1:size(DAT.contrasts, 1)
     DATA_OBJ_CONsc{c} = enforce_variable_types(DATA_OBJ_CONsc{c}); 
 
     
-    % QUALITY CONTROL METRICS & PLOT (OPTIONAL)
+    % <H3>QUALITY CONTROL METRICS & PLOT (OPTIONAL)</H3>
     % ------------------------------------------------------------------------
     
     fprintf('\n');
@@ -304,12 +290,6 @@ for c = 1:size(DAT.contrasts, 1)
         drawnow; snapnow
         
         if ~omit_histograms
-
-          % @lukasvo76 commented out since this is redundant (already
-          % included as subplot in output of plot() function above  
-%             hist_han = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'singleaxis');
-%             title([DAT.contrastnames{c} ' histograms for each contrast image (from z-scored condition images)']);
-%             drawnow; snapnow
             
             create_figure('histogram_zscore');
             set(gcf,'WindowState','maximized');
