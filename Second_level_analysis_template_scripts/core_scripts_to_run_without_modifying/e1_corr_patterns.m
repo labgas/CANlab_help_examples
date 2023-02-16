@@ -59,7 +59,7 @@ results_suffix = '';                            % adds a suffix of your choice t
 
 % CUSTOM OPTIONS FOR THIS SCRIPT SET IN A2 SCRIPT 
 
-r_threshold_corr = 0.60;                      % r threshold for correlation coeffs 
+% r_threshold_corr = 0.xx;                      % r threshold for correlation coeffs 
 %  corr_type = 'Pearson'/'Spearman'/'Kendall';
 
 % NOTE: do NOT delete the results_suffix option, leave empty if not needed
@@ -308,6 +308,7 @@ n_voxels_sig = cell(1,idx);
 for l = 1:idx
     
     corr_maps{l} = threshold(corr_maps{l},[r_threshold_corr 1],'raw-between');
+    corr_maps{l}.image_labels = con_title{l};
     n_voxels_sig{l} = sum(corr_maps{l}.sig);
     o2 = addblobs(o2, region(corr_maps{l}), 'wh_montages', (2*l)-1:2*l, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [r_threshold_corr 1]);
     o2 = title_montage(o2, 2*l, [con_title{l} ' r > ' num2str(r_threshold_corr) ' ' mask_string ' ' scaling_string]);
