@@ -1,7 +1,7 @@
 %% ery_4a_secondlevel_m6m_s8_e1_corr_patterns_conds.m
 % 
 % 
-% USAGE
+% *USAGE*
 % 
 % This script displays calculates, thresholds, and plots correlation maps
 % between all pairwise combinations of condition or contrast images using
@@ -12,34 +12,44 @@
 % publish('e1_corr_patterns_conds','outputDir',htmlsavedir)
 % 
 % 
-% MANDATORY OPTIONS
+% *MANDATORY OPTIONS*
 % 
 % * mygroupnamefield = 'conditions'/'contrasts';      calculate correlations between conditions or contrasts defined in DAT  
+%
 % * results_suffix = '';                              adds a suffix of your choice to .mat file with results that will be saved
 % 
-% NOTE: do NOT delete the results_suffix option, leave empty if not needed
-% NOTE: do NOT use to add a suffix specifying the scaling or masking option, this will be added automatically
+% *NOTES* 
+%   1. do NOT delete the results_suffix option, leave empty if not needed
+%   2. do NOT use to add a suffix specifying the scaling or masking option, this will be added automatically
 % 
-% CUSTOM OPTIONS FOR THIS SCRIPT SET IN A2 SCRIPT 
+%
+% *CUSTOM OPTIONS FOR THIS SCRIPT SET IN A2 SCRIPT* 
 % 
 % * r_threshold_corr = 0.xx;                          r threshold for correlation coeffs 
+%
 % * corr_type = 'Pearson'/'Spearman'/'Kendall';
+%
 % 
-% COPY OPTIONS FROM PREP_3a_ SCRIPT IF DIFFERENT FROM DEFAULTS SET IN A2 SCRIPT
+% *COPY OPTIONS FROM PREP_3a_ SCRIPT IF DIFFERENT FROM DEFAULTS SET IN A2
+% SCRIPT*
 % 
 % * atlasname_glm = 'atlas_name';
+%
 % * maskname_glm = 'mask_name';
+%
 % * myscaling_glm = 'raw/scaled';
 % 
 % -------------------------------------------------------------------------
 % 
 % author: Lukas Van Oudenhove
+%
 % date:   KU Leuven, February, 2023
 % 
 % -------------------------------------------------------------------------
 %
-% e1_corr_patterns_conds.m            v1.0
-% last modified: 2023/02/15
+% e1_corr_patterns_conds.m            v1.1
+%
+% last modified: 2023/02/17
 % 
 % 
 %% GET AND SET OPTIONS
@@ -49,8 +59,9 @@
 
 ery_4a_secondlevel_m6m_s0_a_set_up_paths_always_run_first;
 
-% NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
-% NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
+% NOTES 
+%   1. CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
+%   2. THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
 
 % SET MANDATORY OPTIONS
 
@@ -60,10 +71,11 @@ results_suffix = '';                            % adds a suffix of your choice t
 % CUSTOM OPTIONS FOR THIS SCRIPT SET IN A2 SCRIPT 
 
 % r_threshold_corr = 0.xx;                      % r threshold for correlation coeffs 
-%  corr_type = 'Pearson'/'Spearman'/'Kendall';
+% corr_type = 'Pearson'/'Spearman'/'Kendall';
 
-% NOTE: do NOT delete the results_suffix option, leave empty if not needed
-% NOTE: do NOT use to add a suffix specifying the scaling or masking option, this will be added automatically
+% NOTES
+%   1. do NOT delete the results_suffix option, leave empty if not needed
+%   2. do NOT use to add a suffix specifying the scaling or masking option, this will be added automatically
 
 % COPY OPTIONS FROM PREP_3a_ SCRIPT IF DIFFERENT FROM DEFAULTS SET IN A2 SCRIPT
 

@@ -1,36 +1,37 @@
 %% prep_3_calc_univariate_contrast_maps_and_save.m
 %
 %
-% USAGE
+% *USAGE*
 %
-% This prep script 
+% This prep script
+%
 % # calculates contrast images from first-level beta/con condition images included in prep_2 script, and stores them as CANlab's fmri_data_st objects 
 % # performs l2norm-rescaling of resulting contrast images
 % # performs quality control, including plots if requested in a2 script
 % # saves the relevant resulting objects/variables in a .mat file to resultsdir
 % # publishes an html report (run using Matlab's publish function)
 %
-%
-% NOTE: We can include image sets with different
-% numbers of images, as occurs with between-person designs, as
-% long as the contrast weights are zero for all elements with
-% different numbers of images.
+% *NOTE* 
+%   We can include image sets with different numbers of images, as occurs with between-person designs, as
+%   long as the contrast weights are zero for all elements with different numbers of images.
 %
 %
-% OPTIONS
+% *OPTIONS*
 %
-% * dofullplot: default true, can set to false to save time, but not recommended for quality control purposes
-% * omit_histograms: default false, can set to false to save time, especially in case of large samples but not recommended for quality control purposes
-% * dozipimages: default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
+% * dofullplot                  default true, can set to false to save time, but not recommended for quality control purposes
+% * omit_histograms             default false, can set to false to save time, especially in case of large samples but not recommended for quality control purposes
+% * dozipimages                 default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
 %
 % -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
+%
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% prep_3_calc_univariate_contrast_maps_and_save.m         v1.3
-% last modified: 2023/02/16
+% prep_3_calc_univariate_contrast_maps_and_save.m         v1.4
+%
+% last modified: 2023/02/17
 %
 %
 %% RAW AND L2NORM-RESCALED CONTRAST IMAGES FROM RAW CONDITION IMAGES
@@ -47,8 +48,8 @@ end
 
 k = size(DAT.conditions,2);
 
-% <H2>GET SIZES OF DATA_OBJ</H2>
-% -------------------------------------------------------------------------
+%%
+% *GET SIZES OF DATA_OBJ*
 
 clear sz
 
@@ -63,13 +64,13 @@ for i = 1:k
 end
 
 
-% <H2>CREATE DATA_OBJ_CON, RESCALE, AND QC</H2>
-% -------------------------------------------------------------------------
+%%
+% CREATE DATA_OBJ_CON, RESCALE, AND QC
 
 for c = 1:size(DAT.contrasts, 1)
     
-    % <H3>PREP</H3>
-    % ---------------------------------------------------------------------
+    % PREP WORK
+    % ---------
     
     % initialize : shell object, keep same space/volume info
     wh = find(DAT.contrasts(c, :));
@@ -81,8 +82,8 @@ for c = 1:size(DAT.contrasts, 1)
         fprintf('\nNot all image set sizes are the same for contrast %d\n\n', c);
     end
     
-    % <H3>CREATE CONTRAST OBJECTS & RESCALE BY L2NORM</H3>
-    % ---------------------------------------------------------------------
+    % CREATE CONTRAST OBJECTS & RESCALE BY L2NORM
+    % -------------------------------------------
     
     fprintf('\n');
     fprintf('%s\nCreating fmri_data_st object for raw contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
@@ -130,10 +131,11 @@ for c = 1:size(DAT.contrasts, 1)
     DATA_OBJ_CONscc{c} = enforce_variable_types(DATA_OBJ_CONscc{c}); 
     
     
-    % <H3>QUALITY CONTROL METRICS & PLOT (OPTIONAL)</H3>
-    % ------------------------------------------------------------------------
+    % QUALITY CONTROL METRICS & PLOT (OPTIONAL)
+    % -----------------------------------------
     
-    % <H4>RAW CONTRAST OBJECTS</H4>
+    % RAW CONTRAST OBJECTS
+    
     fprintf('\n');
     fprintf('%s\nQC metrics for raw contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
     fprintf('\n');
@@ -165,7 +167,8 @@ for c = 1:size(DAT.contrasts, 1)
         
     end
     
-    % <H4>RESCALED CONTRAST OBJECTS</H4>
+    % RESCALED CONTRAST OBJECTS
+    
     fprintf('\n');
     fprintf('%s\nQC metrics for l2norm-rescaled contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
     fprintf('\n');
@@ -211,13 +214,14 @@ for i = 1:k
     DATA_OBJsc{i} = replace_empty(DATA_OBJsc{i});
 end
 
-% <H2>CREATE DATA_OBJ_CONsc, AND QC</H2>
-% -------------------------------------------------------------------------
+
+%%
+% CREATE DATA_OBJ_CONsc, AND QC
 
 for c = 1:size(DAT.contrasts, 1)
 
-    % <H3>PREP</H3>
-    % ---------------------------------------------------------------------
+    % PREP
+    % ----
     
     fprintf('\n');
     fprintf('%s\nCreating fmri_data_st object for z-scored contrast: %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
@@ -233,7 +237,8 @@ for c = 1:size(DAT.contrasts, 1)
         fprintf('\nNot all image set sizes are the same for contrast %d\n\n', c);
     end
     
-    % <H4>CREATE CONTRAST OBJECTS</H4>
+    % CREATE CONTRAST OBJECTS
+    
     DATA_OBJ_CONsc{c} = DATA_OBJsc{wh(1)};
     [DATA_OBJ_CONsc{c}.image_names, DATA_OBJ_CONsc{c}.fullpath] = deal([]);
     DATA_OBJ_CONsc{c}.dat = zeros(size(DATA_OBJsc{wh(1)}.dat));
@@ -268,8 +273,7 @@ for c = 1:size(DAT.contrasts, 1)
     DATA_OBJ_CONsc{c} = enforce_variable_types(DATA_OBJ_CONsc{c}); 
 
     
-    % <H3>QUALITY CONTROL METRICS & PLOT (OPTIONAL)</H3>
-    % ------------------------------------------------------------------------
+    % QUALITY CONTROL METRICS & PLOT (OPTIONAL)
     
     fprintf('\n');
     fprintf('%s\nQC metrics for contrast (from z-scored condition images): %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);

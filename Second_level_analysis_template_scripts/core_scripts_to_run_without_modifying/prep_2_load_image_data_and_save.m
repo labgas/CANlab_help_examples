@@ -1,9 +1,10 @@
 %% prep_2_load_image_data_and_save.m
 %
 %
-% USAGE
+% *USAGE*
 %
 % This prep script 
+%
 % # loads first-level beta/con images into CANlab's fmri_data_st objects 
 % # performs quality control, including plots if requested in a2 script
 % # z-scores images and then repeats 1) and 2)
@@ -11,20 +12,25 @@
 % # publishes an html report (run using Matlab's publish function)
 %
 %
-% OPTIONS
+% *OPTIONS*
 %
-% * dofullplot: default true, can set to false to save time, but not recommended for quality control purposes
-% * omit_histograms: default false, can set to false to save time, especially in case of large samples but not recommended for quality control purposes
-% * dozipimages: default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
+% * dofullplot              default true, can set to false to save time, but not recommended for quality control purposes
+%
+% * omit_histograms         default false, can set to true to save time, especially in case of large samples but not recommended for quality control purposes
+%
+% * dozipimages             default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
 %
 % -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
+%
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% prep_2_load_image_data_and_save.m         v1.3
-% last modified: 2023/02/16
+%
+% prep_2_load_image_data_and_save.m         v1.4
+%
+% last modified: 2023/02/17
 %
 %
 %% SET DEFAULT OPTIONS IF NEEDED
@@ -85,7 +91,6 @@ for i = 1:size(DAT.conditions,2)
     else 
         
         str = spm_select('ExtFPListRec',datadir, DAT.functional_wildcard{i}, Inf); 
-
         
 %         % Unzip if needed - not needed in LaBGAS case since we typically do
 %         not have zipped con images, although that could be implemented
@@ -116,8 +121,8 @@ end
 %% LOAD FULL OBJECTS AND QC
 % -------------------------------------------------------------------------
 
-% <H2>PREP SAMPLING</H2>
-%--------------------------------------------------------------------------
+%%
+% *PREP SAMPLING*
 
 % Determine whether we want to sample to the mask (2 x 2 x 2 mm) or native
 % space, whichever is more space-efficient
@@ -134,8 +139,8 @@ else
 
 end
 
-% <H2>LOAD IMAGES INTO FMRI_DATA_ST OBJECT</H2>
-%--------------------------------------------------------------------------
+%%
+% *LOAD CONDITION IMAGES INTO FMRI_DATA_ST OBJECT, PERFORM QC, AND PLOT*
 
 fprintf('\n\n');
 printhdr('LOADING RAW IMAGES INTO FMRI_DATA_ST OBJECTS');
@@ -162,8 +167,7 @@ for i = 1:size(DAT.conditions,2)
         end 
     end
     
-    % <H2>QUALITY CONTROL METRICS</H2>
-    % ---------------------------------------------------------------------
+    % QUALITY CONTROL METRICS
     
     fprintf('\n\n');
     printhdr(sprintf('QC metrics for images: condition #%d, %s', i, DAT.conditions{i}));
@@ -179,8 +183,7 @@ for i = 1:size(DAT.conditions,2)
     
     drawnow; snapnow
     
-    % <H2>PLOT (OPTIONAL)</H2>
-    % ---------------------------------------------------------------------
+    % PLOT (OPTIONAL)
     
     if dofullplot
         if ischar(DAT.functional_wildcard{i})
@@ -211,8 +214,7 @@ for i = 1:size(DAT.conditions,2)
         
     end
     
-    % <H2>DERIVED MEASURES</H2>
-    % ---------------------------------------------------------------------
+    % DERIVED MEASURES
     
     DATA_OBJ{i} = remove_empty(DATA_OBJ{i});
     DAT.globalmeans{i} = mean(DATA_OBJ{i}.dat)';
@@ -232,8 +234,7 @@ fprintf('\n\n');
 
 for i=1:size(DAT.conditions,2)
     
-    % <H2>Z-SCORING</H2>
-    % ---------------------------------------------------------------------
+    % Z-SCORING
     
     fprintf('\n\n');
     printhdr(sprintf('Z-scoring images: condition %d, %s', i, DAT.conditions{i}));
@@ -243,8 +244,7 @@ for i=1:size(DAT.conditions,2)
 
     DATA_OBJsc{i} = enforce_variable_types(DATA_OBJsc{i});
 
-    % </H2>QUALITY CONTROL METRICS</H2>
-    % ---------------------------------------------------------------------
+    % QUALITY CONTROL METRICS
 
     printhdr(sprintf('QC metrics for z-scored images: condition %3.0f, %s', i, DAT.conditions{i}));
     
@@ -258,8 +258,7 @@ for i=1:size(DAT.conditions,2)
     
     drawnow; snapnow
     
-    % </H2>PLOT (OPTIONAL)</H2>
-    % ---------------------------------------------------------------------
+    % PLOT (OPTIONAL)
     
     if dofullplot
         if ischar(DAT.functional_wildcard{i})
@@ -280,12 +279,6 @@ for i=1:size(DAT.conditions,2)
         
         if ~omit_histograms
             
-              % @lukasvo76 commented out since this is redundant (already
-              % included as subplot in output of plot() function above
-%             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'singleaxis');
-%             title([DAT.conditions{i} ' histograms for each image']);
-%             drawnow; snapnow
-            
             create_figure('histogram');
             set(gcf,'WindowState','maximized');
             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'by_tissue_type');
@@ -295,8 +288,7 @@ for i=1:size(DAT.conditions,2)
         
     end
     
-    % </H2>DERIVED MEASURES</H2>
-    %----------------------------------------------------------------------
+    % DERIVED MEASURES
     
     DATA_OBJsc{i} = remove_empty(DATA_OBJsc{i});
     DAT.sc_globalmeans{i} = mean(DATA_OBJsc{i}.dat)';
