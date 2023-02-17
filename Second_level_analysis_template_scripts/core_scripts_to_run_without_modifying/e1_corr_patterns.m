@@ -1,4 +1,4 @@
-%% ery_4a_secondlevel_m6m_s8_e1_corr_patterns_conds.m
+%% e1_corr_patterns_conds.m
 % 
 % 
 % *USAGE*
