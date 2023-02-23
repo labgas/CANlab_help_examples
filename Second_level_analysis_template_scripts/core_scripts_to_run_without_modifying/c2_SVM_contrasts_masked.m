@@ -67,9 +67,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% c2_SVM_contrasts_masked.m         v5.2
+% c2_SVM_contrasts_masked.m         v5.3
 %
-% last modified: 2023/02/17
+% last modified: 2023/02/23
 %
 %
 %% GET AND SET OPTIONS
@@ -356,19 +356,24 @@ for c = 1:kc
     printhdr(['CONTRAST #', num2str(c), ': ', upper(analysisname)]);
     fprintf('\n\n');
     
-    ROC = roc_plot(dist_from_hyperplane{c}, logical(Y{c} > 0), 'color', DAT.contrastcolors{c}, rocpairstring);
-    
-    d_paired = dfun_paired(dist_from_hyperplane{c}, Y{c});
-    fprintf('\nEffect size, cross-validated: Forced choice: d = %3.2f\n\n', d_paired);
-    
     fprintf('\n\n');
     printhdr('ROC plot');
     fprintf('\n\n');
-%     drawnow, snapnow;
+    
+    ROC = roc_plot(dist_from_hyperplane{c}, logical(Y{c} > 0), 'color', DAT.contrastcolors{c}, rocpairstring);
+    
+%     d_paired = dfun_paired(dist_from_hyperplane{c}, Y{c});
+%     fprintf('\nEffect size, cross-validated: Forced choice: d = %3.2f\n\n', d_paired);
+    
+    disableDefaultInteractivity(gca);
+    
+    snapnow;
     
     if save_figures_svm
         plugin_save_figure
     end
+    
+    drawnow nocallbacks; 
         
     
     if dobootstrap_svm
@@ -400,12 +405,18 @@ for c = 1:kc
 
                 figtitle = sprintf('%s_%s_%1.4f_FDR_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
                 set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                drawnow, snapnow;
+                
+                disableDefaultInteractivity(gca);
+                
+                snapnow;
                     if save_figures_svm
                         plugin_save_figure;
                     end
+               
 
                 clear o2, clear figtitle
+                
+                drawnow nocallbacks; 
 
                 % table and montage of regioncenters
 
@@ -433,12 +444,17 @@ for c = 1:kc
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_FDR_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
                     set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                    drawnow, snapnow;
+                    
+                    disableDefaultInteractivity(gca);
+                    
+                    snapnow;
                         if save_figures_svm
                             plugin_save_figure;
                         end
 
                     clear o3, clear figtitle, clear t, clear r, clear r_table
+                    
+                    drawnow nocallbacks;
 
                 end % conditional montage plot if there are regions to show
 
@@ -461,12 +477,18 @@ for c = 1:kc
 
                 figtitle = sprintf('%s_%s_%1.4f_unc_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
                 set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                drawnow, snapnow;
+                
+                disableDefaultInteractivity(gca);
+                
+                snapnow;
+                
                     if save_figures_svm
                         plugin_save_figure;
                     end
-
+               
                 clear o2, clear figtitle
+                
+                drawnow nocallbacks;
 
                 % table and montage of regioncenters
 
@@ -495,12 +517,18 @@ for c = 1:kc
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
                     set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                    drawnow, snapnow;
+                    
+                    disableDefaultInteractivity(gca);
+                    
+                    snapnow;
                         if save_figures_svm
                             plugin_save_figure;
                         end
+                    
 
                     clear o3, clear figtitle, clear t, clear r, clear r_table
+                    
+                    drawnow nocallbacks;
 
                 end % conditional montage plot if there are regions to show
             
@@ -547,12 +575,18 @@ for c = 1:kc
 
                 figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
                 set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                drawnow, snapnow;
+                
+                disableDefaultInteractivity(gca);
+                
+                snapnow;
                     if save_figures_svm
                         plugin_save_figure;
                     end
 
+
                 clear o2, clear figtitle
+                
+                drawnow nocallbacks;
 
                 % table and montage of regioncenters
 
@@ -578,12 +612,18 @@ for c = 1:kc
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
                     set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                    drawnow, snapnow;
+                    
+                    disableDefaultInteractivity(gca);
+                    
+                    snapnow;
                         if save_figures_svm
                             plugin_save_figure;
                         end
+                    
 
                     clear o3, clear figtitle, clear p, clear r, clear r_table
+                    
+                    drawnow nocallbacks;
 
                 end % conditional montage plot if there are regions to show
 
@@ -610,12 +650,18 @@ for c = 1:kc
 
                 figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
                 set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                drawnow, snapnow;
+                
+                disableDefaultInteractivity(gca);
+                
+                snapnow;
+                
                     if save_figures_svm
                         plugin_save_figure;
                     end
-
+                
                 clear o2, clear figtitle
+                
+                drawnow nocallbacks;
 
                 % table and montage of regioncenters
 
@@ -641,12 +687,18 @@ for c = 1:kc
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_regions_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
                     set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                    drawnow, snapnow;
+                    
+                    disableDefaultInteractivity(gca);
+                    
+                    snapnow;
                         if save_figures_svm
                             plugin_save_figure;
                         end
+                    
 
                     clear o3, clear figtitle, clear p, clear r, clear r_table
+                    
+                    drawnow nocallbacks;
 
                 end % conditional montage plot if there are regions to show
             

@@ -104,9 +104,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3c_run_SVMs_on_contrasts_masked.m         v4.5
+% prep_3c_run_SVMs_on_contrasts_masked.m         v5.0
 %
-% last modified: 2023/02/17
+% last modified: 2023/02/23
 %
 %
 %% GET AND SET OPTIONS
@@ -538,12 +538,14 @@ for c = 1:kc
                       
             cat_obj_sl = cat_obj;
             cat_obj_sl.dat = sl_stats.test_results{1}.acc;
+%             cat_obj_sl.dat(cat_obj_sl.dat < .50) = .50; % get rid of below chance accuracies by setting them to chance level
             
             filename = fullfile(resultsdir,'cat_obj_sl.nii');
             write(cat_obj_sl,'fname',filename);
             cat_obj_sl = statistic_image(filename);
             cat_obj_sl = apply_mask(cat_obj_sl, svmmask);
             cat_obj_sl.p = sl_stats.test_results{1}.p;
+            cat_obj_sl.p(cat_obj_sl.dat < .51) = 1; % get rid of below chance accuracy p-values by setting them to chance level
             delete(filename);
             
             sl_stats.stat_img_obj = cat_obj_sl;
