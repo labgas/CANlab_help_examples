@@ -67,8 +67,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_1b_prep_behavioral_data.m         v1.0
-% last modified: 2022/05/16
+% @(#)% prep_1b_prep_behavioral_data.m         v1.1
+% last modified: 2023/04/28
 
 
 %% READ BEHAVIORAL DATA FROM TSV FILES IN BIDS/PHENOTYPE DIR
@@ -189,7 +189,7 @@ for cond = 1:size(DAT.conditions,2)
     DAT.BETWEENPERSON.conditions{cond}.rating = DAT.BEHAVIOR.behavioral_data_table.(covs{cond+4}); % same for ratings
 end
 
-for cont = 1:size(DAT.contrasts,1)
+for cont = 1:size(DAT.contrastnames,1)
     DAT.BETWEENPERSON.contrasts{cont}.delta_intensity = DAT.BEHAVIOR.behavioral_data_table.(covs{(size(DAT.conditions,2)*2)-1+cont});
     DAT.BETWEENPERSON.contrasts{cont}.delta_rating = DAT.BEHAVIOR.behavioral_data_table.(covs{(size(DAT.conditions,2)*2)-1+cont+3});
 end
