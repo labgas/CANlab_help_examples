@@ -560,7 +560,9 @@ for c = 1:kc
         
     else 
         
-        combined_atlas = resample_space(combined_atlas,cat_obj);
+        if exist('combined_atlas','var')
+            combined_atlas = resample_space(combined_atlas,cat_obj);
+        end
         
     end
     
