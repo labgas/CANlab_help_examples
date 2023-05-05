@@ -311,7 +311,7 @@ end
 %
 % see github.com/labgas
 
-%% Check DAT, print warnings, save DAT structure
+%% CHECK DAT, PRINT WARNINGS, SAVE DAT STRUCTURE
 
 if ~isfield(DAT, 'conditions') 
     printhdr('Incomplete DAT structure');
@@ -329,4 +329,4 @@ end
 printhdr('Save DSGN & DAT structures and directory names in image_names_and_setup.mat');
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
-save(savefilename, 'dashes','printstr','printhdr','DSGN', 'DAT', 'basedir', 'datadir', 'maskdir', 'resultsdir', 'scriptsdir', 'figsavedir', 'htmlsavedir', '-v7.3');
+save(savefilename, 'DAT', '-append', '-v7.3');

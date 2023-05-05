@@ -224,3 +224,12 @@ disp('SET up conditions, colors, contrasts in DAT structure.');
 % DAT.between_condition_contrastnames = {'Pain vs Nausea' 'Pain vs Itch'};
 %           
 % DAT.between_condition_contrastcolors = custom_colors ([.2 .2 .8], [.2 .8 .2], size(DAT.between_condition_cons, 1));
+
+
+%% CHECK DAT, PRINT WARNINGS, SAVE DAT STRUCTURE
+% ------------------------------------------------------------------------
+
+printhdr('Save DSGN & DAT structures and directory names in image_names_and_setup.mat');
+
+savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
+save(savefilename, 'dashes','printstr','printhdr','DSGN', 'DAT', 'basedir', 'datadir', 'maskdir', 'resultsdir', 'scriptsdir', 'figsavedir', 'htmlsavedir', '-v7.3');
