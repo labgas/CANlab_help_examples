@@ -44,8 +44,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a_set_up_paths_always_run_first.m         v1.1
-% last modified: 2022/09/02
+% @(#)% a_set_up_paths_always_run_first.m         v1.2
+% last modified: 2023/05/05
 
 
 %% RUN PREP AND FIRST LEVEL DESIGN SCRIPT
@@ -54,8 +54,8 @@
 % check whether LaBGAScore_prep_s0_define_directories has been run
 % STUDY-SPECIFIC: replace LaBGAScore with study name in code below
 
-if ~exist('rootdir','var')
-    warning('\nrootdir variable not found in Matlab workspace, running LaBGAScore_prep_s0_define_directories before proceeding')
+if ~exist('rootdir','var') || ~exist('githubrootdir','var')
+    warning('\nrootdir and/or githubrootdir variable not found in Matlab workspace, running LaBGAScore_prep_s0_define_directories before proceeding')
     LaBGAScore_prep_s0_define_directories;
     cd(rootdir);
 else
