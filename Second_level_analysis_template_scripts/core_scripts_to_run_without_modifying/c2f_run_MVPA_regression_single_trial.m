@@ -540,12 +540,30 @@ fprintf('\n\n');
             fprintf('\n%s r = %0.3f\n\n', algorithm_mvpa_reg_st, corr(stats.yfit, fmri_dat.Y));
 
             figure
+            
+            nr_subjs = max(unique(subject_id));
+            
+            colors = distinguishable_colors(nr_subjs);
+            colors_cell = mat2cell(colors,ones(1,nr_subjs));
+            [han,~,~,slope_stats] = line_plot_multisubject(fmri_dat.Y, stats.yfit, 'subjid', subject_id, 'group_avg_ref_line', 'MarkerTypes','d', 'colors', colors_cell);
+            xlabel({['Observed ' behav_outcome_dat_st],'(across conditions)'},'FontSize',14); 
+            ylabel({['Estimated ' behav_outcome_dat_st],'(cross validated)'},'FontSize',14);
 
-            [~,~,~,slope_stats] = line_plot_multisubject(fmri_dat.Y, stats.yfit, 'subjid', subject_id, 'group_avg_ref_line');
-            xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['Estimated ' behav_outcome_dat_st],'(cross validated)'})
+            for i = 1:size(han.line_handles,2)
+                han.line_handles(1,i).LineWidth = 2.5;
+                han.point_handles(1,i).MarkerSize = 5;
+            end
+            
+            han.grpline_handle.LineWidth = 7.5;
+            han.grpline_handle.LineStyle = '-';
+            han.grpline_handle.Color = 'r';
+            
+            ax = gca;
+            ax.FontWeight = 'bold';
 
-            set(gcf,'WindowState','Maximized');
+            set(gcf,'WindowState','Maximized','Color','w');
             drawnow, snapnow;
+
 
         case 'oofmridataobj'
 
