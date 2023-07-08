@@ -287,6 +287,7 @@ if ~dorobfit_parcelwise
         [~,maskname_short] = fileparts(maskname_glm);
         mask_string = sprintf('masked with %s', maskname_short);
         glmmask = fmri_mask_image(maskname_glm, 'noverbose'); 
+        glmmask.dat(glmmask.dat > 0) = 1; % binarize mask
         fprintf('\nMasking voxelwise results visualization with %s\n\n', maskname_short);
         
     else
