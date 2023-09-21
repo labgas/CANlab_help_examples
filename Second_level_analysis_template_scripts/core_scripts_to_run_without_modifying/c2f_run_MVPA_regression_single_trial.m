@@ -1031,18 +1031,20 @@ if domultilevel_mvpa_reg_st
     % NEW WIP CODE
     %-------------
     
+    fmri_dat.metadata_table.(subj_identifier_dat_st) = subject_id;
+    
     % DEFINE ALGORITHM
     
-            clear alg
+    clear alg
 
-            alg = mlpcrRegressor('randInt',true,'cpca',false,'batch_id_funhan',@(X)(X.metadata));
+    alg = mlpcrRegressor('randInt',true,'cpca',false,'batch_id_funhan',@(X)(X.metadata));
 
 %             alg.fit(fmri_dat.dat', fmri_dat.Y); % fit alg with brain data as predictor, Y as outcome; note that fields of alg get filled
-            % NOTE: fit is not strictly necessary at this stage, but a good test
-            alg_params = alg.get_params; % get to know the hyperparams for this algorithm, which we want to optimize
-            
-            % NOTE: hyperparms for mlpcrRegressor
-            
+    % NOTE: fit is not strictly necessary at this stage, but a good test
+    alg_params = alg.get_params; % get to know the hyperparams for this algorithm, which we want to optimize
+
+    % NOTE: hyperparms for mlpcrRegressor
+
 %             bt_dim = Inf;
 %             wi_dim = Inf;
 %             cpca = false; % balances number of trials per subject, but we
@@ -1051,89 +1053,87 @@ if domultilevel_mvpa_reg_st
 %             randInt = false;
 %             randSlope = false; % probably not really needed, increases computation time
 
-            % DEFINE FEATURE EXTRACTOR
-            
-            featConstructor_han = @(X)(X.metadata_table.(subj_identifier_dat_st));
-            extractVxl = fmri2VxlFeatTransformer('metadataConstructor_funhan',featConstructor_han); % initiate extractVxl as an empty fmri2VxlFeatTransformer object; other transformers in Github repo/transformers
-            extractVxl.fit(fmri_dat); % transformer takes fmri_data_st object as input and stores its metadata in the brainmodel property (in the .volInfo field, nifti header style data)
-            % NOTE: fit is not strictly necessary at this stage, but a good test
+    % DEFINE FEATURE EXTRACTOR
 
-            % DEFINE PIPELINE
+    featConstructor_han = @(X)(X.metadata_table.(subj_identifier_dat_st));
+    extractVxl = fmri2VxlFeatTransformer('metadataConstructor_funhan',featConstructor_han); % initiate extractVxl as an empty fmri2VxlFeatTransformer object; other transformers in Github repo/transformers
+    extractVxl.fit(fmri_dat); % transformer takes fmri_data_st object as input and stores its metadata in the brainmodel property (in the .volInfo field, nifti header style data)
+    % NOTE: fit is not strictly necessary at this stage, but a good test
 
-            fmri_pipeline = pipeline({{'featExt',extractVxl},{'alg',alg}}); % define fmri_pcr as a pipeline object including the feature transformer and the algorithm defined above; names are arbitrary
-            fmri_pipeline.fit(fmri_dat,fmri_dat.Y);
-            % NOTE: fit is not strictly necessary at this stage, but a good test
+    % DEFINE PIPELINE
 
-            % INNER CROSS-VALIDATION FUNCTION
+    fmri_pipeline = pipeline({{'featExt',extractVxl},{'alg',alg}}); % define fmri_pcr as a pipeline object including the feature transformer and the algorithm defined above; names are arbitrary
+    fmri_pipeline.fit(fmri_dat,fmri_dat.Y);
+    % NOTE: fit is not strictly necessary at this stage, but a good test
 
-            switch holdout_set_method_mvpa_reg_st
+    % INNER CROSS-VALIDATION FUNCTION
 
-                case 'group'
-                    innercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier_dat_st), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st));
+    switch holdout_set_method_mvpa_reg_st
 
-                case 'onesample'
-                    innercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+        case 'group'
+            innercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier_dat_st), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st));
 
-            end
-            % NOTE: we use metadata_table here, since the input to bo.fit is the
-            % fmri_data_st object fmri_dat, which has a metadata_table field
+        case 'onesample'
+            innercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
 
-            cv_folds_mvpa_reg_st = innercv(fmri_dat,fmri_dat.Y); 
-            % NOTE: get cross-validation folds, not strictly necessary, but a good test
+    end
+    % NOTE: we use metadata_table here, since the input to bo.fit is the
+    % fmri_data_st object fmri_dat, which has a metadata_table field
 
-            % DEFINE BAYESIAN OPTIMIZATION
+    cv_folds_mvpa_reg_st = innercv(fmri_dat,fmri_dat.Y); 
+    % NOTE: get cross-validation folds, not strictly necessary, but a good test
 
-%             dims = optimizableVariable('alg__wi_dim',[1,floor((rank(fmri_dat.dat)-n_subj)*(nfolds_mvpa_reg_st-1)/nfolds_mvpa_reg_st)],'Type','integer'); % rank(fmri_dat.dat)-n_subj) may need to be shrunk by 0.8 or so
-            
-            scaling = 0.8;
-            wi_dims = optimizableVariable('alg__wi_dim',[1,floor(scaling*(rank(fmri_dat.dat)-n_subj)*(nfolds_mvpa_reg_st-1)/nfolds_mvpa_reg_st)],'Type','integer');
-            bt_dims = optimizableVariable('alg__bt_dim',[0,floor((nfolds_mvpa_reg_st-1)/nfolds_mvpa_reg_st*n_subj)-1],'Type','integer');
+    % DEFINE BAYESIAN OPTIMIZATION
 
-            % NOTE: Type and number of hyperparams to optimize depends on algorithm (check alg.get_params above), as well as other settings
+    scaling = 0.8;
+    wi_dims = optimizableVariable('alg__wi_dim',[1,floor(scaling*(rank(fmri_dat.dat)-n_subj)*(nfolds_mvpa_reg_st-1)/nfolds_mvpa_reg_st)],'Type','integer');
+    bt_dims = optimizableVariable('alg__bt_dim',[0,floor((nfolds_mvpa_reg_st-1)/nfolds_mvpa_reg_st*n_subj)-1],'Type','integer');
 
-            bayesOptParams = {[wi_dims,bt_dims], 'AcquisitionFunctionName','expected-improvement-plus',...
-                'MaxObjectiveEvaluations',45, 'UseParallel', false, 'verbose',1};
+    % NOTE: Type and number of hyperparams to optimize depends on algorithm (check alg.get_params above), as well as other settings
 
-            bo = bayesOptCV(fmri_pipeline,innercv,@get_mse,bayesOptParams); % consider l2norm images scaling option above to work with @get_mse - look at loss landscape in plots; alternative is to get rid of optimization and use max number of components
-            bo.fit(fmri_dat,fmri_dat.Y);
-            bo_numcomponents = [bo.estimator.estimator.wi_dim,bo.estimator.estimator.bt_dim];
+    bayesOptParams = {[wi_dims,bt_dims], 'AcquisitionFunctionName','expected-improvement-plus',...
+        'MaxObjectiveEvaluations',45, 'UseParallel', false, 'verbose',1};
 
-            % OUTER CROSS-VALIDATION FUNCTION
+    bo = bayesOptCV(fmri_pipeline,innercv,@get_mse,bayesOptParams); % consider l2norm images scaling option above to work with @get_mse - look at loss landscape in plots; alternative is to get rid of optimization and use max number of components
+    bo.fit(fmri_dat,fmri_dat.Y);
+    bo_numcomponents = [bo.estimator.estimator.wi_dim,bo.estimator.estimator.bt_dim];
 
-            switch holdout_set_method_mvpa_reg_st
+    % OUTER CROSS-VALIDATION FUNCTION
 
-                case 'group'
-                    outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier_dat_st), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st));
+    switch holdout_set_method_mvpa_reg_st
 
-                case 'onesample'
-                    outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
+        case 'group'
+            outercv = @(X,Y) cvpartition2(X.metadata_table.(group_identifier_dat_st), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st));
 
-            end
-            % NOTE: we use metadata_table here, since the input to cvGS.do is the
-            % fmri_data_st object fmri_dat, which has a metadata_table field
+        case 'onesample'
+            outercv = @(X,Y) cvpartition2(size(Y,1), 'GroupKFold', nfolds_mvpa_reg_st, 'Group', X.metadata_table.(subj_identifier_dat_st)); % define innercv as handle for anonymous function cvpartition2; other partitioners in Github repo/partitioners
 
-            % ESTIMATE CROSS-VALIDATED MODEL PERFORMANCE
+    end
+    % NOTE: we use metadata_table here, since the input to cvGS.do is the
+    % fmri_data_st object fmri_dat, which has a metadata_table field
 
-            cvGS = crossValScore(bo, outercv, @get_mse, 'n_parallel', nfolds_mvpa_reg_st, 'verbose', true);
-            % NOTE: Bogdan advises not parallizing too much for the purpose of Bayesian
-            % model optimization, since each step learns from the previous one, so we
-            % only parallelize the outer cv loop with 1 core per outer cv fold,
-            % resulting in very acceptable runtimes (on LaBGAS server with 128 GB RAM)
+    % ESTIMATE CROSS-VALIDATED MODEL PERFORMANCE
 
-            cvGS.do(fmri_dat, fmri_dat.Y);
-            cvGS.do_null(); % fits null model - intercept only
-            fold_labels = cvGS.fold_lbls;
+    cvGS = crossValScore(bo, outercv, @get_mse, 'n_parallel', nfolds_mvpa_reg_st, 'verbose', true);
+    % NOTE: Bogdan advises not parallizing too much for the purpose of Bayesian
+    % model optimization, since each step learns from the previous one, so we
+    % only parallelize the outer cv loop with 1 core per outer cv fold,
+    % resulting in very acceptable runtimes (on LaBGAS server with 128 GB RAM)
 
-            % CREATE FMRI_DATA OBJECTS WITH THE BETAS FOR VISUALIZATION PURPOSES
-            
-            weight_obj = bo.estimator.transformers{1}.brainModel; % empty .dat at this stage
-            weight_obj.dat = bo.estimator.estimator.B(:); % fills mdl.dat with betas of the sum
-            
-            wi_weight_obj = bo.estimator.transformers{1}.brainModel; % empty .dat at this stage
-            wi_weight_obj.dat = bo.estimator.estimator.Bw(:); % fills mdl.dat with betas
-            
-            bt_weight_obj = bo.estimator.transformers{1}.brainModel; % empty .dat at this stage
-            bt_weight_obj.dat = bo.estimator.estimator.Bb(:); % fills mdl.dat with betas
+    cvGS.do(fmri_dat, fmri_dat.Y);
+    cvGS.do_null(); % fits null model - intercept only
+    fold_labels = cvGS.fold_lbls;
+
+    % CREATE FMRI_DATA OBJECTS WITH THE BETAS FOR VISUALIZATION PURPOSES
+
+    weight_obj = bo.estimator.transformers{1}.brainModel; % empty .dat at this stage
+    weight_obj.dat = bo.estimator.estimator.B(:); % fills mdl.dat with betas of the sum
+
+    wi_weight_obj = bo.estimator.transformers{1}.brainModel; % empty .dat at this stage
+    wi_weight_obj.dat = bo.estimator.estimator.Bw(:); % fills mdl.dat with betas
+
+    bt_weight_obj = bo.estimator.transformers{1}.brainModel; % empty .dat at this stage
+    bt_weight_obj.dat = bo.estimator.estimator.Bb(:); % fills mdl.dat with betas
             
             
             
