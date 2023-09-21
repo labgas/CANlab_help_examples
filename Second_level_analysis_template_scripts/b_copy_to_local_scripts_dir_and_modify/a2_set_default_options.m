@@ -164,7 +164,7 @@ save_figures_svm = false;                                       % default false 
 q_threshold_svm = .05;                                          % threshold for FDR-corrected display items
 p_threshold_svm = .005;                                         % threshold for uncorrected display items
 k_threshold_svm = 50;                                           % extent threshold for both corrected and uncorrected display items
-atlasname_svm = which('ery_4a_m6_mask_all_regions.mat'); % atlas object used for labeling regions
+% atlasname_svm = which('ery_4a_m6_mask_all_regions.mat'); % atlas object used for labeling regions
                                                             %   Two options
                                                             %       1. atlas name from load_atlas.m for different atlas than
                                                             %           default canlab_2018 (used if you do not specify this option)
