@@ -20,8 +20,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_1_set_conditions_contrasts_colors.m         v1.0
-% last modified: 2022/05/16
+% @(#)% prep_1_set_conditions_contrasts_colors.m         v1.1
+% last modified: 2023/09/21
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST
