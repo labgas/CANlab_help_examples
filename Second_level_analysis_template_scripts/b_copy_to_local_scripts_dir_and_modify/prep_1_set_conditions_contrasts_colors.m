@@ -22,6 +22,12 @@
 %__________________________________________________________________________
 % @(#)% prep_1_set_conditions_contrasts_colors.m         v1.0
 % last modified: 2022/05/16
+%
+%
+%% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST
+% -------------------------------------------------------------------------
+
+a_set_up_paths_always_run_first;
 
 
 %% SET UP CONDITIONS
