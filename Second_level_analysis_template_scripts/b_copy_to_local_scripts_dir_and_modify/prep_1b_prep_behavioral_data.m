@@ -67,8 +67,14 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_1b_prep_behavioral_data.m         v1.1
-% last modified: 2023/04/28
+% @(#)% prep_1b_prep_behavioral_data.m         v1.2
+% last modified: 2023/09/22
+%
+%
+%% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST
+% -------------------------------------------------------------------------
+
+bit_rew_secondlevel_m1_s0_a_set_up_paths_always_run_first;
 
 
 %% READ BEHAVIORAL DATA FROM TSV FILES IN BIDS/PHENOTYPE DIR
@@ -329,4 +335,4 @@ end
 printhdr('Save DSGN & DAT structures and directory names in image_names_and_setup.mat');
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
-save(savefilename, 'DAT', '-append', '-v7.3');
+save(savefilename, 'dashes','printstr','printhdr','DSGN', 'DAT', 'basedir', 'datadir', 'maskdir', 'resultsdir', 'scriptsdir', 'figsavedir', 'htmlsavedir', '-v7.3');
