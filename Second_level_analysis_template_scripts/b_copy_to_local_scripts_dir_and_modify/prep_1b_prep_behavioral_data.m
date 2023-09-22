@@ -1,4 +1,4 @@
-%% prep_1b_prep_behavioral_data.m
+%% bit_rew_secondlevel_m1_s3_prep_1b_prep_behavioral_data.m
 %
 % CANLAB NOTES:
 %
@@ -71,17 +71,25 @@
 % last modified: 2023/09/22
 %
 %
-%% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST
+%% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD DAT IF NEEDED
 % -------------------------------------------------------------------------
 
 bit_rew_secondlevel_m1_s0_a_set_up_paths_always_run_first;
 
+if ~exist('DAT','var')
+    
+    load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    
+end
+
 
 %% READ BEHAVIORAL DATA FROM TSV FILES IN BIDS/PHENOTYPE DIR
+% -------------------------------------------------------------------------
 
 phenodir = fullfile(BIDSdir,'phenotype');
 
-% MEAN RATINGS PER RUN, AND OFFLINE RATINGS
+
+% LOAD MEAN RATINGS PER CONDITION/SUBJECT
 
 behavioral_data_filename = 'ratings_means.tsv';
 behavioral_fname_path = fullfile(phenodir, behavioral_data_filename);
@@ -92,36 +100,57 @@ end
 
 behavioral_data_table = readtable(behavioral_fname_path,'TreatAsEmpty','n/a','FileType','text','Delimiter','tab'); % read .tsv file into Matlab table variable
 
+
+% CALCULATE CONTRASTS ON RATINGS AND Z-SCORE
+
 % calculate contrasts between conditions for ratings, and zscore them, for
 % use as second-level covariates in contrast analyses
-% NOTE: respect the order of raw variables in table
-behavioral_data_table.intensity_sucro_sucra = zscore((behavioral_data_table.intensity_sucrose - behavioral_data_table.intensity_sucralose),0,'omitnan'); % respect the order of DAT.contrastnames defined in prep_1
-behavioral_data_table.intensity_sucro_ery = zscore((behavioral_data_table.intensity_sucrose - behavioral_data_table.intensity_erythritol),0,'omitnan'); % respect the order of DAT.contrastnames defined in prep_1
-behavioral_data_table.intensity_ery_sucra = zscore((behavioral_data_table.intensity_erythritol - behavioral_data_table.intensity_sucralose),0,'omitnan'); % respect the order of DAT.contrastnames defined in prep_1
-behavioral_data_table.liking_sucro_sucra = zscore((behavioral_data_table.liking_sucrose - behavioral_data_table.liking_sucralose),0,'omitnan'); % respect the order of DAT.contrastnames defined in prep_1
-behavioral_data_table.liking_sucro_ery = zscore((behavioral_data_table.liking_sucrose - behavioral_data_table.liking_erythritol),0,'omitnan'); % respect the order of DAT.contrastnames defined in prep_1
-behavioral_data_table.liking_ery_sucra = zscore((behavioral_data_table.liking_erythritol - behavioral_data_table.liking_sucralose),0,'omitnan'); % respect the order of DAT.contrastnames defined in prep_1
-behavioral_data_table.rating_sucro_sucra = zscore((behavioral_data_table.rating_sucrose - behavioral_data_table.rating_sucralose),0,'omitnan'); % respect the order of DAT.contrastnames defined in prep_1
-behavioral_data_table.rating_sucro_ery = zscore((behavioral_data_table.rating_sucrose - behavioral_data_table.rating_erythritol),0,'omitnan'); % respect the order of DAT.contrastnames defined in prep_1
-behavioral_data_table.rating_ery_sucra = zscore((behavioral_data_table.rating_erythritol - behavioral_data_table.rating_sucralose),0,'omitnan'); % respect the order of DAT.contrastnames defined in prep_1
+% NOTES: 
+%   respect the order of raw variables in table
+%   respect the order of DAT.contrastnames defined in prep_1
+%   include contrasts with conditions for which ratings do not exist (i.e.
+%       have NaN), this makes life easier to convert to between table in
+%       section below
 
-% zscore ratings per condition too, for use as second-level covariates in condition
-% analyses
-behavioral_data_table.intensity_sucrose = zscore(behavioral_data_table.intensity_sucrose,0,'omitnan');
-behavioral_data_table.intensity_erythritol = zscore(behavioral_data_table.intensity_erythritol,0,'omitnan');
-behavioral_data_table.intensity_sucralose = zscore(behavioral_data_table.intensity_sucralose,0,'omitnan');
-behavioral_data_table.liking_sucrose = zscore(behavioral_data_table.liking_sucrose,0,'omitnan');
-behavioral_data_table.liking_erythritol = zscore(behavioral_data_table.liking_erythritol,0,'omitnan');
-behavioral_data_table.liking_sucralose = zscore(behavioral_data_table.liking_sucralose,0,'omitnan');
-behavioral_data_table.rating_sucrose = zscore(behavioral_data_table.rating_sucrose,0,'omitnan');
-behavioral_data_table.rating_erythritol = zscore(behavioral_data_table.rating_erythritol,0,'omitnan');
-behavioral_data_table.rating_sucralose = zscore(behavioral_data_table.rating_sucralose,0,'omitnan');
-behavioral_data_table.rating_water = zscore(behavioral_data_table.rating_water,0,'omitnan');
+behavioral_data_table.like_bit_high_neu = zscore((behavioral_data_table.like_bit_high_calorie - behavioral_data_table.like_bit_neutral),0);
+behavioral_data_table.like_bit_low_neu = zscore((behavioral_data_table.like_bit_low_calorie - behavioral_data_table.like_bit_neutral),0);
+behavioral_data_table.like_bit_high_low = zscore((behavioral_data_table.like_bit_high_calorie - behavioral_data_table.like_bit_low_calorie),0,'omitnan');
+behavioral_data_table.like_pla_high_neu = zscore((behavioral_data_table.like_pla_high_calorie - behavioral_data_table.like_pla_neutral),0);
+behavioral_data_table.like_pla_low_neu = zscore((behavioral_data_table.like_pla_low_calorie - behavioral_data_table.like_pla_neutral),0);
+behavioral_data_table.like_pla_high_low = zscore((behavioral_data_table.like_pla_high_calorie - behavioral_data_table.like_pla_low_calorie),0,'omitnan');
+behavioral_data_table.like_bit_pla_high_neu = zscore((behavioral_data_table.like_bit_high_calorie - behavioral_data_table.like_bit_neutral - behavioral_data_table.like_pla_high_calorie + behavioral_data_table.like_pla_neutral),0);
+behavioral_data_table.like_bit_pla_low_neu = zscore((behavioral_data_table.like_bit_low_calorie - behavioral_data_table.like_bit_neutral - behavioral_data_table.like_pla_low_calorie + behavioral_data_table.like_pla_neutral),0);
+behavioral_data_table.like_bit_pla_high_low = zscore((behavioral_data_table.like_bit_high_calorie - behavioral_data_table.like_bit_low_calorie - behavioral_data_table.like_pla_high_calorie + behavioral_data_table.like_pla_low_calorie),0,'omitnan');
+behavioral_data_table.want_bit_high_neu = zscore((behavioral_data_table.want_bit_high_calorie - behavioral_data_table.want_bit_neutral),0,'omitnan');
+behavioral_data_table.want_bit_low_neu = zscore((behavioral_data_table.want_bit_low_calorie - behavioral_data_table.want_bit_neutral),0,'omitnan');
+behavioral_data_table.want_bit_high_low = zscore((behavioral_data_table.want_bit_high_calorie - behavioral_data_table.want_bit_low_calorie),0,'omitnan');
+behavioral_data_table.want_pla_high_neu = zscore((behavioral_data_table.want_pla_high_calorie - behavioral_data_table.want_pla_neutral),0,'omitnan');
+behavioral_data_table.want_pla_low_neu = zscore((behavioral_data_table.want_pla_low_calorie - behavioral_data_table.want_pla_neutral),0,'omitnan');
+behavioral_data_table.want_pla_high_low = zscore((behavioral_data_table.want_pla_high_calorie - behavioral_data_table.want_pla_low_calorie),0,'omitnan');
+behavioral_data_table.want_bit_pla_high_neu = zscore((behavioral_data_table.want_bit_high_calorie - behavioral_data_table.want_bit_neutral - behavioral_data_table.want_pla_high_calorie + behavioral_data_table.want_pla_neutral),0,'omitnan');
+behavioral_data_table.want_bit_pla_low_neu = zscore((behavioral_data_table.want_bit_low_calorie - behavioral_data_table.want_bit_neutral - behavioral_data_table.want_pla_low_calorie + behavioral_data_table.want_pla_neutral),0,'omitnan');
+behavioral_data_table.want_bit_pla_high_low = zscore((behavioral_data_table.want_bit_high_calorie - behavioral_data_table.want_bit_low_calorie - behavioral_data_table.want_pla_high_calorie + behavioral_data_table.want_pla_low_calorie),0,'omitnan');
+
+% zscore ratings per condition, for use as second-level covariates in condition analyses
+behavioral_data_table.like_bit_high_calorie = zscore(behavioral_data_table.like_bit_high_calorie,0,'omitnan');
+behavioral_data_table.like_bit_low_calorie = zscore(behavioral_data_table.like_bit_low_calorie,0,'omitnan');
+% behavioral_data_table.like_bit_neutral = zscore(behavioral_data_table.like_bit_neutral,0,'omitnan');
+behavioral_data_table.like_pla_high_calorie = zscore(behavioral_data_table.like_pla_high_calorie,0,'omitnan');
+behavioral_data_table.like_pla_low_calorie = zscore(behavioral_data_table.like_pla_low_calorie,0,'omitnan');
+% behavioral_data_table.like_pla_neutral = zscore(behavioral_data_table.like_pla_neutral,0,'omitnan');
+behavioral_data_table.want_bit_high_calorie = zscore(behavioral_data_table.want_bit_high_calorie,0,'omitnan');
+behavioral_data_table.want_bit_low_calorie = zscore(behavioral_data_table.want_bit_low_calorie,0,'omitnan');
+behavioral_data_table.want_bit_neutral = zscore(behavioral_data_table.want_bit_neutral,0,'omitnan');
+behavioral_data_table.want_pla_high_calorie = zscore(behavioral_data_table.want_pla_high_calorie,0,'omitnan');
+behavioral_data_table.want_pla_low_calorie = zscore(behavioral_data_table.want_pla_low_calorie,0,'omitnan');
+behavioral_data_table.want_pla_neutral = zscore(behavioral_data_table.want_pla_neutral,0,'omitnan');
 
 
-% ONLINE RATINGS PER TRIAL
-% can be used in single trial analyses including 'signature development'
-behavioral_st_data_filename = 'ratings_online.tsv';
+% TRIAL-BY-TRIAL RATINGS
+
+% NOTE: can be used in single trial analyses including 'signature development'
+
+behavioral_st_data_filename = 'food_images_wanting_liking.tsv';
 behavioral_st_fname_path = fullfile(phenodir, behavioral_st_data_filename);
 
 if ~exist(behavioral_st_fname_path, 'file') 
@@ -130,27 +159,34 @@ end
 
 behavioral_st_data_table = readtable(behavioral_st_fname_path,'TreatAsEmpty','n/a','FileType','text','Delimiter','tab'); % read .tsv file into Matlab table variable
 
-% Add both to DAT for record, and flexible use later
+
+% ADD BOTH RATING TABLES TO DAT
+
 DAT.BEHAVIOR.behavioral_data_table = behavioral_data_table;
 DAT.BEHAVIOR.behavioral_st_data_table = behavioral_st_data_table;
 
 
 %% INITIALIZE GROUP VARIABLE
+% -------------------------------------------------------------------------
 
-% Initialize BETWEENPERSON field in DAT structure
+% INITIALIZE BETWEENPERSON FIELD
+
 DAT.BETWEENPERSON = [];
 
-% Single group variable, optional, for convenience
+
+% INITIALIZE GROUP VARIABLE
+
 % These fields are mandatory, but they can be empty
 % If group variable and between-person variables vary by
 % condition/contrast, leave these empty
-% -------------------------------------------------------------------------
+
 DAT.BETWEENPERSON.group = [];
 DAT.BETWEENPERSON.groupnames = {};
 DAT.BETWEENPERSON.groupcolors = {};
 
 
 %% INITIALIZE CONDITION/CONTRAST-SPECIFIC BETWEEN-PERSON DATA TABLES
+% -------------------------------------------------------------------------
 
 % Cell array with table of group (between-person) variables for each
 % condition, and for each contrast.
@@ -177,31 +213,36 @@ DAT.BETWEENPERSON.contrasts = cell(1, length(DAT.contrastnames));
 [DAT.BETWEENPERSON.contrasts{:}] = deal(table());  % empty tables
 
 
-%% CUSTOM CODE: TRANSFORM INTO between_design_table
-%
+%% CUSTOM CODE: TRANSFORM INTO BETWEEN DESIGN TABLE
+% -------------------------------------------------------------------------
+
 % Create a table for each condition/contrast with the between-person design, or leave empty.
 %
 % a variable called 'id' contains subject identfiers.  Other variables will
 % be used as regressors.  Variables with only two levels should be effects
 % coded, with [1 -1] values.
-%
+
 id = DAT.BEHAVIOR.behavioral_data_table.participant_id;
-covs = DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames(contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,'intensity') | contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,'rating'));
+covs = DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames(contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,'like') | contains(DAT.BEHAVIOR.behavioral_data_table.Properties.VariableNames,'want'));
 
 for cond = 1:size(DAT.conditions,2)
-    if cond < size(DAT.conditions,2)
-    DAT.BETWEENPERSON.conditions{cond}.intensity = DAT.BEHAVIOR.behavioral_data_table.(covs{cond}); % we include the intensity ratings for the three non-water conditions here, to be able to include them as covariates in analyses on conditions later;
+    if ~contains(covs{cond},'neutral') % neutral conditions have NaN for liking
+    DAT.BETWEENPERSON.conditions{cond}.liking = DAT.BEHAVIOR.behavioral_data_table.(covs{cond}); 
     end
-    DAT.BETWEENPERSON.conditions{cond}.rating = DAT.BEHAVIOR.behavioral_data_table.(covs{cond+4}); % same for ratings
+    DAT.BETWEENPERSON.conditions{cond}.wanting = DAT.BEHAVIOR.behavioral_data_table.(covs{cond+6});
 end
 
-for cont = 1:size(DAT.contrastnames,1)
-    DAT.BETWEENPERSON.contrasts{cont}.delta_intensity = DAT.BEHAVIOR.behavioral_data_table.(covs{(size(DAT.conditions,2)*2)-1+cont});
-    DAT.BETWEENPERSON.contrasts{cont}.delta_rating = DAT.BEHAVIOR.behavioral_data_table.(covs{(size(DAT.conditions,2)*2)-1+cont+3});
+for cont = 1:size(DAT.contrasts,1)
+    if ~contains(covs{(size(DAT.conditions,2)*2)+cont},'neu') % neutral contrasts have NaN for liking
+        DAT.BETWEENPERSON.contrasts{cont}.delta_liking = DAT.BEHAVIOR.behavioral_data_table.(covs{(size(DAT.conditions,2)*2)+cont});
+    end
+    DAT.BETWEENPERSON.contrasts{cont}.delta_wanting = DAT.BEHAVIOR.behavioral_data_table.(covs{(size(DAT.conditions,2)*2)+cont+9});
 end
+
 
 %% CANLAB EXAMPLE #1
-%
+% -------------------------------------------------------------------------
+
 % % e.g., Vars of interest
 % %
 % %   12×1 cell array
@@ -306,18 +347,24 @@ end
 % DAT.BETWEENPERSON.group_descrip = '-1 is first group name, 1 is 2nd';
 % DAT.BETWEENPERSON.groupnames = nms;
 % DAT.BETWEENPERSON.groupcolors = {[.7 .3 .5] [.3 .5 .7]};
-%
-%
+
+
 %% CANLAB EXAMPLE #2
-%
-% see "mastergithubrepo"/CANlab_help_examples/Second_level_analysis_template_scripts/b_copy_to_local_scripts_dir_and_modify/prep_1b_prep_behavioral_data_example2.m
-%
-%
+% -------------------------------------------------------------------------
+
+% "mastergithubrepo"/CANlab_help_examples/Second_level_analysis_template_scripts/b_copy_to_local_scripts_dir_and_modify/prep_1b_prep_behavioral_data_example2.m
+
+
 %% LABGAS EXAMPLES
+% -------------------------------------------------------------------------
+
+% github.com/labgas
 %
-% see github.com/labgas
+% gin.g-node.org/labgas
+
 
 %% CHECK DAT, PRINT WARNINGS, SAVE DAT STRUCTURE
+% -------------------------------------------------------------------------
 
 if ~isfield(DAT, 'conditions') 
     printhdr('Incomplete DAT structure');
