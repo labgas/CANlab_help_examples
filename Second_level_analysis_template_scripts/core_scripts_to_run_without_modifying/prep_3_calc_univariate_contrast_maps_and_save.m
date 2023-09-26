@@ -29,11 +29,80 @@
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% prep_3_calc_univariate_contrast_maps_and_save.m         v1.4
+% prep_3_calc_univariate_contrast_maps_and_save.m         v1.5
 %
-% last modified: 2023/02/17
+% last modified: 2023/09/26
 %
 %
+%% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
+% -------------------------------------------------------------------------
+
+a_set_up_paths_always_run_first;
+
+if ~exist('DAT','var')
+    
+    try
+    
+        load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    
+    catch
+        
+        prep_1_set_conditions_contrasts_colors;
+        prep_1b_prep_behavioral_data;
+        
+    end
+    
+end
+
+if ~exist('DATA_OBJ','var')
+    
+    try
+    
+        load(fullfile(resultsdir,'data_objects.mat'));
+    
+    catch
+        
+        prep_2_load_image_data_and_save;
+        
+    end
+    
+end
+
+if ~exist('DATA_OBJsc','var')
+    
+    try
+    
+        load(fullfile(resultsdir,'data_objects_scaled.mat'));
+    
+    catch
+        
+        prep_2_load_image_data_and_save;
+        
+    end
+    
+end
+
+
+%% SET DEFAULT OPTIONS IF NEEDED
+% -------------------------------------------------------------------------
+
+% This is a standard block of code that can be used in multiple scripts.
+% Each script will have its own options needed and default values for
+% these.
+% The code: 
+% (1) Checks whether the option variables exist
+% (2) Runs a2_set_default_options if any are missing
+% (3) Checks again and uses the default options if they are still missing
+% (e.g., not specified in an older/incomplete copy of a2_set_default_options)
+
+options_needed = {'dofullplot', 'omit_histograms' 'dozipimages'};  % Options we are looking for. Set in a2_set_default_options
+options_exist = cellfun(@exist, options_needed);        % initializing this means a2_set_defaults_options will never run
+
+option_default_values = {true false false};          % defaults if we cannot find info in a2_set_default_options at all; @lukasvo76: changed the default for zipping images
+
+plugin_get_options_for_analysis_script
+
+
 %% RAW AND L2NORM-RESCALED CONTRAST IMAGES FROM RAW CONDITION IMAGES
 % -------------------------------------------------------------------------
 
@@ -357,6 +426,10 @@ end
 fprintf('\n\n');
 printhdr('ADDED CONTRAST GRAY/WHITE/CSF TO DAT in image_names_and_setup.mat');
 fprintf('\n\n');
+
+cd(resultsdir); % unannex image_names_and_setup.mat file if already datalad saved to prevent write permission problems
+! git annex unannex image_names_and_setup.mat
+cd(rootdir);
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
 save(savefilename, '-append', 'DAT');
