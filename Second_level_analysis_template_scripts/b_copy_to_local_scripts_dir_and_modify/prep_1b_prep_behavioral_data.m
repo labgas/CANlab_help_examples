@@ -1,4 +1,4 @@
-%% bit_rew_secondlevel_m1_s3_prep_1b_prep_behavioral_data.m
+%% prep_1b_prep_behavioral_data.m
 %
 % CANLAB NOTES:
 %
@@ -67,18 +67,26 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_1b_prep_behavioral_data.m         v1.2
-% last modified: 2023/09/22
+% @(#)% prep_1b_prep_behavioral_data.m         v1.3
+% last modified: 2023/09/26
 %
 %
-%% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD DAT IF NEEDED
+%% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
 % -------------------------------------------------------------------------
 
-bit_rew_secondlevel_m1_s0_a_set_up_paths_always_run_first;
+a_set_up_paths_always_run_first;
 
 if ~exist('DAT','var')
     
-    load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    try
+    
+        load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    
+    catch
+        
+        prep_1_set_conditions_contrasts_colors;
+        
+    end
     
 end
 
@@ -380,6 +388,10 @@ else
 end
 
 printhdr('Save DSGN & DAT structures and directory names in image_names_and_setup.mat');
+
+cd(resultsdir); % unannex image_names_and_setup.mat file if already datalad saved to prevent write permission problems
+! git annex unannex image_names_and_setup.mat
+cd(rootdir);
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
 save(savefilename, 'dashes','printstr','printhdr','DSGN', 'DAT', 'basedir', 'datadir', 'maskdir', 'resultsdir', 'scriptsdir', 'figsavedir', 'htmlsavedir', '-append');

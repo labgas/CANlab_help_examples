@@ -53,6 +53,27 @@ option_default_values = {true false false};          % defaults if we cannot fin
 plugin_get_options_for_analysis_script
 
 
+%% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
+% -------------------------------------------------------------------------
+
+a_set_up_paths_always_run_first;
+
+if ~exist('DAT','var')
+    
+    try
+    
+        load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    
+    catch
+        
+        prep_1_set_conditions_contrasts_colors;
+        prep_1b_prep_behavioral_data.m
+        
+    end
+    
+end
+
+
 %% PREP AND CHECK IMAGES NAMES
 % -------------------------------------------------------------------------
 
@@ -84,7 +105,7 @@ for i = 1:size(DAT.conditions,2)
     
     % @lukasvo76: this is the fallback option for Windows OS (which does
     % not accept wildcards before the last separator in the path)
-    % it requires different definiton of subfolder & functional wildcard in
+    % it requires different definitions of subfolder & functional wildcard in
     % DAT structure set up in prep_1 script, see example there
     % spm_select uses regular expressions as filter . is wildcard, not *!    
     
@@ -305,6 +326,10 @@ end
 fprintf('\n\n');
 printhdr('SAVE UPDATED DAT STRUCTURE IN images_names_and_setup.mat, AND CONDITION DATA OBJECTS IN data_objects(_scaled).mat ');
 fprintf('\n\n');
+
+cd(resultsdir); % unannex image_names_and_setup.mat file if already datalad saved to prevent write permission problems
+! git annex unannex image_names_and_setup.mat
+cd(rootdir);
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
 save(savefilename, '-append', 'DAT');
