@@ -47,7 +47,7 @@ if ~exist('DAT','var')
     catch
         
         prep_1_set_conditions_contrasts_colors;
-        prep_1b_prep_behavioral_data.m
+        prep_1b_prep_behavioral_data;
         
     end
     
@@ -72,27 +72,6 @@ options_exist = cellfun(@exist, options_needed);        % initializing this mean
 option_default_values = {true false false};          % defaults if we cannot find info in a2_set_default_options at all; @lukasvo76: changed the default for zipping images
 
 plugin_get_options_for_analysis_script
-
-
-%% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
-% -------------------------------------------------------------------------
-
-a_set_up_paths_always_run_first;
-
-if ~exist('DAT','var')
-    
-    try
-    
-        load(fullfile(resultsdir,'image_names_and_setup.mat'));
-    
-    catch
-        
-        prep_1_set_conditions_contrasts_colors;
-        prep_1b_prep_behavioral_data.m
-        
-    end
-    
-end
 
 
 %% PREP AND CHECK IMAGES NAMES
