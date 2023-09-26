@@ -138,6 +138,10 @@ end
 
 for c = 1:size(DAT.contrasts, 1)
     
+    fprintf('\n');
+    fprintf('%s\nCONTRAST: %s\n%s\n', dashes, upper(DAT.contrastnames{c}), dashes);
+    fprintf('\n');
+    
     % PREP WORK
     % ---------
     
@@ -288,6 +292,10 @@ end
 % CREATE DATA_OBJ_CONsc, AND QC
 
 for c = 1:size(DAT.contrasts, 1)
+    
+    fprintf('\n');
+    fprintf('%s\nCONTRAST: %s\n%s\n', dashes, upper(DAT.contrastnames{c}), dashes);
+    fprintf('\n');
 
     % PREP
     % ----
