@@ -28,9 +28,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_2_load_image_data_and_save.m         v1.4
+% prep_2_load_image_data_and_save.m         v1.5
 %
-% last modified: 2023/02/17
+% last modified: 2023/09/26
 %
 %
 %% SET DEFAULT OPTIONS IF NEEDED
