@@ -33,6 +33,27 @@
 % last modified: 2023/09/26
 %
 %
+%% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
+% -------------------------------------------------------------------------
+
+a_set_up_paths_always_run_first;
+
+if ~exist('DAT','var')
+    
+    try
+    
+        load(fullfile(resultsdir,'image_names_and_setup.mat'));
+    
+    catch
+        
+        prep_1_set_conditions_contrasts_colors;
+        prep_1b_prep_behavioral_data.m
+        
+    end
+    
+end
+
+
 %% SET DEFAULT OPTIONS IF NEEDED
 % -------------------------------------------------------------------------
 
