@@ -15,7 +15,7 @@
 %       * parcel-wise, calling CANlab's robfit_parcelwise() function under the
 %       hood, which is robust by default
 %
-%   the option to convert t-maps into BayesFactor maps using CANlab's
+% # the option to convert t-maps into BayesFactor maps using CANlab's
 %   estimateBayesFactor() function is built in - see walkthrough 
 %   https://canlab.github.io/_pages/EmoReg_BayesFactor_walkthrough/EmoReg_BayesFactor_walkthrough.html
 %
@@ -33,7 +33,7 @@
 %
 % *OPTIONS*
 %
-%   *NOTE* 
+%   NOTE 
 %       defaults are specified in a2_set_default_options for any given model,
 %       but if you want to run the same model with different options (for example
 %       voxel- and parcelwise regression), you can make a copy of this script with
@@ -89,13 +89,13 @@
 %           images across all subjects, similarly to c_univariate_contrast_maps_
 %           scripts, but with more flexible options including scaling and robustfit
 %
-%       *NOTE:* To set up group and custom variables, see prep_1b_prep_behavioral_data
+%       NOTE: To set up group and custom variables, see prep_1b_prep_behavioral_data
 %
 % * doBayes                     convert t-maps into Bayes Factors 
 %
 % * domvpa_reg_cov              run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
 %
-%   NOTE: THIS OPTION ONLY APPLIES WHEN DESIGN_MATRIX_TYPE = 'CUSTOM' SINCE OTHERWISE THERE IS NO CONTINUOUS OUTCOME TO PREDICT!
+%       NOTE: THIS OPTION ONLY APPLIES WHEN DESIGN_MATRIX_TYPE = 'CUSTOM' SINCE OTHERWISE THERE IS NO CONTINUOUS OUTCOME TO PREDICT!
 %         TO CLASSIFY GROUPS USING MVPA MODELS, USE SVM SCRIPTS PREP_3C AND C2
 %     
 %     _mvpa_reg_covariate options_
@@ -125,14 +125,14 @@
 %
 % * covs2use                    variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} to be used as covariates in GLM and, if domvpa_reg_cov = true, outcome in MVPA regression
 %
-%   NOTE: only use this option if you don't want to use all variables in the above table as covariate, otherwise delete or comment out below
+%       NOTE: only use this option if you don't want to use all variables in the above table as covariate, otherwise delete or comment out below
 %
 %
 % *OPTIONS TO BE SPECIFIED IN THIS SCRIPT IF DESIGN_MATRIX_TYPE = GROUP*
 %
 % * group_id                    name of group identifier variable in same table
 %
-%   NOTE: not needed if DAT.BETWEENPERSON.group contains group identifier, in that case delete or comment out
+%       NOTE: not needed if DAT.BETWEENPERSON.group contains group identifier, in that case delete or comment out
 %
 %
 % -------------------------------------------------------------------------
