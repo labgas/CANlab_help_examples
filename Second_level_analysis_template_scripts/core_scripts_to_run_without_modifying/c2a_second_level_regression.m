@@ -432,7 +432,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         
                 end
 
-            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'cmaprange', [min(tj.dat) 0 0 max(tj.dat)]);
             o2 = title_montage(o2, 2*j, [analysisname ' FDR ' num2str(q_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
 
         end % for loop over regressors in model
