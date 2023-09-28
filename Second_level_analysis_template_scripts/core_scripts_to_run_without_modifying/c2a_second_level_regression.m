@@ -511,7 +511,6 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 fprintf ('\nMONTAGE REGIONCENTERS GLM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
                 
                 o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-                o3 = legend(o3);
 
                 % Activate, name, and save figure
                 figtitle = sprintf('%s_%s_%1.4f_FDR_regions_%s_%s_%s', analysisname, results_suffix, q_threshold_glm, names{j}, mask_string, scaling_string);
@@ -614,7 +613,6 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 fprintf ('\nMONTAGE REGIONCENTERS GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
                 
                 o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
-                o3 = legend(o3);
 
                 % Activate, name, and save figure
                 figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s_%s', analysisname, results_suffix, p_threshold_glm, names{j}, mask_string, scaling_string);
@@ -719,7 +717,6 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     fprintf ('\nMONTAGE REGIONCENTERS BAYESIAN GLM RESULTS AT |BF| > %1.2f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
 
                     o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});
-                    o3 = legend(o3);
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s_%s', analysisname, results_suffix, p_threshold_glm, names{j}, mask_string, scaling_string);
@@ -856,6 +853,10 @@ fprintf('\n\n');
     
     if ~dorobfit_parcelwise
     
+        cd(resultsdir); % unannex image_names_and_setup.mat file if already datalad saved to prevent write permission problems
+        ! git annex unannex regression_stats_and_maps*.mat
+        cd(rootdir);
+        
         savefilenamedata_region = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
         
         if ~doBayes
@@ -867,6 +868,10 @@ fprintf('\n\n');
         end
         
     else
+        
+        cd(resultsdir); % unannex image_names_and_setup.mat file if already datalad saved to prevent write permission problems
+        ! git annex unannex parcelwise_stats_and_maps*.mat
+        cd(rootdir);
         
         savefilenamedata_region = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
         
