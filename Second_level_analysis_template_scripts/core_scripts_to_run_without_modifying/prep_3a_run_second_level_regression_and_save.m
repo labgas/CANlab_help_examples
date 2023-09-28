@@ -5,7 +5,7 @@
 %
 % This script
 %
-% # runs second⁻level (i.e. across subjects) regression analyses
+% 1.runs second⁻level (i.e. across subjects) regression analyses
 %   for each within-subject CONTRAST or CONDITION registered in the DAT
 %   structure, either
 %
@@ -15,14 +15,14 @@
 %       * parcel-wise, calling CANlab's robfit_parcelwise() function under the
 %       hood, which is robust by default
 %
-% # the option to convert t-maps into BayesFactor maps using CANlab's
+% 2.the option to convert t-maps into BayesFactor maps using CANlab's
 %   estimateBayesFactor() function is built in - see walkthrough 
 %   https://canlab.github.io/_pages/EmoReg_BayesFactor_walkthrough/EmoReg_BayesFactor_walkthrough.html
 %
-% # runs cross-validated MVPA regression models predicting continuous
+% 3.runs cross-validated MVPA regression models predicting continuous
 %   covariates if desired using CANlab's predict() function
 %
-% # saves the results using standard naming and location
+% 4.saves the results using standard naming and location
 % 
 % Run this script with Matlab's publish function to generate html report of results:
 % publish('prep_3a_run_second_level_regression_and_save','outputDir',htmlsavedir)
@@ -33,7 +33,7 @@
 %
 % *OPTIONS*
 %
-%   NOTE 
+% * NOTE 
 %       defaults are specified in a2_set_default_options for any given model,
 %       but if you want to run the same model with different options (for example
 %       voxel- and parcelwise regression), you can make a copy of this script with
@@ -143,9 +143,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v5.3
+% prep_3a_run_second_level_regression_and_save.m         v5.4
 %
-% last modified: 2023/02/17
+% last modified: 2023/09/28
 %
 %
 %% GET AND SET OPTIONS
@@ -786,7 +786,25 @@ for c = 1:kc
             tj = get_wh_image(t, j);
             tj = threshold(tj, .05, 'unc'); 
 
-            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+            datsig = tj.dat(logical(tj.sig));
+            datsigneg = datsig(datsig<0);
+            datsigpos = datsig(datsig>0);
+
+                if isempty(datsigneg) && ~isempty(datsigpos)
+
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.9 .4 0], 'maxcolor', [1 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
+
+                elseif isempty(datsigpos) && ~isempty(datsigneg)
+
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.1 .8 .8], 'maxcolor', [.1 .1 .8], 'cmaprange', [min(datsigneg) max(datsigneg)]);
+
+                else
+
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]);
+
+                end
+                
+            o2 = legend(o2);   
             o2 = title_montage(o2, 2*j, [regression_stats.contrastname ' ' regression_stats.variable_names{j} ' ' mask_string ' ' scaling_string]);
 
         end
@@ -819,7 +837,25 @@ for c = 1:kc
                 
                 BF(img) = threshold(BF(img),[-2.1972 2.1972],'raw-outside');
                     
-                o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'splitcolor', {[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]}); % red in favor of H0, green in favor of H1 for BF maps
+                datsig = BF(img).dat(logical(BF(img).sig));
+                datsigneg = datsig(datsig<0);
+                datsigpos = datsig(datsig>0);
+                
+                if isempty(datsigneg) && ~isempty(datsigpos)
+                    
+                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*j)-1:2*j, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
+                    
+                elseif isempty(datsigpos) && ~isempty(datsigneg)
+                    
+                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0], 'cmaprange', [min(datsigneg) max(datsigneg)]);
+                    
+                else
+                
+                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]}, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
+                    
+                end
+                
+                o2 = legend(o2);
                 o2 = title_montage(o2, 2*img, [regression_stats.contrastname ' ' regression_stats.variable_names{img} ' ' mask_string ' ' scaling_string]);
             
             end
@@ -988,7 +1024,25 @@ for c = 1:kc
             tj = get_wh_image(parcelwise_stats.t_obj, j);
             tj = threshold(tj, .05, 'unc'); 
 
-            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+            datsig = tj.dat(logical(tj.sig));
+            datsigneg = datsig(datsig<0);
+            datsigpos = datsig(datsig>0);
+
+                if isempty(datsigneg) && ~isempty(datsigpos)
+
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.9 .4 0], 'maxcolor', [1 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
+
+                elseif isempty(datsigpos) && ~isempty(datsigneg)
+
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.1 .8 .8], 'maxcolor', [.1 .1 .8], 'cmaprange', [min(datsigneg) max(datsigneg)]);
+
+                else
+
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]);
+
+                end
+                
+            o2 = legend(o2); 
             o2 = title_montage(o2, 2*j, [parcelwise_stats.contrastname ' ' parcelwise_stats.variable_names{j} ' ' mask_string ' ' scaling_string]);
 
         end
@@ -1015,7 +1069,25 @@ for c = 1:kc
                 
                 BF = threshold(parcelwise_stats.BF(1,img),[-2.1972 2.1972],'raw-outside');
                     
-                o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'splitcolor', {[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]}); % red in favor of H0, green in favor of H1 for BF maps
+                datsig = BF.dat(logical(BF.sig));
+                datsigneg = datsig(datsig<0);
+                datsigpos = datsig(datsig>0);
+                
+                if isempty(datsigneg) && ~isempty(datsigpos)
+                    
+                    o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
+                    
+                elseif isempty(datsigpos) && ~isempty(datsigneg)
+                    
+                    o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0], 'cmaprange', [min(datsigneg) max(datsigneg)]);
+                    
+                else
+                
+                    o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]}, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
+                    
+                end
+                
+                o2 = legend(o2);
                 o2 = title_montage(o2, 2*img, [parcelwise_stats.contrastname ' ' parcelwise_stats.variable_names{img} ' ' mask_string ' ' scaling_string]);
             
             end

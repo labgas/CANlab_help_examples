@@ -81,9 +81,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% c2a_second_level_regression.m         v5.1
+% c2a_second_level_regression.m         v5.2
 %
-% last modified: 2023/02/17
+% last modified: 2023/09/28
 %
 %
 %% GET AND SET OPTIONS
@@ -432,8 +432,26 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         
                 end
 
-            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'cmaprange', [min(tj.dat) 0 0 max(tj.dat)]);
-            o2 = title_montage(o2, 2*j, [analysisname ' FDR ' num2str(q_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
+                datsig = tj.dat(logical(tj.sig));
+                datsigneg = datsig(datsig<0);
+                datsigpos = datsig(datsig>0);
+
+                if isempty(datsigneg) && ~isempty(datsigpos)
+                    
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.9 .4 0], 'maxcolor', [1 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
+                    
+                elseif isempty(datsigpos) && ~isempty(datsigneg)
+                    
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.1 .8 .8], 'maxcolor', [.1 .1 .8], 'cmaprange', [min(datsigneg) max(datsigneg)]);
+                    
+                else
+                
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]);
+                    
+                end
+                
+                o2 = legend(o2);
+                o2 = title_montage(o2, 2*j, [analysisname ' FDR ' num2str(q_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
 
         end % for loop over regressors in model
     
@@ -493,6 +511,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 fprintf ('\nMONTAGE REGIONCENTERS GLM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
                 
                 o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                o3 = legend(o3);
 
                 % Activate, name, and save figure
                 figtitle = sprintf('%s_%s_%1.4f_FDR_regions_%s_%s_%s', analysisname, results_suffix, q_threshold_glm, names{j}, mask_string, scaling_string);
@@ -528,7 +547,25 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             
             tj = threshold(tj, p_threshold_glm, 'unc', 'k', k_threshold_glm); 
 
-            o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+            datsig = tj.dat(logical(tj.sig));
+            datsigneg = datsig(datsig<0);
+            datsigpos = datsig(datsig>0);
+
+            if isempty(datsigneg) && ~isempty(datsigpos)
+                    
+                o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.9 .4 0], 'maxcolor', [1 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
+                    
+            elseif isempty(datsigpos) && ~isempty(datsigneg)
+                    
+                o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.1 .8 .8], 'maxcolor', [.1 .1 .8], 'cmaprange', [min(datsigneg) max(datsigneg)]);
+                    
+            else
+                
+                o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]);
+                    
+            end
+                
+            o2 = legend(o2);
             o2 = title_montage(o2, 2*j, [analysisname ' unc ' num2str(p_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
         
         end % for loop over regressors in model
@@ -577,6 +614,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 fprintf ('\nMONTAGE REGIONCENTERS GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
                 
                 o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                o3 = legend(o3);
 
                 % Activate, name, and save figure
                 figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s_%s', analysisname, results_suffix, p_threshold_glm, names{j}, mask_string, scaling_string);
@@ -614,7 +652,25 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 
                 BFj = threshold(BFj, [-2*(log(BF_threshold_glm)) 2*(log(BF_threshold_glm))], 'raw-outside'); 
 
-                o2 = addblobs(o2, region(BFj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]}); % red in favor of H0, green in favor of H1 for BF maps
+                datsig = BFj.dat(logical(BFj.sig));
+                datsigneg = datsig(datsig<0);
+                datsigpos = datsig(datsig>0);
+                
+                if isempty(datsigneg) && ~isempty(datsigpos)
+                    
+                    o2 = addblobs(o2, region(BFj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
+                    
+                elseif isempty(datsigpos) && ~isempty(datsigneg)
+                    
+                    o2 = addblobs(o2, region(BFj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0], 'cmaprange', [min(datsigneg) max(datsigneg)]);
+                    
+                else
+                
+                    o2 = addblobs(o2, region(BFj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]}, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
+                    
+                end
+
+                o2 = legend(o2);
                 o2 = title_montage(o2, 2*j, [analysisname ' |BF| > ' num2str(BF_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
 
             end % for loop over regressors in model
@@ -663,6 +719,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     fprintf ('\nMONTAGE REGIONCENTERS BAYESIAN GLM RESULTS AT |BF| > %1.2f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
 
                     o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});
+                    o3 = legend(o3);
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s_%s', analysisname, results_suffix, p_threshold_glm, names{j}, mask_string, scaling_string);
@@ -750,8 +807,26 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         end
                     tj = threshold(tj, q_threshold_glm, 'fdr', 'k', k_threshold_glm); 
 
-                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor', {[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                    datsig = tj.dat(logical(tj.sig));
+                    datsigneg = datsig(datsig<0);
+                    datsigpos = datsig(datsig>0);
+
+                    if isempty(datsigneg) && ~isempty(datsigpos)
+                    
+                        o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.9 .4 0], 'maxcolor', [1 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
+                    
+                    elseif isempty(datsigpos) && ~isempty(datsigneg)
+                    
+                        o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.1 .8 .8], 'maxcolor', [.1 .1 .8], 'cmaprange', [min(datsigneg) max(datsigneg)]);
+                    
+                    else
+                
+                        o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]}, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]);
+                    
+                    end
+                    
                     o2 = title_montage(o2, 2*j, [analysisname ' FDR ' num2str(q_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
+                    o2 = legend(o2);
 
                 end % for loop over regressors
 
