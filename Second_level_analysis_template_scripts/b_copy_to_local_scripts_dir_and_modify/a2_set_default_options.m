@@ -259,7 +259,7 @@ dosavepdmstats = true;                                          % see saving opt
 % -------------------------------------------------------------------------
 myscaling_sigs = 'raw';                                         % default 'raw'                     'raw', or 'scaled', see myscaling_glm above
 similarity_metric_sigs = 'dotproduct';                          % default 'dotproduct'              other options 'cosine_similarity','correlation' - passed into apply_all_signatures
-keyword_sigs = 'all';                                           % default 'all'                     passed into load_image_set, help load_image_set for overview of many options
+keyword_sigs = {which('PleasureSignature.nii'),'ncs'};          % default 'all'                     cell array of signature images and/or keywords passed into load_image_set, help load_image_set for overview of many options
 
 
 %% D_SIGNATURE_RESPONSES_GENERIC & D10_SIGNATURE_RIVERPLOTS

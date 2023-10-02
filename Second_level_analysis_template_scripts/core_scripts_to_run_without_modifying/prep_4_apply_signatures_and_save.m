@@ -38,8 +38,8 @@
 % date:   Leuven, January, 2023
 %
 %__________________________________________________________________________
-% @(#)% prep_4_apply_signatures_and_save.m         v2.0
-% last modified: 2023/01/23
+% @(#)% prep_4_apply_signatures_and_save.m         v2.1
+% last modified: 2023/10/02
 
 
 %% GET PATHS AND OPTIONS AND CHECK OPTIONS
@@ -52,14 +52,6 @@ a_set_up_paths_always_run_first;
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
 
-% GET DEFAULT OPTIONS IF NOT SET IN A2_SET_DEFAULT_OPTIONS
-
-options_needed = {'myscaling_sigs','similarity_metric_sigs','keyword_sigs'};  % Options we are looking for. Set in a2_set_default_options
-options_exist = cellfun(@exist, options_needed); 
-
-option_default_values = {'raw','dotproduct','all'};          % defaults if we cannot find info in a2_set_default_options at all 
-
-plugin_get_options_for_analysis_script
 
 % SET CUSTOM OPTIONS
 
@@ -110,10 +102,6 @@ end
 %% SELECTED SIGNATURES
 % -------------------------------------------------------------------------
 
-fprintf('\n\n');
-printhdr(['APPLYING SIGNATURE(S) ', upper(keyword_sigs), ' ON ', upper(myscaling_sigs), ' CONDITIONS AND CONTRASTS, SIMILARITY METRIC ', similarity_metric_sigs]);
-fprintf('\n\n');
-
 switch myscaling_sigs
     
     case 'raw'
@@ -128,22 +116,34 @@ switch myscaling_sigs
         
 end
 
-% CONDITIONS
-% ----------
+for sig = 1:size(keyword_sigs,2)
 
-DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs) = apply_all_signatures(data_object_conds, 'conditionnames', DAT.conditions, 'similarity_metric', similarity_metric_sigs, 'image_set', keyword_sigs);
+    fprintf('\n\n');
+
+    [~,signame] = fileparts(char(keyword_sigs{sig}));
+    printhdr(['APPLYING SIGNATURE ', upper(signame), ' ON ', upper(myscaling_sigs), ' CONDITIONS AND CONTRASTS, SIMILARITY METRIC ', similarity_metric_sigs]);
+
+    fprintf('\n\n');
     
+    if contains(keyword_sigs{sig},filesep) % path to image rather than keyword
 
-% CONTRASTS
-% ---------
+        DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(signame) = apply_all_signatures(data_object_conds, 'conditionnames', DAT.conditions, 'similarity_metric', similarity_metric_sigs, 'image_set', keyword_sigs(sig));
+        DAT.SIG_contrasts.(myscaling_sigs).(similarity_metric_sigs).(signame) = apply_all_signatures(data_object_conts, 'conditionnames', DAT.contrastnames, 'similarity_metric', similarity_metric_sigs, 'image_set', keyword_sigs(sig));
+        
+    else
+        
+        DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(signame) = apply_all_signatures(data_object_conds, 'conditionnames', DAT.conditions, 'similarity_metric', similarity_metric_sigs, 'image_set', keyword_sigs{sig});
+        DAT.SIG_contrasts.(myscaling_sigs).(similarity_metric_sigs).(signame) = apply_all_signatures(data_object_conts, 'conditionnames', DAT.contrastnames, 'similarity_metric', similarity_metric_sigs, 'image_set', keyword_sigs{sig});
+        
+    end
 
-DAT.SIG_contrasts.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs) = apply_all_signatures(data_object_conts, 'conditionnames', DAT.contrastnames, 'similarity_metric', similarity_metric_sigs, 'image_set', keyword_sigs);
+end
 
 
 %% NPS SUBREGIONS
 % -------------------------------------------------------------------------
 
-if contains(keyword_sigs,'nps') || isequal(keyword_sigs,'all')
+if sum(contains(keyword_sigs,'nps')) > 0 || isequal(keyword_sigs{1},'all')
 
     nr_conds = size(DAT.conditions,2);
 
@@ -244,5 +244,10 @@ fprintf('\n\n');
 printhdr('SAVING SIGNATURE RESPONSES TO DAT');
 fprintf('\n\n');
 
+cd(resultsdir); % unannex image_names_and_setup.mat file if already datalad saved to prevent write permission problems
+! git annex unannex image_names_and_setup.mat
+cd(rootdir);
+
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
 save(savefilename, 'DAT', '-append');
+
