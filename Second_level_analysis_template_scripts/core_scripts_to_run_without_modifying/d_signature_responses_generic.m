@@ -40,15 +40,6 @@ a_set_up_paths_always_run_first;
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
 
-% GET DEFAULT OPTIONS IF NOT SET IN A2_SET_DEFAULT_OPTIONS
-
-options_needed = {'signatures_to_plot'};  % Options we are looking for. Set in a2_set_default_options
-options_exist = cellfun(@exist, options_needed); 
-
-option_default_values = {{}};          % defaults if we cannot find info in a2_set_default_options at all 
-
-plugin_get_options_for_analysis_script
-
 % SET CUSTOM OPTIONS
 
 % NOTE: only specify if you want to run multiple versions of your model with different options
@@ -98,8 +89,25 @@ end
 
 if isempty(signatures_to_plot)
     
-    signatures_to_plot = DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).signaturenames;
+    signatures_to_plot = cell(1,size(keyword_sigs,2));
+    
+    for sig = 1:size(keyword_sigs,2)
+
+        [~,signame] = fileparts(char(keyword_sigs{sig}));
+    
+            if contains(keyword_sigs{sig},filesep) % path to image rather than keyword
+
+                signatures_to_plot{sig} = DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(signame).signaturenames;
+        
+            else
+        
+                signatures_to_plot{sig} = DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs{sig}).signaturenames;
+        
+            end
+        
+    end
     
 end
 
 plugin_signature_condition_contrast_plot
+

@@ -32,63 +32,75 @@ end
 % DAT.SIG_contrasts.raw.dotproduct = apply_all_signatures(DATA_OBJ_CON, 'conditionnames', DAT.conditions);
 
 k = length(DAT.conditions);
-nplots = length(signatures_to_plot);
-mysignames = strcat(signatures_to_plot{:});
+
+for sig = 1:size(signatures_to_plot,2)
+    
+    mysignames{sig} = strcat(signatures_to_plot{sig}{:});
+    nplots{sig} = size(signatures_to_plot{sig},2);
+    mypointsize{sig} = get_point_size(nplots{sig}, k);
+    
+end
 
 myfontsize = get_font_size(k);
 myaxislabels = format_strings_for_legend(DAT.conditions);
-mypointsize = get_point_size(nplots, k);
 
 %% Signature Response - conditions
 % ------------------------------------------------------------------------
 
-figtitle = sprintf('%s CONDITIONS %s %s %s', mysignames, upper(myscaling_sigs), upper(similarity_metric_sigs), upper(keyword_sigs));
+for sig = 1:size(keyword_sigs,2)
+    
+    [~,signame] = fileparts(char(keyword_sigs{sig}));
 
-fprintf('\n\n');
-printhdr(figtitle);
-fprintf('\n\n');
+    figtitle = sprintf('%s CONDITIONS %s %s %s', mysignames{sig}, upper(myscaling_sigs), upper(similarity_metric_sigs), upper(signame));
 
-fighan = create_figure(figtitle, 1, nplots);
-adjust_fig_position_for_long_xlabel_names(fighan);
+    fprintf('\n\n');
+    printhdr(figtitle);
+    fprintf('\n\n');
 
-clear axh
+    fighan = create_figure(figtitle, 1, nplots{sig});
+    adjust_fig_position_for_long_xlabel_names(fighan);
 
-for n = 1:nplots
-    
-    printhdr(['SIGNATURE: ', signatures_to_plot{n}]);
-    
-    axh(n) = subplot(1, nplots, n);
-    
-    mysignature = signatures_to_plot{n};
-    mydata = table2array(DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).(mysignature));
-    
-    % get condition-specific group covariate data if any
-    % this will not work yet, because barplot_columns cannot handle
-    % condition-specific covariates. See "group diffs" script.
-    %     mygroupnamefield = 'conditions';  % 'conditions' or 'contrasts'
-    %     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, n);
-    
-    handles = barplot_columns(mydata, 'title', format_strings_for_legend(mysignature), 'colors', DAT.colors, 'MarkerSize', mypointsize, 'dolines', 'nofig', 'names', myaxislabels, 'covs', group, 'wh_reg', 0);
-    
-    set(axh(n), 'FontSize', myfontsize);
-    if n == 1
-        ylabel(format_strings_for_legend(similarity_metric_sigs));
-    else
-        ylabel(' ');
-    end
-    xlabel('');
+    clear axh
+
+    for n = 1:nplots{sig}
+
+        printhdr(['SIGNATURE: ', signatures_to_plot{sig}{n}]);
+
+        axh(n) = subplot(1, nplots{sig}, n);
+
+        mysignature = signatures_to_plot{sig}{n};
         
-    drawnow
+        mydata = table2array(DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(signame).(mysignature));
+
+        % get condition-specific group covariate data if any
+        % this will not work yet, because barplot_columns cannot handle
+        % condition-specific covariates. See "group diffs" script.
+        %     mygroupnamefield = 'conditions';  % 'conditions' or 'contrasts'
+        %     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, n);
+
+        handles = barplot_columns(mydata, 'title', format_strings_for_legend(mysignature), 'colors', DAT.colors, 'MarkerSize', mypointsize{sig}, 'dolines', 'nofig', 'names', myaxislabels, 'covs', group, 'wh_reg', 0);
+
+        set(axh(n), 'FontSize', myfontsize);
+        if n == 1
+            ylabel(format_strings_for_legend(similarity_metric_sigs));
+        else
+            ylabel(' ');
+        end
+        xlabel('');
+
+        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        drawnow, snapnow;
+
+    end
+
+    
+    % kludgy_fix_for_y_axis(axh); % lukasvo76: commented out because causing
+    % errors in some situations
+
+    % plugin_save_figure;
+    % close
+
 end
-
-set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-snapnow;
-
-% kludgy_fix_for_y_axis(axh); % lukasvo76: commented out because causing
-% errors in some situations
-
-% plugin_save_figure;
-% close
 
 
 %% Signature Response - contrasts
@@ -105,59 +117,64 @@ if ~ok_to_run
 end
 % ------------------------------------------------------------------------
 
-
-figtitle = sprintf('%s CONTRASTS %s %s %s', mysignames, upper(myscaling_sigs), upper(similarity_metric_sigs), upper(keyword_sigs));
-
-fprintf('\n\n');
-printhdr(figtitle);
-fprintf('\n\n');
-
-fighan = create_figure(figtitle, 1, nplots);
-adjust_fig_position_for_long_xlabel_names(fighan);
-
 kc = size(DAT.contrasts, 1);
 myfontsize = get_font_size(kc);
 myaxislabels = format_strings_for_legend(DAT.contrastnames);
-mypointsize = get_point_size(nplots, kc);
 
-clear axh
+for sig = 1:size(keyword_sigs,2)
+    
+    mypointsize{sig} = get_point_size(nplots{sig}, kc);
+    
+    [~,signame] = fileparts(char(keyword_sigs{sig}));
 
-for n = 1:nplots
-    
-    printhdr(['SIGNATURE: ', signatures_to_plot{n}]);
-    
-    axh(n) = subplot(1, nplots, n);
-    
-    mysignature = signatures_to_plot{n};
-    mydata = table2array(DAT.SIG_contrasts.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).(mysignature));
-    
-    % get condition-specific group covariate data if any
-    % this will not work yet, because barplot_columns cannot handle
-    % condition-specific covariates. See "group diffs" script.
-    %     mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
-    %     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, n);
-    
-    handles = barplot_columns(mydata, 'title', format_strings_for_legend(mysignature), 'colors', DAT.contrastcolors, 'MarkerSize', mypointsize, 'nofig', 'names', myaxislabels, 'covs', group, 'wh_reg', 0);
-    
-    set(axh(n), 'FontSize', myfontsize);
-    if n == 1
-        ylabel(format_strings_for_legend(similarity_metric_sigs)); 
-    else
-        ylabel(' '); 
+    figtitle = sprintf('%s CONTRASTS %s %s %s', mysignames{sig}, upper(myscaling_sigs), upper(similarity_metric_sigs), upper(signame));
+
+    fprintf('\n\n');
+    printhdr(figtitle);
+    fprintf('\n\n');
+
+    fighan = create_figure(figtitle, 1, nplots{sig});
+    adjust_fig_position_for_long_xlabel_names(fighan);
+
+    clear axh
+
+    for n = 1:nplots{sig}
+
+        printhdr(['SIGNATURE: ', signatures_to_plot{sig}{n}]);
+
+        axh(n) = subplot(1, nplots{sig}, n);
+
+        mysignature = signatures_to_plot{sig}{n};
+        mydata = table2array(DAT.SIG_contrasts.(myscaling_sigs).(similarity_metric_sigs).(signame).(mysignature));
+
+        % get contrast-specific group covariate data if any
+        % this will not work yet, because barplot_columns cannot handle
+        % condition-specific covariates. See "group diffs" script.
+        %     mygroupnamefield = 'contrasts';  % 'conditions' or 'contrasts'
+        %     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, n);
+
+        handles = barplot_columns(mydata, 'title', format_strings_for_legend(mysignature), 'colors', DAT.contrastcolors, 'MarkerSize', mypointsize{sig}, 'nofig', 'names', myaxislabels, 'covs', group, 'wh_reg', 0);
+
+        set(axh(n), 'FontSize', myfontsize);
+        if n == 1
+            ylabel(format_strings_for_legend(similarity_metric_sigs)); 
+        else
+            ylabel(' '); 
+        end
+        xlabel('');
+
+        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        drawnow, snapnow;
+
     end
-    xlabel('');
-    
-    drawnow
+
+    % kludgy_fix_for_y_axis(axh); % lukasvo76: commented out because causing
+    % errors in some situations
+
+    % plugin_save_figure;
+    %close
+
 end
-
-set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-snapnow;
-
-% kludgy_fix_for_y_axis(axh); % lukasvo76: commented out because causing
-% errors in some situations
-
-% plugin_save_figure;
-%close
 
 %%
 % -------------------------------------------------------------------------
