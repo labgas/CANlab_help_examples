@@ -26,8 +26,8 @@
 % date:   Leuven, January, 2023
 %
 %__________________________________________________________________________
-% @(#)% d_signature_responses_generic.m         v1.0
-% last modified: 2023/01/23
+% @(#)% d_signature_responses_generic.m         v1.1
+% last modified: 2023/10/02
 
 
 %% GET PATHS AND OPTIONS AND CHECK OPTIONS

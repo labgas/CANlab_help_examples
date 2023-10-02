@@ -89,10 +89,11 @@ for sig = 1:size(keyword_sigs,2)
         xlabel('');
 
         set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-        drawnow, snapnow;
+        drawnow;
 
     end
 
+    snapnow;
     
     % kludgy_fix_for_y_axis(axh); % lukasvo76: commented out because causing
     % errors in some situations
@@ -164,9 +165,11 @@ for sig = 1:size(keyword_sigs,2)
         xlabel('');
 
         set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-        drawnow, snapnow;
+        drawnow;
 
     end
+    
+    snapnow;
 
     % kludgy_fix_for_y_axis(axh); % lukasvo76: commented out because causing
     % errors in some situations
