@@ -23,8 +23,8 @@
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% a2_set_default_options.m         v5.1
-% last modified: 2023/02/16
+% a2_set_default_options.m         v5.2
+% last modified: 2023/10/24
 %
 %
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -38,11 +38,11 @@ dozipimages = false;                                    % default false to avoid
 %% PREP_3A_RUN_SECOND_LEVEL_REGRESSION_AND_SAVE
 % -------------------------------------------------------------------------
 
-maskname_glm = which('gray_matter_mask_sparse.img');    % default use of sparse gray matter mask
-                                                            % model-specific maskdir defined in a_set_up_paths_always_run_first script
-                                                            % if you do not want to mask, change to []
-                                                            % if you want to use a custom mask, put it in maskdir and change name here
-                                                            % used in this script only for visualization of unthresholded results
+maskname_glm = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_20.nii.gz');    % default use of sparse gray matter mask
+                                                                                            % model-specific maskdir defined in a_set_up_paths_always_run_first script
+                                                                                            % if you do not want to mask, change to []
+                                                                                            % if you want to use a custom mask, put it in maskdir and change name here
+                                                                                            % used in this script only for visualization of unthresholded results
 atlasname_glm = {};                                     % default use of canlab_2018 atlas if left blank
                                                             % if specified, atlas object used for 
                                                             % 1. defining parcels in parcelwise analysis
@@ -136,11 +136,11 @@ holdout_set_method_svm = 'onesample';                           % 'group', or 'o
                                                                         % subject (i.e. leave whole subject out)
 holdout_set_type_svm = 'kfold';                                 % 'kfold', 'leave_one_subject_out'      holdout set for cross-validation - the latter is not recommended
     nfolds_svm = 5;                                                 % default 5                             number of cross-validation folds for kfold
-maskname_svm = which('gray_matter_mask_sparse.img');            % default sparse gray matter mask
-                                                                    % model-specific maskdir defined in a_set_up_paths_always_run_first script
-                                                                    % if you do not want to mask, change to []
-                                                                    % if you want to use a custom mask, put it in maskdir and change name here
-                                                                    % used in this script only for visualization of unthresholded results
+maskname_svm = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_20.nii.gz');            % default sparse gray matter mask
+                                                                                                    % model-specific maskdir defined in a_set_up_paths_always_run_first script
+                                                                                                    % if you do not want to mask, change to []
+                                                                                                    % if you want to use a custom mask, put it in maskdir and change name here
+                                                                                                    % used in this script only for visualization of unthresholded results
 myscaling_svm = 'raw';                                          % 'raw','subjectnorm','imagenorm','zscoreimages','zscorevoxels'
                                                                     % subjectnorm: normalize_each_subject_by_l2norm; normalizes images for each subject by L2 norm of Condition 1 image; can help with numerical scaling and inter-subject scaling diffs
                                                                     % imagenorm: normalize_images_by_l2norm; normalizes each image separately, not each subject/pair
@@ -214,7 +214,7 @@ holdout_set_method_mvpa_reg_st = 'onesample';                   % 'group', or 'o
                                                                     % subject (i.e. leave whole subject out)
 nfolds_mvpa_reg_st = 5;                                         % default 5             number of cross-validation folds for kfold
 zscore_outcome_mvpa_reg_st = false;                             % default false         zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
-maskname_mvpa_reg_st = which('gray_matter_mask_sparse.img');    % see above
+maskname_mvpa_reg_st = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_20.nii.gz');    % see above
 myscaling_mvpa_reg_st = 'raw';                                  % 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
 
 % STATISTICS AND RESULTS VISUALIZATION OPTIONS
@@ -242,7 +242,7 @@ domultilevel_mvpa_reg_st = false;                               % default false;
 
 save_figures_pdm = false;                                       % default false                     true saves .svg files of all figures (slow, takes up space)
 zscore_outcome_pdm = false;                                     % default false                     zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
-maskname_pdm = which('gray_matter_mask_sparse.img');            % see above
+maskname_pdm = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_20.nii.gz');            % see above
 myscaling_pdm = 'raw';                                          % 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
 
 % STATISTICS AND RESULTS VISUALIZATION OPTIONS
