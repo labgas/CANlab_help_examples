@@ -173,7 +173,7 @@ for i = 1:size(DAT.conditions,2)
     printhdr(sprintf('Loading raw images: condition #%d, %s', i, DAT.conditions{i}));
     fprintf('\n\n');
     
-    DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}, which('brainmask_canlab.nii'), sample_type_string); % @lukasvo76: changed to @bogpetre's improved data_st object class
+    DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}, which('brainmask_icbm.nii'), sample_type_string); % @lukasvo76: changed to @bogpetre's improved data_st object class
     
     % make sure we are using right variable types (space-saving)
     % NOTE CANlab (old): this is new and could be a source of errors - beta testing!

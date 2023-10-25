@@ -38,7 +38,7 @@ dozipimages = false;                                    % default false to avoid
 %% PREP_3A_RUN_SECOND_LEVEL_REGRESSION_AND_SAVE
 % -------------------------------------------------------------------------
 
-maskname_glm = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_20.nii.gz');    % default use of sparse gray matter mask
+maskname_glm = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_15.nii.gz');    % default use of gray matter mask
                                                                                             % model-specific maskdir defined in a_set_up_paths_always_run_first script
                                                                                             % if you do not want to mask, change to []
                                                                                             % if you want to use a custom mask, put it in maskdir and change name here
@@ -136,7 +136,7 @@ holdout_set_method_svm = 'onesample';                           % 'group', or 'o
                                                                         % subject (i.e. leave whole subject out)
 holdout_set_type_svm = 'kfold';                                 % 'kfold', 'leave_one_subject_out'      holdout set for cross-validation - the latter is not recommended
     nfolds_svm = 5;                                                 % default 5                             number of cross-validation folds for kfold
-maskname_svm = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_20.nii.gz');            % default sparse gray matter mask
+maskname_svm = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_15.nii.gz');            % default gray matter mask
                                                                                                     % model-specific maskdir defined in a_set_up_paths_always_run_first script
                                                                                                     % if you do not want to mask, change to []
                                                                                                     % if you want to use a custom mask, put it in maskdir and change name here
@@ -214,7 +214,7 @@ holdout_set_method_mvpa_reg_st = 'onesample';                   % 'group', or 'o
                                                                     % subject (i.e. leave whole subject out)
 nfolds_mvpa_reg_st = 5;                                         % default 5             number of cross-validation folds for kfold
 zscore_outcome_mvpa_reg_st = false;                             % default false         zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
-maskname_mvpa_reg_st = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_20.nii.gz');    % see above
+maskname_mvpa_reg_st = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_25.nii.gz');    % see above, but more sparse mask since no prior brainmask is applied here
 myscaling_mvpa_reg_st = 'raw';                                  % 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
 
 % STATISTICS AND RESULTS VISUALIZATION OPTIONS
@@ -242,7 +242,7 @@ domultilevel_mvpa_reg_st = false;                               % default false;
 
 save_figures_pdm = false;                                       % default false                     true saves .svg files of all figures (slow, takes up space)
 zscore_outcome_pdm = false;                                     % default false                     zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
-maskname_pdm = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_20.nii.gz');            % see above
+maskname_pdm = which('tpl-MNI152NLin2009cAsym_res-01_label-GM_probseg_0_25.nii.gz');            % see above
 myscaling_pdm = 'raw';                                          % 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
 
 % STATISTICS AND RESULTS VISUALIZATION OPTIONS
