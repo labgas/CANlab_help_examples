@@ -779,7 +779,7 @@ for c = 1:kc
         fprintf ('\nMONTAGE VOXELWISE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.contrastname, groupnames_string, mask_string, scaling_string);
                 
         num_effects = size(t.dat, 2); % number of regressors
-        o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
 
         for j = 1:num_effects
 
@@ -827,7 +827,7 @@ for c = 1:kc
             
             fprintf ('\nMONTAGE VOXELWISE BAYESIANGLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.contrastname, groupnames_string, mask_string, scaling_string);
             
-            o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+            o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
             
             for img = 1:size(BF,2)
                 
@@ -1017,7 +1017,7 @@ for c = 1:kc
         fprintf ('\nMONTAGE PARCELWISE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
         
         num_effects = size(parcelwise_stats.t_obj.dat, 2); % number of regressors
-        o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
 
         for j = 1:num_effects
 
@@ -1063,7 +1063,7 @@ for c = 1:kc
            
             fprintf ('\nMONTAGE BAYESIAN PARCELWISE GLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
         
-            o2 = canlab_results_fmridisplay([], 'multirow', num_effects, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+            o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
             
             for img = 1:size(parcelwise_stats.BF,2)
                 
@@ -1291,7 +1291,7 @@ for c = 1:kc
 
                 figure
 
-                o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+                o2 = canlab_results_fmridisplay([], 'compact');
 
                 w = mvpa_stats.weight_obj;
                 
