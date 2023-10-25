@@ -285,9 +285,14 @@ if ~dorobfit_parcelwise
     if exist('maskname_glm', 'var') && ~isempty(maskname_glm) && exist(maskname_glm, 'file')
         
         [~,maskname_short] = fileparts(maskname_glm);
+            if contains(maskname_short,'nii')
+                [~,maskname_short] = fileparts(maskname_short);
+            end
         mask_string = sprintf('masked with %s', maskname_short);
         glmmask = fmri_mask_image(maskname_glm, 'noverbose'); 
-        glmmask.dat(glmmask.dat > 0) = 1; % binarize mask
+            if unique(glmmask.dat) ~= 1
+                glmmask.dat(glmmask.dat > 0) = 1; % binarize mask
+            end
         fprintf('\nMasking voxelwise results visualization with %s\n\n', maskname_short);
         
     else
@@ -559,6 +564,10 @@ for c = 1:kc
             glmmask = resample_space(glmmask,cat_obj);
         end
         
+        if unique(glmmask.dat) ~= 1
+            glmmask.dat(glmmask.dat < 1) = 0; % binarize mask, resample_space causes non-zero non-one values at inner cortical boundaries
+        end
+        
     else 
         
         if exist('combined_atlas','var')
@@ -785,7 +794,7 @@ for c = 1:kc
 
             tj = get_wh_image(t, j);
             tj = threshold(tj, .05, 'unc'); 
-
+            
             datsig = tj.dat(logical(tj.sig));
             datsigneg = datsig(datsig<0);
             datsigpos = datsig(datsig>0);
@@ -805,6 +814,7 @@ for c = 1:kc
                 end
                 
             o2 = legend(o2);   
+            
             o2 = title_montage(o2, 2*j, [regression_stats.contrastname ' ' regression_stats.variable_names{j} ' ' mask_string ' ' scaling_string]);
 
         end
@@ -843,15 +853,15 @@ for c = 1:kc
                 
                 if isempty(datsigneg) && ~isempty(datsigpos)
                     
-                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*j)-1:2*j, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
+                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
                     
                 elseif isempty(datsigpos) && ~isempty(datsigneg)
                     
-                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0], 'cmaprange', [min(datsigneg) max(datsigneg)]);
+                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0], 'cmaprange', [min(datsigneg) max(datsigneg)]);
                     
                 else
                 
-                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]}, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
+                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]}, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
                     
                 end
                 
