@@ -7,12 +7,9 @@
 % - Always make a study-specific copy of this script in your code subdataset, do NOT edit in the repo!
 % - Study-specific modifications should in principle be limited to design-related rather
 %       than directory structure-related issues since we use a fixed organisation
-% - This is an example from a design with four conditions and 
-%       three contrasts of (particular) interest, 
-%       see preregistration https://osf.io/z6gy2 for design info etc
-%       see datalad dataset as GIN repo https://gin.g-node.org/labgas/proj_erythritol_4a
-% - For another example, see https://github.com/labgas/proj-emosymp/blob/main/secondlevel/model_1_CANlab_classic_GLM/prep_1_emosymp_m1_s3_set_conditions_contrasts_colors.m
-%    
+% - This is an example from a design with different sessions, see LaBGAS
+%       Github and GIN for more (and simpler) examples which may suit your
+%       purpose better
 %
 %__________________________________________________________________________
 %
@@ -20,8 +17,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_1_set_conditions_contrasts_colors.m         v1.1
-% last modified: 2023/09/21
+% @(#)% prep_1_set_conditions_contrasts_colors.m         v1.2
+% last modified: 2023/11/09
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST
@@ -74,15 +71,20 @@ DAT = struct();
 % contain a string specifying the condition name to be used in plots and
 % tables. This does not have to correspond to an image/directory name.
 % 
-% @lukasvo76: it is strongly recommended to have these condition names
+% NOTE: it is strongly recommended to have these condition names
 % correspond with your first-level condition names defined in
 % DSGN.conditions!
 
-DAT.conditions = {'sucrose' 'erythritol' 'sucralose' 'water'};
-% DAT.conditions = DSGN.conditions{1}; 
-% @lukasvo76: only use if 
+% DAT.conditions = DSGN.conditions{1};
+% DAT.conditions = {'sucrose' 'erythritol' 'sucralose' 'water'};
+% NOTE: only use if 
 % 1) first-level conditions are the same in every run
 % 2) all first-level conditions are of interest at second level
+
+DAT.conditions = DSGN.contrastnames(1:12); 
+
+% NOTE: in a design with different sessions like this, specify everything
+% within-session as condition!
 
 DAT.conditions = format_strings_for_legend(DAT.conditions);
 
@@ -124,8 +126,11 @@ DAT.conditions = format_strings_for_legend(DAT.conditions);
 % condition. 
 % If you do not have subfolders, it is OK to leave this empty, i.e., DAT.subfolders = {};
 
-DAT.subfolders = {'*' '*' '*' '*'}; % @lukasvo76: default option for Linux OS, one wildcard per condition
-% DAT.subfolders = {}; % @lukasvo76 fallback option for Windows OS, uses recursive spm_select in prep_2 script to select right con images
+DAT.subfolders = {'*' '*' '*' '*' '*' '*' '*' '*' '*' '*' '*' '*'}; 
+% NOTE: default option for Linux OS, one wildcard per condition
+
+% DAT.subfolders = {}; 
+% NOTE: fallback option for Windows OS, uses recursive spm_select in prep_2 script to select right con images
 
 % Names of wildcard (expression with *, [1-9], 
 % Enter a cell array { } with one cell per condition.  Each cell should
@@ -133,8 +138,11 @@ DAT.subfolders = {'*' '*' '*' '*'}; % @lukasvo76: default option for Linux OS, o
 % condition. 
 
 DAT.structural_wildcard = {};
-DAT.functional_wildcard = {'con_0001.nii' 'con_0002.nii' 'con_0003.nii' 'con_0004.nii'}; %lukavo76: default option for Linux OS
-% DAT.functional_wildcard = {'^con_0001.*\nii$' '^con_0002.*\nii$' '^con_0003.*\nii$' '^con_0004.*\nii$'}; %lukavo76: fallback option for Windows OS, spm_select uses regular expression to filter (like in the GUI)
+DAT.functional_wildcard = {'con_0001.nii' 'con_0002.nii' 'con_0003.nii' 'con_0004.nii' 'con_0005.nii' 'con_0006.nii' 'con_0007.nii' 'con_0008.nii' 'con_0009.nii' 'con_0010.nii' 'con_0011.nii' 'con_0012.nii'}; 
+% NOTE: default option for Linux OS
+
+% DAT.functional_wildcard = {'^con_0001.*\nii$' '^con_0002.*\nii$' '^con_0003.*\nii$' '^con_0004.*\nii$'}; 
+% NOTE: fallback option for Windows OS, spm_select uses regular expression to filter (like in the GUI)
 
 
 %% SET UP CONTRASTS
@@ -170,11 +178,11 @@ DAT.functional_wildcard = {'con_0001.nii' 'con_0002.nii' 'con_0003.nii' 'con_000
 % sets of images, where the ith image is from the ith subject for all
 % conditions).
 
-DAT.contrasts = [1 0 -1 0; 1 -1 0 0; 0 1 -1 0];
+DAT.contrasts = [1 0 0 -1 0 0 0 0 0 0 0 0; 0 1 0 0 -1 0 0 0 0 0 0 0; 0 0 1 0 0 -1 0 0 0 0 0 0; 0 0 0 0 0 0 1 0 0 -1 0 0; 0 0 0 0 0 0 0 1 0 0 -1 0; 0 0 0 0 0 0 0 0 1 0 0 -1];
     
 % Descriptive names for contrasts to be used in plots and tables. Avoid
 % special characters.
-DAT.contrastnames = {'sucrose vs sucralose' 'sucrose vs erythritol' 'erythritol vs sucralose'};
+DAT.contrastnames = ['bitter vs placebo high calorie', 'bitter vs placebo low calorie', 'bitter vs placebo neutral', DSGN.contrastnames(13:end)];
 
 DAT.contrastnames = format_strings_for_legend(DAT.contrastnames);
 

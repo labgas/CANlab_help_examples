@@ -20,6 +20,8 @@
 %
 % * dozipimages             default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
 %
+% * maskname_brain          path to brainmask
+%
 % -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
@@ -28,9 +30,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_2_load_image_data_and_save.m         v1.5
+% prep_2_load_image_data_and_save.m         v2.0
 %
-% last modified: 2023/09/26
+% last modified: 2023/11/09
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
@@ -66,10 +68,10 @@ end
 % (3) Checks again and uses the default options if they are still missing
 % (e.g., not specified in an older/incomplete copy of a2_set_default_options)
 
-options_needed = {'dofullplot', 'omit_histograms' 'dozipimages'};  % Options we are looking for. Set in a2_set_default_options
+options_needed = {'dofullplot', 'omit_histograms', 'dozipimages', 'maskname_brain'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed);        % initializing this means a2_set_defaults_options will never run
 
-option_default_values = {true false false};          % defaults if we cannot find info in a2_set_default_options at all; @lukasvo76: changed the default for zipping images
+option_default_values = {true, false, false, which('brain_mask_fmriprep20_template_1000.nii')};          % defaults if we cannot find info in a2_set_default_options at all; @lukasvo76: changed the default for zipping images
 
 plugin_get_options_for_analysis_script
 
@@ -138,6 +140,8 @@ for i = 1:size(DAT.conditions,2)
 
 end
 
+brainmask = fmri_mask_image(maskname_brain,'noverbose');
+
 
 %% LOAD FULL OBJECTS AND QC
 % -------------------------------------------------------------------------
@@ -173,7 +177,7 @@ for i = 1:size(DAT.conditions,2)
     printhdr(sprintf('Loading raw images: condition #%d, %s', i, DAT.conditions{i}));
     fprintf('\n\n');
     
-    DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}, which('brainmask_icbm.nii'), sample_type_string); % @lukasvo76: changed to @bogpetre's improved data_st object class
+    DATA_OBJ{i} = fmri_data_st(DAT.imgs{i}, maskname_brain, sample_type_string); % @lukasvo76: changed to @bogpetre's improved data_st object class, and changed to more sparse brainmask
     
     % make sure we are using right variable types (space-saving)
     % NOTE CANlab (old): this is new and could be a source of errors - beta testing!

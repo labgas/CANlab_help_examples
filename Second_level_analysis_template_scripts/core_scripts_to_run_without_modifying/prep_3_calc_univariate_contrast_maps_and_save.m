@@ -18,9 +18,10 @@
 %
 % *OPTIONS*
 %
-% * dofullplot                  default true, can set to false to save time, but not recommended for quality control purposes
-% * omit_histograms             default false, can set to false to save time, especially in case of large samples but not recommended for quality control purposes
-% * dozipimages                 default false, to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses
+% * dofullplot              default true, can set to false to save time, but not recommended for quality control purposes
+%
+% * omit_histograms         default false, can set to true to save time, especially in case of large samples but not recommended for quality control purposes
+%
 %
 % -------------------------------------------------------------------------
 %
@@ -29,9 +30,9 @@
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% prep_3_calc_univariate_contrast_maps_and_save.m         v1.5
+% prep_3_calc_univariate_contrast_maps_and_save.m         v2.0
 %
-% last modified: 2023/09/26
+% last modified: 2023/11/09
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
@@ -95,10 +96,10 @@ end
 % (3) Checks again and uses the default options if they are still missing
 % (e.g., not specified in an older/incomplete copy of a2_set_default_options)
 
-options_needed = {'dofullplot', 'omit_histograms' 'dozipimages'};  % Options we are looking for. Set in a2_set_default_options
+options_needed = {'dofullplot', 'omit_histograms'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed);        % initializing this means a2_set_defaults_options will never run
 
-option_default_values = {true false false};          % defaults if we cannot find info in a2_set_default_options at all; @lukasvo76: changed the default for zipping images
+option_default_values = {true false};          % defaults if we cannot find info in a2_set_default_options at all; @lukasvo76: changed the default for zipping images
 
 plugin_get_options_for_analysis_script
 
