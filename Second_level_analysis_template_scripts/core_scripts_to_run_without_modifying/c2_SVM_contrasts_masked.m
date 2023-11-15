@@ -67,9 +67,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% c2_SVM_contrasts_masked.m         v5.3
+% c2_SVM_contrasts_masked.m         v6.0
 %
-% last modified: 2023/02/23
+% last modified: 2023/11/15
 %
 %
 %% GET AND SET OPTIONS
@@ -144,9 +144,12 @@ end
     
 % GET MASKING AND ATLAS OPTIONS
 
-if exist(maskname_svm, 'file')
+if exist('maskname_svm', 'var') && ~isempty(maskname_svm) && exist(maskname_svm, 'file')
     
     [~,maskname_short] = fileparts(maskname_svm);
+        if contains(maskname_short,'nii')
+            [~,maskname_short] = fileparts(maskname_short);
+        end
     mask_string = sprintf('masked_with_%s', maskname_short);
     
 else
@@ -168,7 +171,7 @@ if exist('atlasname_svm','var') && ~isempty(atlasname_svm) && exist(atlasname_sv
 
         combined_atlas = load_atlas(atlasname_svm);
         
-        fprintf('\nLabeling regions using custom-made atlas %s\n\n', maskname_short);
+        fprintf('\nLabeling regions using custom atlas %s\n\n', maskname_short);
 
     else
 
@@ -401,6 +404,7 @@ for c = 1:kc
                 r = region(t,'noverbose');
 
                 o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                o2 = legend(o2);
                 o2 = title_montage(o2, whmontage, [analysisname ' FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                 figtitle = sprintf('%s_%s_%1.4f_FDR_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
@@ -473,6 +477,7 @@ for c = 1:kc
                 r = region(t,'noverbose');
 
                 o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                o2 = legend(o2);
                 o2 = title_montage(o2, whmontage, [analysisname ' unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                 figtitle = sprintf('%s_%s_%1.4f_unc_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
@@ -571,6 +576,7 @@ for c = 1:kc
                 figure;
 
                 o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]); % colormap ~ inferno in MRIcroGL
+                o2 = legend(o2);
                 o2 = title_montage(o2, whmontage, [analysisname ' searchlight accuracy FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                 figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
@@ -607,7 +613,7 @@ for c = 1:kc
                 
                     fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT ACCURACY RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
-                     o3 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]); % colormap as above does not function well, maybe because how stats_img_obj is created in previous script
+                    o3 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]); % colormap as above does not function well, maybe because how stats_img_obj is created in previous script
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
@@ -646,6 +652,7 @@ for c = 1:kc
                 figure;
 
                 o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]);
+                o2 = legend(o2);
                 o2 = title_montage(o2, whmontage, [analysisname ' searchlight accuracy unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                 figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);

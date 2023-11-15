@@ -104,9 +104,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3c_run_SVMs_on_contrasts_masked.m         v5.0
+% prep_3c_run_SVMs_on_contrasts_masked.m         v6.0
 %
-% last modified: 2023/02/23
+% last modified: 2023/11/15
 %
 %
 %% GET AND SET OPTIONS
@@ -135,7 +135,7 @@ a_set_up_paths_always_run_first;
 options_needed = {'dosavesvmstats', 'dobootstrap_svm', 'boot_n_svm', 'holdout_set_method_svm', 'holdout_set_type_svm', 'nfolds_svm', 'ml_method_svm'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed); 
 
-option_default_values = {true false 5000 'onesample' 'kfold' 5 'predict'};
+option_default_values = {true false 5000 'onesample' 'kfold' 5 'oofmridataobj'};
 
 plugin_get_options_for_analysis_script;
 
@@ -205,13 +205,25 @@ end
 %% GET MASK
 % -------------------------------------------------------------------------
 
-if exist('maskname_svm', 'var') && ~isempty(maskname_svm) 
-    
-    svmmask = fmri_mask_image(maskname_svm, 'noverbose');
+if exist('maskname_svm', 'var') && ~isempty(maskname_svm) && exist(maskname_svm, 'file')
+        
     [~,maskname_short] = fileparts(maskname_svm);
+        if contains(maskname_short,'nii')
+            [~,maskname_short] = fileparts(maskname_short);
+        end
     mask_string = sprintf('masked with %s', maskname_short);
-
-end
+    svmmask = fmri_mask_image(maskname_svm, 'noverbose'); 
+        if any(unique(svmmask.dat) ~= 1)
+            svmmask.dat(svmmask.dat > 0) = 1; % binarize mask if needed
+        end
+    fprintf('\nResults masked with %s\n\n', maskname_short);
+        
+else
+        
+    mask_string = sprintf('without masking');
+    fprintf('\nShowing results without masking\n\n');
+        
+end 
 
 
 %% RUN SUPPORT VECTOR MACHINES FOR EACH CONTRAST
@@ -253,18 +265,29 @@ for c = 1:kc
     printhdr(['CONTRAST #', num2str(c), ': ', upper(analysisname)]);
     fprintf('\n\n');
     
-    if exist('svmmask', 'var')
-        fprintf('\nMasking data with %s\n\n',maskname_short);
-        svmmask = resample_space(svmmask,cat_obj); % resample to space of data object
-        cat_obj = apply_mask(cat_obj, svmmask);
-        cat_obj = trim_mask(cat_obj);
-        cat_obj.mask_descrip = maskname_svm;
+    voxelsize_cat_obj = diag(cat_obj.volInfo.mat(1:3, 1:3))';
         
-    else
-        fprintf('\nNo mask found; using full existing image data\n\n');
+        if exist('maskname_short','var')
+            
+            fprintf('\nMasking data with %s\n\n',maskname_short);
+            
+            voxelsize_svmmask = diag(svmmask.volInfo.mat(1:3, 1:3))';
+            if ~isequal(voxelsize_svmmask,voxelsize_cat_obj)
+                svmmask = resample_space(svmmask,cat_obj);
+            end
+            
+            svmmask.dat(svmmask.dat < 1) = 0; % re-binarize mask, resample_space causes non-zero non-one values at inner cortical boundaries
+            
+            cat_obj = apply_mask(cat_obj, svmmask);
+            cat_obj = trim_mask(cat_obj);
+            cat_obj.mask_descrip = maskname_svm;
         
-    end
-    
+        else
+            
+            fprintf('\nNo mask found; using full existing image data\n\n');
+
+        end
+
     %%
     % *NORMALIZE IF SPECIFIED IN OPTIONS*
     
@@ -344,10 +367,21 @@ for c = 1:kc
     % 2. assume that subjects are in same position in each input file!
             
     cat_obj.Y = outcome_value;
-    cat_obj.metadata_table.subject_id = [[1:(size(cat_obj.Y,1)/2)]';[1:(size(cat_obj.Y,1)/2)]'];
+
+    cat_obj.metadata_table.subject_id = zeros(size(cat_obj.Y,1),1);
+    
+    if strcmp(holdout_set_method_svm,'group')
+        cat_obj.metadata_table.group_id = zeros(size(cat_obj.Y,1),1);
+    end
+    
+    con = 1;
+    while con < size(wh,2)+1
+        cat_obj.metadata_table.subject_id(((con-1)*(size(cat_obj.Y,1)/size(wh,2))+1):con*(size(cat_obj.Y,1)/size(wh,2))) = [1:(size(cat_obj.Y,1)/size(wh,2))]';
         if strcmp(holdout_set_method_svm,'group')
-            cat_obj.metadata_table.group_id = [group';group'];      
+            cat_obj.metadata_table.group_id(((con-1)*(size(cat_obj.Y,1)/size(wh,2))+1):con*(size(cat_obj.Y,1)/size(wh,2))) = group; % not yet tested on a dataset with groups      
         end
+        con = con+1;
+    end
     
     % SANITY CHECK ON OUTCOME
     
@@ -580,6 +614,7 @@ for c = 1:kc
         end
     
     o2 = montage(r, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+    o2 = legend(o2);
     o2 = title_montage(o2, whmontage, [analysisname ' unthresholded ' mask_string ' ' scaling_string]);
 
     figtitle = sprintf('%s_unthresholded_montage_%s_%s', analysisname, mask_string, scaling_string);
@@ -612,6 +647,7 @@ for c = 1:kc
             s = threshold(cat_obj_sl,[0.5, max(cat_obj_sl.dat)],'raw-between');
             
             o3 = montage(s, 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [0.5 max(cat_obj_sl.dat)]); % colormap ~ inferno in MRIcroGL
+            o3 = legend(o3);
             o3 = title_montage(o3, whmontage, [analysisname ' searchlight accuracy > 50% ' mask_string ' ' scaling_string]);
 
             figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, mask_string, scaling_string);

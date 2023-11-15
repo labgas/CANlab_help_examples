@@ -790,10 +790,12 @@ for c = 1:kc
         
         t = regression_stats.t;
         
-        t = apply_mask(t,brainmask);
+        t = apply_mask(t,brainmask); % re-apply brainmask just to be sure
+        t = trim_mask(t);
         
         if exist('maskname_short','var')
             t = apply_mask(t,glmmask);
+            t = trim_mask(t);
         end
         
         t = threshold(t,.05,'unc');
@@ -857,10 +859,12 @@ for c = 1:kc
             for img = 1:size(BF,2)
                 
                 BF(img) = apply_mask(BF(img),brainmask);
+                BF(img) = trim_mask(BF(img));
                 
-                if exist('maskname_short','var')
-                    BF(img) = apply_mask(BF(img),glmmask);
-                end
+                    if exist('maskname_short','var')
+                        BF(img) = apply_mask(BF(img),glmmask);
+                        BF(img) = trim_mask(BF(img));
+                    end
                 
                 BF(img) = threshold(BF(img),[-2.1972 2.1972],'raw-outside');
                     
@@ -868,23 +872,23 @@ for c = 1:kc
                 datsigneg = datsig(datsig<0);
                 datsigpos = datsig(datsig>0);
                 
-                if isempty(datsigneg) && ~isempty(datsigpos)
-                    
-                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0]);%, 'cmaprange', [min(datsigpos) max(datsigpos)]);
-                    
-                elseif isempty(datsigpos) && ~isempty(datsigneg)
-                    
-                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0]);%, 'cmaprange', [min(datsigneg) max(datsigneg)]);
-                    
-                else
-                
-                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});%, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
-                    
-                end
-                
-                if size(BF,2) < 4
-                    o2 = legend(o2);
-                end
+                    if isempty(datsigneg) && ~isempty(datsigpos)
+
+                        o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0]);%, 'cmaprange', [min(datsigpos) max(datsigpos)]);
+
+                    elseif isempty(datsigpos) && ~isempty(datsigneg)
+
+                        o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0]);%, 'cmaprange', [min(datsigneg) max(datsigneg)]);
+
+                    else
+
+                        o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});%, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
+
+                    end
+
+                    if size(BF,2) < 4
+                        o2 = legend(o2);
+                    end
                 
                 o2 = title_montage(o2, 2*img, [regression_stats.contrastname ' ' regression_stats.variable_names{img} ' ' mask_string ' ' scaling_string]);
             
@@ -1106,23 +1110,23 @@ for c = 1:kc
                 datsigneg = datsig(datsig<0);
                 datsigpos = datsig(datsig>0);
                 
-                if isempty(datsigneg) && ~isempty(datsigpos)
-                    
-                    o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0]);%, 'cmaprange', [min(datsigpos) max(datsigpos)]);
-                    
-                elseif isempty(datsigpos) && ~isempty(datsigneg)
-                    
-                    o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0]);%, 'cmaprange', [min(datsigneg) max(datsigneg)]);
-                    
-                else
-                
-                    o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});%, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
-                    
-                end
-                
-                if size(BF,2) < 4
-                    o2 = legend(o2);
-                end
+                    if isempty(datsigneg) && ~isempty(datsigpos)
+
+                        o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0]);%, 'cmaprange', [min(datsigpos) max(datsigpos)]);
+
+                    elseif isempty(datsigpos) && ~isempty(datsigneg)
+
+                        o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0]);%, 'cmaprange', [min(datsigneg) max(datsigneg)]);
+
+                    else
+
+                        o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});%, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
+
+                    end
+
+                    if size(BF,2) < 4
+                        o2 = legend(o2);
+                    end
                 
                 o2 = title_montage(o2, 2*img, [parcelwise_stats.contrastname ' ' parcelwise_stats.variable_names{img} ' ' mask_string ' ' scaling_string]);
             
@@ -1331,9 +1335,11 @@ for c = 1:kc
                 w = mvpa_stats.weight_obj;
                 
                 w = apply_mask(w,brainmask);
+                w = trim_mask(w);
                 
                     if exist('maskname_short','var')
                         w = apply_mask(w,glmmask);
+                        w = trim_mask(w);
                     end
                     
                 w = region(w);
