@@ -143,9 +143,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v6.0
+% prep_3a_run_second_level_regression_and_save.m         v6.1
 %
-% last modified: 2023/11/07
+% last modified: 2023/11/15
 %
 %
 %% GET AND SET OPTIONS
@@ -808,27 +808,23 @@ for c = 1:kc
             tj = get_wh_image(t, j);
             tj = threshold(tj, .05, 'unc'); 
             
-            % addblobs() should take care of the different scenarios
-            % below, hence if loop should not be needed but can be
-            % reimplemented in cases where colour coding does not work well
-            
-%             datsig = tj.dat(logical(tj.sig));
-%             datsigneg = datsig(datsig<0);
-%             datsigpos = datsig(datsig>0);
-% 
-%                 if isempty(datsigneg) && ~isempty(datsigpos)
-% 
-%                     o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.9 .4 0], 'maxcolor', [1 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
-% 
-%                 elseif isempty(datsigpos) && ~isempty(datsigneg)
-% 
-%                     o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.1 .8 .8], 'maxcolor', [.1 .1 .8], 'cmaprange', [min(datsigneg) max(datsigneg)]);
-% 
-%                 else
+            datsig = tj.dat(logical(tj.sig));
+            datsigneg = datsig(datsig<0);
+            datsigpos = datsig(datsig>0);
+
+                if isempty(datsigneg) && ~isempty(datsigpos)
+
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.9 .4 0], 'maxcolor', [1 1 0]);%, 'cmaprange', [min(datsigpos) max(datsigpos)]);
+
+                elseif isempty(datsigpos) && ~isempty(datsigneg)
+
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.1 .8 .8], 'maxcolor', [.1 .1 .8]);%, 'cmaprange', [min(datsigneg) max(datsigneg)]);
+
+                else
 
                     o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});%, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]);
 
-%                 end
+                end
                 
                 if num_effects < 4
                     o2 = legend(o2);
@@ -867,28 +863,24 @@ for c = 1:kc
                 end
                 
                 BF(img) = threshold(BF(img),[-2.1972 2.1972],'raw-outside');
-                
-                % addblobs() should take care of the different scenarios
-                % below, hence if loop should not be needed but can be
-                % reimplemented in cases where colour coding does not work well
                     
-%                 datsig = BF(img).dat(logical(BF(img).sig));
-%                 datsigneg = datsig(datsig<0);
-%                 datsigpos = datsig(datsig>0);
-%                 
-%                 if isempty(datsigneg) && ~isempty(datsigpos)
-%                     
-%                     o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
-%                     
-%                 elseif isempty(datsigpos) && ~isempty(datsigneg)
-%                     
-%                     o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0], 'cmaprange', [min(datsigneg) max(datsigneg)]);
-%                     
-%                 else
+                datsig = BF(img).dat(logical(BF(img).sig));
+                datsigneg = datsig(datsig<0);
+                datsigpos = datsig(datsig>0);
+                
+                if isempty(datsigneg) && ~isempty(datsigpos)
+                    
+                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0]);%, 'cmaprange', [min(datsigpos) max(datsigpos)]);
+                    
+                elseif isempty(datsigpos) && ~isempty(datsigneg)
+                    
+                    o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0]);%, 'cmaprange', [min(datsigneg) max(datsigneg)]);
+                    
+                else
                 
                     o2 = addblobs(o2, region(BF(img)), 'wh_montages', (2*img)-1:2*img, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});%, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
                     
-%                 end
+                end
                 
                 if size(BF,2) < 4
                     o2 = legend(o2);
@@ -1061,28 +1053,24 @@ for c = 1:kc
 
             tj = get_wh_image(parcelwise_stats.t_obj, j);
             tj = threshold(tj, .05, 'unc'); 
-            
-            % addblobs() should take care of the different scenarios
-            % below, hence if loop should not be needed but can be
-            % reimplemented in cases where colour coding does not work well
 
-%             datsig = tj.dat(logical(tj.sig));
-%             datsigneg = datsig(datsig<0);
-%             datsigpos = datsig(datsig>0);
-% 
-%                 if isempty(datsigneg) && ~isempty(datsigpos)
-% 
-%                     o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.9 .4 0], 'maxcolor', [1 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
-% 
-%                 elseif isempty(datsigpos) && ~isempty(datsigneg)
-% 
-%                     o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.1 .8 .8], 'maxcolor', [.1 .1 .8], 'cmaprange', [min(datsigneg) max(datsigneg)]);
-% 
-%                 else
+            datsig = tj.dat(logical(tj.sig));
+            datsigneg = datsig(datsig<0);
+            datsigpos = datsig(datsig>0);
+
+                if isempty(datsigneg) && ~isempty(datsigpos)
+
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.9 .4 0], 'maxcolor', [1 1 0]);%, 'cmaprange', [min(datsigpos) max(datsigpos)]);
+
+                elseif isempty(datsigpos) && ~isempty(datsigneg)
+
+                    o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'mincolor',[.1 .8 .8], 'maxcolor', [.1 .1 .8]);%, 'cmaprange', [min(datsigneg) max(datsigneg)]);
+
+                else
 
                     o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});%, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]);
 
-%                 end
+                end
                 
             if num_effects < 4 % if too many rows, legend gets messy
                 o2 = legend(o2);
@@ -1113,28 +1101,24 @@ for c = 1:kc
             for img = 1:size(parcelwise_stats.BF,2)
                 
                 BF = threshold(parcelwise_stats.BF(1,img),[-2.1972 2.1972],'raw-outside');
-                
-                % addblobs() should take care of the different scenarios
-                % below, hence if loop should not be needed but can be
-                % reimplemented in cases where colour coding does not work well
                     
-%                 datsig = BF.dat(logical(BF.sig));
-%                 datsigneg = datsig(datsig<0);
-%                 datsigpos = datsig(datsig>0);
-%                 
-%                 if isempty(datsigneg) && ~isempty(datsigpos)
-%                     
-%                     o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0], 'cmaprange', [min(datsigpos) max(datsigpos)]);
-%                     
-%                 elseif isempty(datsigpos) && ~isempty(datsigneg)
-%                     
-%                     o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0], 'cmaprange', [min(datsigneg) max(datsigneg)]);
-%                     
-%                 else
+                datsig = BF.dat(logical(BF.sig));
+                datsigneg = datsig(datsig<0);
+                datsigpos = datsig(datsig>0);
+                
+                if isempty(datsigneg) && ~isempty(datsigpos)
+                    
+                    o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'mincolor',[0 0.25 0], 'maxcolor', [0 1 0]);%, 'cmaprange', [min(datsigpos) max(datsigpos)]);
+                    
+                elseif isempty(datsigpos) && ~isempty(datsigneg)
+                    
+                    o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'mincolor',[.25 0 0], 'maxcolor', [1 0 0]);%, 'cmaprange', [min(datsigneg) max(datsigneg)]);
+                    
+                else
                 
                     o2 = addblobs(o2, region(BF), 'wh_montages', (2*img)-1:2*img, 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});%, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]); % red in favor of H0, green in favor of H1 for BF maps
                     
-%                 end
+                end
                 
                 if size(BF,2) < 4
                     o2 = legend(o2);
