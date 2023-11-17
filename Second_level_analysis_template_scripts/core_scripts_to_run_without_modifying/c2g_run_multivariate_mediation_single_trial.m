@@ -58,13 +58,17 @@
 % dosourcerecon_pdm: default false; source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
 % dosavepdmstats: default true; saves all results as .mat files
 %
+% FEATURES TO IMPLEMENT UPON NEXT USE/REVISION
+% --------------------------------------------
+% 1. single multi-row montages for different pdms per contrast - as in
+%       prep_3a etc
 %__________________________________________________________________________
 %
 % author: lukas.vanoudenhove@kuleuven.be
 % date:   August, 2022
 %__________________________________________________________________________
-% @(#)% c2g_run_multivariate_mediation_single_trial     v1.4        
-% last modified: 2023/01/18
+% @(#)% c2g_run_multivariate_mediation_single_trial     v2.0        
+% last modified: 2023/11/17
 
 
 %% GET AND SET OPTIONS
@@ -191,18 +195,25 @@ fprintf('\n\n');
 if exist('maskname_pdm','var') && ~isempty(maskname_pdm) && exist(maskname_pdm, 'file')
 
     [~,maskname_short] = fileparts(maskname_pdm);
-    fprintf('\nMasking data with %s\n\n',maskname_short);
+        if contains(maskname_short,'nii')
+            [~,maskname_short] = fileparts(maskname_short);
+        end
     mask_string = sprintf('masked with %s', maskname_short);
 
     pdmmask = fmri_mask_image(maskname_pdm);
+        if any(unique(pdmmask.dat) ~= 1)
+            pdmmask.dat(pdmmask.dat > 0) = 1; % binarize mask if needed
+        end
     pdmmask = resample_space(pdmmask,fmri_dat); % resample mask space to fmri_data obj space
     fmri_dat = fmri_dat.apply_mask(pdmmask);
     fmri_dat.mask_descrip = maskname_pdm;
+    
+    fprintf('\nMasking data with %s\n\n',maskname_short);
 
 else
 
-    fprintf('\nNo mask found; using full original image data\n\n');
     mask_string = sprintf('unmasked');
+    fprintf('\nNo mask found; using full original image data\n\n');
     
 
 end % if loop mask
@@ -334,6 +345,9 @@ clear sub
 %% SET UP AND RUN MULTIVARIATE MEDIATION
 % -------------------------------------------------------------------------
 
+X_source = cell(1,size(contrastnames2include,2));
+Xz_source = cell(1,size(contrastnames2include,2));
+
 for cont = 1:size(contrastnames2include,2)
     
     fprintf('\n\n');
@@ -363,11 +377,19 @@ for cont = 1:size(contrastnames2include,2)
         printhdr('Creating data objects');
         fprintf('\n\n');
         
+        Y = cell(1,n_subj);
+        X = cell(1,n_subj);
+        M = cell(1,n_subj);
+        
         for sub = 1:n_subj
             
             idx_sub = fmri_dat.metadata_table.subject_id == sub;
             
             fmri_dat_sub = get_wh_image(fmri_dat,idx_sub);
+            
+            Y_temp = cell(1,size(condsincontrast,2));
+            X_temp = cell(1,size(condsincontrast,2));
+            M_temp = cell(1,size(condsincontrast,2));
             
             for con = 1:size(condsincontrast,2)
                 idx_con = contains(fmri_dat_sub.metadata_table.(cond_identifier_dat_st),condsincontrast{1,con});
@@ -492,9 +514,6 @@ for cont = 1:size(contrastnames2include,2)
         
         load(loadfilename_data);
         load(loadfilename_pdm);
-        
-%         pdm = out;
-%         clear out;
           
     end % if results files not yet available
     
@@ -506,7 +525,23 @@ for cont = 1:size(contrastnames2include,2)
     printhdr('Visualizing unthresholded PDM results');
     fprintf('\n\n');
     
+    if exist('nPDM2retain','var')
+        
+        nPDMretained = size(pdm.Wfull,2);
+    
+        if nPDM2retain ~= nPDMretained
+            error('\nmismatch between nPDM2retain %d and number of components in pdm.Wfull %d, please check before proceeding\n\n', nPDM2retain, nPDMretained);
+        end
+        
+    end
+    
+    % NOTE: the above is a safety check against a bug in previous version,
+    % which should now be solved
+    
     whmontage = 5;
+    
+    dat_unt = cell(1,size(pdm.Wfull,2));
+    reg_unt = cell(1,size(pdm.Wfull,2));
     
     for comp = 1:size(pdm.Wfull,2)
 
@@ -518,6 +553,7 @@ for cont = 1:size(contrastnames2include,2)
         reg_unt{comp} = region(dat_unt{comp});
 
         o2 = montage(reg_unt{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+        o2 = legend(o2);
         o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' unthresholded PDM #' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
 
         figtitle = sprintf('%s_unthresholded_montage_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
@@ -546,6 +582,8 @@ for cont = 1:size(contrastnames2include,2)
         
         if ~exist(fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', maskname_short, '_', results_suffix, '.mat']),'file') || ...
                 ~exist(fullfile(behavcontrastpdmmediationresultsdir, ['PDM_source_recon_', behav_outcome_dat_st, '_', contrastnames2include{cont}, '_', results_suffix, '.mat']),'file')
+            
+            source_obj_cont = cell(1,size(pdm.Wfull,2));
     
             for comp = 1:size(pdm.Wfull,2)
 
@@ -611,6 +649,8 @@ for cont = 1:size(contrastnames2include,2)
         fprintf('\n\n');
         printhdr('Visualizing unthresholded source reconstruction results');
         fprintf('\n\n');
+        
+        reg_sc = cell(1,size(pdm.Wfull,2));
 
         for comp = 1:size(pdm.Wfull,2)
 
@@ -619,6 +659,7 @@ for cont = 1:size(contrastnames2include,2)
             reg_sc{comp} = region(source_obj_cont{comp});
 
             o2 = montage(reg_sc{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+            o2 = legend(o2);
             o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' source reconstruction unthresholded PDM #' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
 
             figtitle = sprintf('%s_unthresholded_montage_source_reconstruction_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
@@ -646,6 +687,13 @@ for cont = 1:size(contrastnames2include,2)
         % FDR-CORRECTED
 
         fprintf ('\nSHOWING FDR-CORRECTED PDM RESULTS, CONTRAST: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
+        
+        dat_fdr = cell(1,size(pdm.Wfull,2));
+        reg_fdr = cell(1,size(pdm.Wfull,2));
+        reg_pos_fdr = cell(1,size(pdm.Wfull,2));
+        reg_neg_fdr = cell(1,size(pdm.Wfull,2));
+        reg_all_fdr = cell(1,size(pdm.Wfull,2));
+        results_table_fdr = cell(1,size(pdm.Wfull,2));
 
         for comp = 1:size(pdm.Wfull,2)
 
@@ -658,7 +706,8 @@ for cont = 1:size(contrastnames2include,2)
             fprintf ('\nTable bootstrapped PDM results, contrast: %s, PDM #%s, %s, SCALING: %s\n\n', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
             fprintf('FDR q < .05 = p < %3.8f\n', pdm.pThreshold(comp));
 
-            [reg_fdr{comp}, ~, ~ ] = autolabel_regions_using_atlas(reg_fdr{comp});
+            atlas = load_atlas('canlab2023');
+            [reg_fdr{comp}, ~, ~ ] = autolabel_regions_using_atlas(reg_fdr{comp},atlas);
             [reg_pos_fdr{comp},reg_neg_fdr{comp},results_table_fdr{comp}] = table(reg_fdr{comp},'k',k_threshold_pdm);
             reg_all_fdr{comp} = [reg_pos_fdr{comp},reg_neg_fdr{comp}];
 
@@ -670,6 +719,7 @@ for cont = 1:size(contrastnames2include,2)
             fprintf('FDR q < .05 = p < %3.8f\n', pdm.pThreshold(comp));
 
             o2 = montage(reg_all_fdr{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+            o2 = legend(o2);
             o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' FDR-corrected PDM # ' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
 
             figtitle = sprintf('%s_FDR_montage_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
@@ -749,7 +799,7 @@ for cont = 1:size(contrastnames2include,2)
             disp('Use these data to write tables to excel etc');
             fprintf('\n\n');
                 
-            save(savefilename_regions, 'dat_fdr', 'dat_unt', 'reg_*', 'results_*'); 
+            save(savefilename_regions, 'dat_*', 'reg_*', 'results_table*'); 
             
         end % if dosavepdmstats
         
