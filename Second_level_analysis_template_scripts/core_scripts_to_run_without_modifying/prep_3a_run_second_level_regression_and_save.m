@@ -143,9 +143,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v6.1
+% prep_3a_run_second_level_regression_and_save.m         v6.2
 %
-% last modified: 2023/11/15
+% last modified: 2023/11/19
 %
 %
 %% GET AND SET OPTIONS
@@ -561,12 +561,12 @@ for c = 1:kc
     % RESAMPLE MASK SPACE TO IMAGE SPACE
     % ----------------------------------
     
-    voxelsize_cat_obj = diag(cat_obj.volInfo.mat(1:3, 1:3))';
+    voxelsize_cat_obj = abs(diag(cat_obj.volInfo.mat(1:3, 1:3)))';
     
     if ~dorobfit_parcelwise
         
         if exist('maskname_short','var')
-            voxelsize_glmmask = diag(glmmask.volInfo.mat(1:3, 1:3))';
+            voxelsize_glmmask = abs(diag(glmmask.volInfo.mat(1:3, 1:3)))';
             if ~isequal(voxelsize_glmmask,voxelsize_cat_obj)
                 glmmask = resample_space(glmmask,cat_obj);
                 glmmask.dat(glmmask.dat < 1) = 0; % re-binarize mask, resample_space causes non-zero non-one values at inner cortical boundaries
@@ -576,11 +576,11 @@ for c = 1:kc
     else 
         
         if exist('combined_atlas','var')
-            voxelsize_atlas = diag(combined_atlas.volInfo.mat(1:3, 1:3))';
+            voxelsize_atlas = abs(diag(combined_atlas.volInfo.mat(1:3, 1:3)))';
             if ~isequal(voxelsize_atlas,voxelsize_cat_obj)
                 combined_atlas = resample_space(combined_atlas,cat_obj);
             end
-            if strcmpi(atlasname_glm,'canlab2023')
+            if contains(atlasname_glm,'canlab2023')
                 combined_atlas = combined_atlas.threshold(0.25); % only keep probability values > 0.25
             end
         end
