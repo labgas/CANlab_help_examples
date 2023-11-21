@@ -81,9 +81,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% c2a_second_level_regression.m         v6.0
+% c2a_second_level_regression.m         v6.1
 %
-% last modified: 2023/11/15
+% last modified: 2023/11/21
 %
 %
 %% GET AND SET OPTIONS
@@ -373,7 +373,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             t = results{c}.t; % NOTE: this statistic_object is unthresholded AND unmasked (except for a brainmask)
             
             t = apply_mask(t,brainmask); % re-apply brainmask just to be sure
-            t = trim_mask(t);
+%             t = trim_mask(t);
             
             if exist('maskname_short','var')
                 voxelsize_glmmask = diag(glmmask.volInfo.mat(1:3, 1:3))';
@@ -386,7 +386,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             if apply_mask_before_fdr
                 t = apply_mask(t, glmmask);
-                t = trim_mask(t);
+%                 t = trim_mask(t);
             end
 
         else
@@ -406,7 +406,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     for j = 1:size(BF,2)
                         BF(j) = apply_mask(BF(j), glmmask);
-                        BF(j) = trim_mask(BF(j));
+%                         BF(j) = trim_mask(BF(j));
 
                     end
                 end
@@ -811,7 +811,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     tj = mvpa_bs_stats{j}.weight_obj;
                         if apply_mask_before_fdr
                             tj = apply_mask(tj, glmmask);
-                            tj = trim_mask(tj);
+%                             tj = trim_mask(tj);
                         end
                     tj = threshold(tj, q_threshold_mvpa_reg_cov, 'fdr', 'k', k_threshold_mvpa_reg_cov); 
 
