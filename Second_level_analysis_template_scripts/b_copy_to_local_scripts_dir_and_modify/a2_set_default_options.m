@@ -23,28 +23,29 @@
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% a2_set_default_options.m         v6.0
-% last modified: 2023/11/07
+% a2_set_default_options.m         v6.1
+% last modified: 2024/01/05
 %
 %
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
 % --------------------------------------------------------------------------------
 
-dofullplot = true;                                                  % default true  Can set to false to save time
-omit_histograms = false;                                            % default false Histograms not useful for large samples 
-dozipimages = false;                                                % default false to avoid load on data upload/download when re-running often, true is useful to save space when running final analyses; lukasvo76: changed from original CANlab default
+dofullplot = true;                                                  % default true      Can set to false to save time
+omit_histograms = false;                                            % default false     Histograms not useful for large samples 
+dozipimages = false;                                                % default false     To avoid load on data upload/download when re-running often, true is useful to save space when running final analyses; lukasvo76: changed from original CANlab default
 maskname_brain = which('brain_mask_fmriprep20_template_1000.nii');  % default use of brain mask based on fmriprep template 
+subjs2exclude_data = {};                                            % default empty     Subjects to be excluded from data objects, for example because of missing session not allowing all contrasts to be calculated, example {'sub-010' 'sub-018'}
 
 
 %% PREP_3A_RUN_SECOND_LEVEL_REGRESSION_AND_SAVE
 % -------------------------------------------------------------------------
 
-maskname_glm = which('gm_mask_canlab2023_coarse_fmriprep20_0_25.nii');  % default use of gray matter mask based on canlab 2023 atlas
+maskname_glm = which('gm_mask_canlab2023_coarse_fmriprep20_0_20.nii');  % default use of gray matter mask based on canlab 2023 atlas
                                                                         % model-specific maskdir defined in a_set_up_paths_always_run_first script
                                                                         % if you do not want to mask, change to []
                                                                         % if you want to use a custom mask, put it in maskdir and change name here
                                                                         % used in this script only for visualization of unthresholded results
-atlasname_glm = 'canlab2023';                                           % default use of new canlab2023 atlas - leaving blank will use legacy canlab2018 atlas, which is not recommended
+atlasname_glm = 'canlab2023_coarse_2mm';                                % default use of new canlab2023 atlas - leaving blank will use legacy canlab2018 atlas, which is not recommended anymore
                                                                             % if specified, atlas object used for 
                                                                             % 1. defining parcels in parcelwise analysis
                                                                             % 2. labeling regions in both voxelwise and parcelwise analyses
@@ -137,7 +138,7 @@ holdout_set_method_svm = 'onesample';                                           
                                                                                         % subject (i.e. leave whole subject out)
 holdout_set_type_svm = 'kfold';                                                 % 'kfold', 'leave_one_subject_out'      holdout set for cross-validation - the latter is not recommended
     nfolds_svm = 5;                                                                 % default 5                             number of cross-validation folds for kfold
-maskname_svm = which('gm_mask_canlab2023_coarse_fmriprep20_0_25.nii');          % default use of gray matter mask based on canlab 2023 atlas
+maskname_svm = which('gm_mask_canlab2023_coarse_fmriprep20_0_20.nii');          % default use of gray matter mask based on canlab 2023 atlas
                                                                                     % model-specific maskdir defined in a_set_up_paths_always_run_first script
                                                                                     % if you do not want to mask, change to []
                                                                                     % if you want to use a custom mask, put it in maskdir and change name here
@@ -215,7 +216,7 @@ holdout_set_method_mvpa_reg_st = 'onesample';                                   
                                                                                         % subject (i.e. leave whole subject out)
 nfolds_mvpa_reg_st = 5;                                                         % default 5             number of cross-validation folds for kfold
 zscore_outcome_mvpa_reg_st = false;                                             % default false         zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
-maskname_mvpa_reg_st = which('gm_mask_canlab2023_coarse_fmriprep20_0_25.nii');  % default use of gray matter mask based on canlab 2023 atlas
+maskname_mvpa_reg_st = which('gm_mask_canlab2023_coarse_fmriprep20_0_20.nii');  % default use of gray matter mask based on canlab 2023 atlas
 myscaling_mvpa_reg_st = 'raw';                                                  % 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
 
 % STATISTICS AND RESULTS VISUALIZATION OPTIONS
@@ -243,7 +244,7 @@ domultilevel_mvpa_reg_st = false;                                               
 
 save_figures_pdm = false;                                                       % default false                     true saves .svg files of all figures (slow, takes up space)
 zscore_outcome_pdm = false;                                                     % default false                     zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
-maskname_pdm = which('gm_mask_canlab2023_coarse_fmriprep20_0_25.nii');          % default use of gray matter mask based on canlab 2023 atlas
+maskname_pdm = which('gm_mask_canlab2023_coarse_fmriprep20_0_20.nii');          % default use of gray matter mask based on canlab 2023 atlas
 myscaling_pdm = 'raw';                                                          % 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
 
 % STATISTICS AND RESULTS VISUALIZATION OPTIONS

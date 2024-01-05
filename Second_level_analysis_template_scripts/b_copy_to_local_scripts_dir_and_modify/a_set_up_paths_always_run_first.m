@@ -44,8 +44,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a_set_up_paths_always_run_first.m         v1.2
-% last modified: 2023/05/05
+% @(#)% a_set_up_paths_always_run_first.m         v1.3
+% last modified: 2024/01/05
 
 
 %% RUN PREP AND FIRST LEVEL DESIGN SCRIPT
@@ -55,7 +55,9 @@
 % STUDY-SPECIFIC: replace LaBGAScore with study name in code below
 
 if ~exist('rootdir','var') || ~exist('githubrootdir','var')
-    warning('\nrootdir and/or githubrootdir variable not found in Matlab workspace, running LaBGAScore_prep_s0_define_directories before proceeding')
+    fprintf('\n')
+    warning('rootdir and/or githubrootdir variable not found in Matlab workspace, running LaBGAScore_prep_s0_define_directories before proceeding')
+    fprintf('\n')
     LaBGAScore_prep_s0_define_directories;
     cd(rootdir);
 else
@@ -66,7 +68,9 @@ end
 % STUDY-SPECIFIC: replace LaBGAScore with study name and add model index in code below
 
 if ~exist('DSGN','var')
-    warning('\nDSGN variable not found in Matlab workspace, running LaBGAScore_firstlevel_s1_options_dsgn_struct.m before proceeding')
+    fprintf('\n')
+    warning('DSGN variable not found in Matlab workspace, running LaBGAScore_firstlevel_s1_options_dsgn_struct.m before proceeding')
+    fprintf('\n')
     LaBGAScore_firstlevel_s1_options_dsgn_struct;
 end
 

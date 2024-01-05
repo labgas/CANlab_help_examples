@@ -182,7 +182,7 @@ for c = 1:size(DAT.contrasts, 1)
         end
         
         if size(condat, 2) ~= my_size
-            fprintf('\nCondition %d : number of images does not match. Check DATA_OBJ images and contrasts\n', i);
+            fprintf('\nCondition %d : number of images does not match. Check DATA_OBJ images and contrasts\n', i)
             error('exiting...')
         end
         

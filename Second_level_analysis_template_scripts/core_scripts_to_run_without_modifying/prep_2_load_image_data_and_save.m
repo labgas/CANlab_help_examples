@@ -22,6 +22,8 @@
 %
 % * maskname_brain          path to brainmask
 %
+% * subjs2exclude_data      default empty, subjects to be excluded from data objects, for example because of missing session not allowing all contrasts to be calculated, example {'sub-010' 'sub-018'}
+%
 % -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
@@ -30,9 +32,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_2_load_image_data_and_save.m         v2.0
+% prep_2_load_image_data_and_save.m         v2.1
 %
-% last modified: 2023/11/09
+% last modified: 2024/01/05
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
@@ -85,6 +87,10 @@ fprintf('\n\n');
 
 clear imgs cimgs
 
+if ~isempty(subjs2exclude_data) % we have subjects to exclude
+    idx_include = ~contains(DSGN.subjects',subjs2exclude_data);
+end
+
 for i = 1:size(DAT.conditions,2)
     
     % @lukasvo76: adapted to LaBGAS/BIDS conventional directory structure,
@@ -104,6 +110,12 @@ for i = 1:size(DAT.conditions,2)
 %         cimgs{i} = filenames(str, 'absolute');
         
         cimgs{i} = plugin_unzip_images_if_needed(str);
+        
+            if ~isempty(subjs2exclude_data) % we have subjects to exclude
+                if size(cimgs{i},1) == size(idx_include,1) % to be excluded subjects are not missing condition i
+                    cimgs{i} = cimgs{i}(idx_include);
+                end
+            end
     
     % @lukasvo76: this is the fallback option for Windows OS (which does
     % not accept wildcards before the last separator in the path)
@@ -123,9 +135,15 @@ for i = 1:size(DAT.conditions,2)
         
         cimgs{i} = cellstr(str);
         
-        for j = 1:size(cimgs{i},1)
-            cimgs{i}{j} = cimgs{i}{j}(1,1:end-2); % lukasvo76: gets rid of the ',1' added by spm_select at the end of the filename (first volume, but con images only have one volume)
-        end
+            for j = 1:size(cimgs{i},1)
+                cimgs{i}{j} = cimgs{i}{j}(1,1:end-2); % lukasvo76: gets rid of the ',1' added by spm_select at the end of the filename (first volume, but con images only have one volume)
+            end
+        
+            if ~isempty(subjs2exclude_data) % we have subjects to exclude
+                if size(cimgs{i},1) == size(idx_include,1) % to be excluded subjects are not missing condition i
+                    cimgs{i} = cimgs{i}(idx_include);
+                end
+            end
         
     end
     
