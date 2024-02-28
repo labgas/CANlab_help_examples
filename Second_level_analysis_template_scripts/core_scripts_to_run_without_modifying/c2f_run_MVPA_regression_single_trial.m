@@ -126,8 +126,8 @@
 % author: lukas.vanoudenhove@kuleuven.be, bogpetre@gmail.com
 % date:   April, 2021
 %__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v5.5        
-% last modified: 2023/01/19
+% @(#)% c2f_run_MVPA_regression_single_trial     v6.0        
+% last modified: 2024/02/28
 
 
 %% GET AND SET OPTIONS
@@ -966,7 +966,7 @@ fprintf('\n\n');
 if dosavemvparegstats
     
     fprintf('\n\n');
-    printhdr('SAVING ALL RESULTS');
+    printhdr('SAVING SINGLE LEVEL RESULTS');
     fprintf('\n\n');
     
     if exist('maskname_short', 'var')
@@ -1134,218 +1134,391 @@ if domultilevel_mvpa_reg_st
 
     bt_weight_obj = bo.estimator.transformers{1}.brainModel; % empty .dat at this stage
     bt_weight_obj.dat = bo.estimator.estimator.Bb(:); % fills mdl.dat with betas
-            
-            
-            
     
-    % DETERMINE MAXIMUM NUMBER OF COMPONENTS
-    %---------------------------------------
+    % PLOT OBSERVED VERSUS PREDICTED
+    
+    fprintf('\n\n');
+    printhdr('Plotting observed versus predicted');
+    fprintf('\n\n');
 
-    max_comp = floor(size(fmri_dat.dat,2).*0.75 - n_subj);
+%     switch ml_method_mvpa_reg_st
+% 
+%         case 'predict'
+% 
+%             fprintf('\n%s r = %0.3f\n\n', algorithm_mvpa_reg_st, corr(stats.yfit, fmri_dat.Y));
+% 
+%             figure
+%             
+%             nr_subjs = max(unique(subject_id));
+%             
+%             colors = distinguishable_colors(nr_subjs);
+%             colors_cell = mat2cell(colors,ones(1,nr_subjs));
+%             [han,~,~,slope_stats] = line_plot_multisubject(fmri_dat.Y, stats.yfit, 'subjid', subject_id, 'group_avg_ref_line', 'MarkerTypes','d', 'colors', colors_cell);
+%             xlabel({['Observed ' behav_outcome_dat_st],'(across conditions)'},'FontSize',14); 
+%             ylabel({['Estimated ' behav_outcome_dat_st],'(cross validated)'},'FontSize',14);
+% 
+%             for i = 1:size(han.line_handles,2)
+%                 han.line_handles(1,i).LineWidth = 2.5;
+%                 han.point_handles(1,i).MarkerSize = 5;
+%             end
+%             
+%             han.grpline_handle.LineWidth = 7.5;
+%             han.grpline_handle.LineStyle = '-';
+%             han.grpline_handle.Color = 'r';
+%             
+%             ax = gca;
+%             ax.FontWeight = 'bold';
+% 
+%             set(gcf,'WindowState','Maximized','Color','w');
+%             drawnow, snapnow;
+% 
+% 
+%         case 'oofmridataobj'
 
-    % NOTE: we specify the maximum number of components as < the number of columns in
-    % fmri_dat.dat (n_subjects*n_conditions(in every fold)) to avoid overfitting in multilevel models, 
-    % where we need to leave df for the random intercepts (upper bound 1 df per random intercept hence subject)
+            for y = 1:size(cvGS.Y,2)
+                r(y,1) = corr(cvGS.yfit{y},cvGS.Y{y});
+            end
 
-    % FIT SINGLE LEVEL MODEL
-    %-----------------------
+            cv_r = mean(r); % average r(yfit,y) over folds = cv correlation
 
-    [sl_cverr, sl_stats,sl_optout] = fmri_dat.predict('algorithm_name','cv_pcr',...
-        'nfolds',fold_labels, 'numcomponents',max_comp);
-    fprintf('PCR r = %0.3f\n', corr(sl_stats.yfit,fmri_dat.Y));
+            cv_mse = mean(cvGS.scores); % average MSE over folds = cv model performance
 
-    figure
+            fprintf('\n%s cross-validated r = %0.3f\n\n', algorithm_mvpa_reg_st, cv_r);
+            fprintf('\n%s cross-validated mse = %0.3f\n\n', algorithm_mvpa_reg_st, cv_mse);
 
-    line_plot_multisubject(fmri_dat.Y, sl_stats.yfit, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['PCR Estimated ' behav_outcome_dat_st],'(cross validated)'})
+            f1 = cvGS.plot; % plots predicted versus observed
 
-    set(gcf, 'WindowState','maximized');
+            set(gcf,'WindowState','Maximized');
+            drawnow, snapnow;
+
+%     end
+
+
+    % PLOT MONTAGE OF UNTHRESHOLDED WEIGHTS
+
+    fprintf('\n\n');
+    printhdr('Plotting unthresholded weight maps');
+    fprintf('\n\n');
+
+    whmontage = 5;
+    
+    % total
+
+    fprintf ('\nSHOWING UNTHRESHOLDED MULTILEVEL %s RESULTS, %s, TOTAL EFFECT, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
+
+    figure;
+
+    o2 = canlab_results_fmridisplay([], 'compact');
+
+%         switch ml_method_mvpa_reg_st
+% 
+%             case 'predict'
+%                 w = region(stats.weight_obj);
+
+%             case 'oofmridataobj'
+                w = region(weight_obj);
+
+%         end
+
+    o2 = addblobs(o2, w, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+    o2 = title_montage(o2, whmontage, ['multilevel ' algorithm_mvpa_reg_st ' total effect, unthresholded ' mask_string]);
+
+    figtitle = sprintf('%s_unthresholded_montage_multilevel_total_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
+    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
     drawnow, snapnow;
 
-    figure
+    clear w, clear o2, clear figtitle
+    
+    % within
+    
+    fprintf ('\nSHOWING UNTHRESHOLDED MULTILEVEL %s RESULTS, %s, WITHIN-SUBJECT EFFECT, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
 
-    sl_stats.weight_obj.montage;
+    figure;
 
-    set(gcf, 'WindowState','maximized');
+    o2 = canlab_results_fmridisplay([], 'compact');
+
+%         switch ml_method_mvpa_reg_st
+% 
+%             case 'predict'
+%                 w = region(stats.weight_obj);
+
+%             case 'oofmridataobj'
+                w = region(wi_weight_obj);
+
+%         end
+
+    o2 = addblobs(o2, w, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+    o2 = title_montage(o2, whmontage, ['multilevel ' algorithm_mvpa_reg_st ' within-subject effect, unthresholded ' mask_string]);
+
+    figtitle = sprintf('%s_unthresholded_montage_multilevel_within_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
+    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
     drawnow, snapnow;
 
+    clear w, clear o2, clear figtitle
+    
+    % between
+    
+    fprintf ('\nSHOWING UNTHRESHOLDED MULTILEVEL %s RESULTS, %s, WITHIN-SUBJECT EFFECT, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
 
-    % FIT MULTILEVEL MODEL W/FIXED PARAMETER ESTIMATION
-    %--------------------------------------------------
+    figure;
 
-    % split maximum amount of components in between and within
+    o2 = canlab_results_fmridisplay([], 'compact');
 
-    n_bt_comp = floor(0.75*n_subj);
-    n_wi_comp = max_comp - n_bt_comp;
+%         switch ml_method_mvpa_reg_st
+% 
+%             case 'predict'
+%                 w = region(stats.weight_obj);
 
-    % NOTE: max between = n_subj IN EVERY FOLD (hence n_subj - 20% in 5-fold CV), 
-    % and you want to put more money on within since this typically explains
-    % more variance
+%             case 'oofmridataobj'
+                w = region(bt_weight_obj);
 
-    % overall model prediction
+%         end
 
-    [ml_cverr, ml_stats, ml_optout] = fmri_dat.predict('algorithm_name','cv_mlpcr',...
-        'nfolds',fold_labels,'numcomponents',[n_bt_comp, n_wi_comp],'subjIDs',subject_id);
-    fprintf('multilevel PCR r = %0.3f\n',corr(ml_stats.yfit, fmri_dat.Y));
+    o2 = addblobs(o2, w, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+    o2 = title_montage(o2, whmontage, ['multilevel ' algorithm_mvpa_reg_st ' between-subject effect, unthresholded ' mask_string]);
 
-    % NOTE: algorithm option 'cv_mlpcr' requires subject identifier,
-    % which makes sense since this is a multilevel/mixed model
-    % note that fold labels are the same, since they respect subject membership
-
-    figure
-
-    line_plot_multisubject(fmri_dat.Y, ml_stats.yfit, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['MLPCR Estimated ' behav_outcome_dat_st],'(cross validated)'})
-
-    set(gcf, 'WindowState','maximized');
+    figtitle = sprintf('%s_unthresholded_montage_multilevel_between_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
+    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
     drawnow, snapnow;
 
-    figure
-
-    ml_stats.weight_obj.montage;
-
-    set(gcf, 'WindowState','maximized');
-    drawnow, snapnow;
-
-    figure
-
-    subplot(1,2,1)
-    line_plot_multisubject(sl_stats.yfit, ml_stats.yfit, 'subjid', subject_id);
-    xlabel({'PCR model prediction'}); ylabel('Multilevel PCR model prediction');
-    axis square
-    subplot(1,2,2);
-    plot(sl_optout{1}(:),ml_optout{1}(:),'.');
-    lsline;
-    xlabel('PCR model weights'); ylabel('Multilevel PCR model weights');
-    axis square
-
-    set(gcf, 'WindowState','maximized');
-    drawnow, snapnow;
-
-    % NOTE: contrary to @bogpetre's walkthrough, the
-    % pcr and the multilevel pcr models are not exactly equivalent anymore
-    % since I have been specifying the number of components
-
-    % get the variance explained by the between and within component
-
-    % NOTE: These functions call the same thing under the hood, 
-    % but simply perform cross validation using ONLY between or within
-    % subject models.
-
-    [ml_bt_cverr, ml_bt_stats] = fmri_dat.predict('algorithm_name','cv_mlpcr_bt',...
-        'nfolds',fold_labels,'numcomponents',[n_bt_comp, n_wi_comp],'subjIDs',subject_id, 'verbose', 1, 'useparallel', 1);
-    pred_bt = ml_bt_stats.yfit;
-
-    [ml_wi_cverr, ml_wi_stats] = fmri_dat.predict('algorithm_name','cv_mlpcr_wi',...
-        'nfolds',fold_labels,'numcomponents',[n_bt_comp, n_wi_comp],'subjIDs',subject_id, 'verbose', 1, 'useparallel', 1);
-    pred_wi = ml_wi_stats.yfit;
-
-    % NOTE: algorithm options are created by bogpetre
-
-    fprintf('Between subject PCR components r = %0.3f\n', corr(ml_bt_stats.yfit, fmri_dat.Y));
-    fprintf('Within subject PCR components r = %0.3f\n', corr(ml_wi_stats.yfit, fmri_dat.Y));
-
-    figure
-
-    subplot(1,2,1)
-    line_plot_multisubject(fmri_dat.Y, pred_bt, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome_dat_st]}); ylabel('Between subject components'' prediction');
-    axis square
-    subplot(1,2,2)
-    line_plot_multisubject(fmri_dat.Y, pred_wi, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome_dat_st]}); ylabel('Within subject components'' prediction');
-    axis square
-
-    set(gcf, 'WindowState','maximized');
-    drawnow, snapnow;
-
-
-    % FIT MULTiLEVEL MODEL W/ MIXED PARAMETER ESTIMATION
-    %---------------------------------------------------
-
-    % NOTE: this is not part of the walkthrough yet, but @bogpetre pushed
-    % mlpcr3 function to CanlabCore
-
-    % NOTE bogpetre:
-    % main function is mlpcr3, so help mlpcr3 for usage options.
-    % basically it's the same as cv_mlpcr, except there's a randInt, randSlope and fitlmeOpts now
-    % fitlmeOpts get passed on to fitlme. It picks some sensible defaults
-    % randSlope makes things much slower. randInt is roughly the sae order of magnitude as running the fixed effects version
-    % the function defaults to fixed effects by default, so it's a drop in replacement
-    % for mlpcr2.m (aka cv_mlpcr)
-
-    % overall model prediction including random intercept only
-
-    [ml3_cverr, ml3_stats, ml3_optout] = fmri_dat.predict('algorithm_name','cv_mlpcr3',...
-        'nfolds',fold_labels,'numcomponents',[n_bt_comp, n_wi_comp],'subjIDs',subject_id, 'randInt', 1);
-
-    fprintf('multilevel PCR r = %0.3f\n',corr(ml3_stats.yfit, fmri_dat.Y));
-
-    % NOTE: compare with code in previous section and note change of algorithm_name option to cv_mlpcr3 and addition of randInt
-    % option - see help mlpcr3 for more details
-
-    figure
-
-    line_plot_multisubject(fmri_dat.Y, ml3_stats.yfit, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['MLPCR3 Estimated ' behav_outcome_dat_st],'(cross validated)'})
-
-    set(gcf, 'WindowState','maximized');
-    drawnow, snapnow;
-
-    figure
-
-    ml3_stats.weight_obj.montage;
-
-    set(gcf, 'WindowState','maximized');
-    drawnow, snapnow;
-
-    figure
-
-    subplot(1,2,1)
-    line_plot_multisubject(ml_stats.yfit, ml3_stats.yfit, 'subjid', subject_id);
-    xlabel({'Multilevel PCR model prediction'}); ylabel('Multilevel PCR model random int model prediction');
-    axis square
-    subplot(1,2,2);
-    plot(ml_optout{1}(:),ml3_optout{1}(:),'.');
-    lsline;
-    xlabel('Multilevel PCR model weights'); ylabel('Multilevel PCR model random int model weights');
-    axis square
-
-    set(gcf, 'WindowState','maximized');
-    drawnow, snapnow;
-
-    % NOTE: models are very similar but not exactly equivalent
-
-    % overall model prediction including random intercept and random slope
-
-    [ml3rs_cverr, ml3rs_stats, ml3rs_optout] = fmri_dat.predict('algorithm_name','cv_mlpcr3',...
-        'nfolds',fold_labels,'numcomponents',[n_bt_comp, n_wi_comp],'subjIDs',subject_id, 'randInt', 1, 'randSlope', 1);
-
-    fprintf('multilevel PCR r = %0.3f\n',corr(ml3rs_stats.yfit, fmri_dat.Y));
-
-    figure
-
-    line_plot_multisubject(fmri_dat.Y, ml3rs_stats.yfit, 'subjid', subject_id);
-    xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['MLPCR3 Estimated ' behav_outcome_dat_st],'(cross validated)'})
-
-    set(gcf, 'WindowState','maximized');
-    drawnow, snapnow;
-
-    figure
-
-    ml3rs_stats.weight_obj.montage;
-
-    set(gcf, 'WindowState','maximized');
-    drawnow, snapnow;
+    clear w, clear o2, clear figtitle
+            
+            
+    % OLD PREDICT CODE, COULD BE REINTEGRATED
+    %---------------------------------------- 
+    
+%     % DETERMINE MAXIMUM NUMBER OF COMPONENTS
+%     %---------------------------------------
+% 
+%     max_comp = floor(size(fmri_dat.dat,2).*0.75 - n_subj);
+% 
+%     % NOTE: we specify the maximum number of components as < the number of columns in
+%     % fmri_dat.dat (n_subjects*n_conditions(in every fold)) to avoid overfitting in multilevel models, 
+%     % where we need to leave df for the random intercepts (upper bound 1 df per random intercept hence subject)
+% 
+%     % FIT SINGLE LEVEL MODEL
+%     %-----------------------
+% 
+%     [sl_cverr, sl_stats,sl_optout] = fmri_dat.predict('algorithm_name','cv_pcr',...
+%         'nfolds',fold_labels, 'numcomponents',max_comp);
+%     fprintf('PCR r = %0.3f\n', corr(sl_stats.yfit,fmri_dat.Y));
+% 
+%     figure
+% 
+%     line_plot_multisubject(fmri_dat.Y, sl_stats.yfit, 'subjid', subject_id);
+%     xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['PCR Estimated ' behav_outcome_dat_st],'(cross validated)'})
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
+% 
+%     figure
+% 
+%     sl_stats.weight_obj.montage;
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
+% 
+% 
+%     % FIT MULTILEVEL MODEL W/FIXED PARAMETER ESTIMATION
+%     %--------------------------------------------------
+% 
+%     % split maximum amount of components in between and within
+% 
+%     n_bt_comp = floor(0.75*n_subj);
+%     n_wi_comp = max_comp - n_bt_comp;
+% 
+%     % NOTE: max between = n_subj IN EVERY FOLD (hence n_subj - 20% in 5-fold CV), 
+%     % and you want to put more money on within since this typically explains
+%     % more variance
+% 
+%     % overall model prediction
+% 
+%     [ml_cverr, ml_stats, ml_optout] = fmri_dat.predict('algorithm_name','cv_mlpcr',...
+%         'nfolds',fold_labels,'numcomponents',[n_bt_comp, n_wi_comp],'subjIDs',subject_id);
+%     fprintf('multilevel PCR r = %0.3f\n',corr(ml_stats.yfit, fmri_dat.Y));
+% 
+%     % NOTE: algorithm option 'cv_mlpcr' requires subject identifier,
+%     % which makes sense since this is a multilevel/mixed model
+%     % note that fold labels are the same, since they respect subject membership
+% 
+%     figure
+% 
+%     line_plot_multisubject(fmri_dat.Y, ml_stats.yfit, 'subjid', subject_id);
+%     xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['MLPCR Estimated ' behav_outcome_dat_st],'(cross validated)'})
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
+% 
+%     figure
+% 
+%     ml_stats.weight_obj.montage;
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
+% 
+%     figure
+% 
+%     subplot(1,2,1)
+%     line_plot_multisubject(sl_stats.yfit, ml_stats.yfit, 'subjid', subject_id);
+%     xlabel({'PCR model prediction'}); ylabel('Multilevel PCR model prediction');
+%     axis square
+%     subplot(1,2,2);
+%     plot(sl_optout{1}(:),ml_optout{1}(:),'.');
+%     lsline;
+%     xlabel('PCR model weights'); ylabel('Multilevel PCR model weights');
+%     axis square
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
+% 
+%     % NOTE: contrary to @bogpetre's walkthrough, the
+%     % pcr and the multilevel pcr models are not exactly equivalent anymore
+%     % since I have been specifying the number of components
+% 
+%     % get the variance explained by the between and within component
+% 
+%     % NOTE: These functions call the same thing under the hood, 
+%     % but simply perform cross validation using ONLY between or within
+%     % subject models.
+% 
+%     [ml_bt_cverr, ml_bt_stats] = fmri_dat.predict('algorithm_name','cv_mlpcr_bt',...
+%         'nfolds',fold_labels,'numcomponents',[n_bt_comp, n_wi_comp],'subjIDs',subject_id, 'verbose', 1, 'useparallel', 1);
+%     pred_bt = ml_bt_stats.yfit;
+% 
+%     [ml_wi_cverr, ml_wi_stats] = fmri_dat.predict('algorithm_name','cv_mlpcr_wi',...
+%         'nfolds',fold_labels,'numcomponents',[n_bt_comp, n_wi_comp],'subjIDs',subject_id, 'verbose', 1, 'useparallel', 1);
+%     pred_wi = ml_wi_stats.yfit;
+% 
+%     % NOTE: algorithm options are created by bogpetre
+% 
+%     fprintf('Between subject PCR components r = %0.3f\n', corr(ml_bt_stats.yfit, fmri_dat.Y));
+%     fprintf('Within subject PCR components r = %0.3f\n', corr(ml_wi_stats.yfit, fmri_dat.Y));
+% 
+%     figure
+% 
+%     subplot(1,2,1)
+%     line_plot_multisubject(fmri_dat.Y, pred_bt, 'subjid', subject_id);
+%     xlabel({['Observed ' behav_outcome_dat_st]}); ylabel('Between subject components'' prediction');
+%     axis square
+%     subplot(1,2,2)
+%     line_plot_multisubject(fmri_dat.Y, pred_wi, 'subjid', subject_id);
+%     xlabel({['Observed ' behav_outcome_dat_st]}); ylabel('Within subject components'' prediction');
+%     axis square
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
+% 
+% 
+%     % FIT MULTiLEVEL MODEL W/ MIXED PARAMETER ESTIMATION
+%     %---------------------------------------------------
+% 
+%     % NOTE: this is not part of the walkthrough yet, but @bogpetre pushed
+%     % mlpcr3 function to CanlabCore
+% 
+%     % NOTE bogpetre:
+%     % main function is mlpcr3, so help mlpcr3 for usage options.
+%     % basically it's the same as cv_mlpcr, except there's a randInt, randSlope and fitlmeOpts now
+%     % fitlmeOpts get passed on to fitlme. It picks some sensible defaults
+%     % randSlope makes things much slower. randInt is roughly the sae order of magnitude as running the fixed effects version
+%     % the function defaults to fixed effects by default, so it's a drop in replacement
+%     % for mlpcr2.m (aka cv_mlpcr)
+% 
+%     % overall model prediction including random intercept only
+% 
+%     [ml3_cverr, ml3_stats, ml3_optout] = fmri_dat.predict('algorithm_name','cv_mlpcr3',...
+%         'nfolds',fold_labels,'numcomponents',[n_bt_comp, n_wi_comp],'subjIDs',subject_id, 'randInt', 1);
+% 
+%     fprintf('multilevel PCR r = %0.3f\n',corr(ml3_stats.yfit, fmri_dat.Y));
+% 
+%     % NOTE: compare with code in previous section and note change of algorithm_name option to cv_mlpcr3 and addition of randInt
+%     % option - see help mlpcr3 for more details
+% 
+%     figure
+% 
+%     line_plot_multisubject(fmri_dat.Y, ml3_stats.yfit, 'subjid', subject_id);
+%     xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['MLPCR3 Estimated ' behav_outcome_dat_st],'(cross validated)'})
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
+% 
+%     figure
+% 
+%     ml3_stats.weight_obj.montage;
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
+% 
+%     figure
+% 
+%     subplot(1,2,1)
+%     line_plot_multisubject(ml_stats.yfit, ml3_stats.yfit, 'subjid', subject_id);
+%     xlabel({'Multilevel PCR model prediction'}); ylabel('Multilevel PCR model random int model prediction');
+%     axis square
+%     subplot(1,2,2);
+%     plot(ml_optout{1}(:),ml3_optout{1}(:),'.');
+%     lsline;
+%     xlabel('Multilevel PCR model weights'); ylabel('Multilevel PCR model random int model weights');
+%     axis square
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
+% 
+%     % NOTE: models are very similar but not exactly equivalent
+% 
+%     % overall model prediction including random intercept and random slope
+% 
+%     [ml3rs_cverr, ml3rs_stats, ml3rs_optout] = fmri_dat.predict('algorithm_name','cv_mlpcr3',...
+%         'nfolds',fold_labels,'numcomponents',[n_bt_comp, n_wi_comp],'subjIDs',subject_id, 'randInt', 1, 'randSlope', 1);
+% 
+%     fprintf('multilevel PCR r = %0.3f\n',corr(ml3rs_stats.yfit, fmri_dat.Y));
+% 
+%     figure
+% 
+%     line_plot_multisubject(fmri_dat.Y, ml3rs_stats.yfit, 'subjid', subject_id);
+%     xlabel({['Observed ' behav_outcome_dat_st],'(average over conditions)'}); ylabel({['MLPCR3 Estimated ' behav_outcome_dat_st],'(cross validated)'})
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
+% 
+%     figure
+% 
+%     ml3rs_stats.weight_obj.montage;
+% 
+%     set(gcf, 'WindowState','maximized');
+%     drawnow, snapnow;
 
 
     %% SAVE STATS FOR MULTILEVEL MODELS
     %--------------------------------------------------------------------------
     
     if dosavemvparegstats
+        
+        fprintf('\n\n');
+        printhdr('SAVING MULTILEVEL RESULTS');
+        fprintf('\n\n');
     
-        savefilename = fullfile(resultsdir, 'single_trial_multilevel_MVPA_results.mat');
-        save(savefilename, 'pcr_stats','mlpcr_stats','mlpcr3_stats','mlpcr3rs_stats', '-v7.3');
+        if exist('maskname_short', 'var')
+        
+            if ~isempty(cons2exclude_dat_st)
+                savefilename = fullfile(resultsdir, ['single_trial_multilevel', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '_results.mat']);
+
+            else
+                savefilename = fullfile(resultsdir, ['single_trial_multilevel', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_', results_suffix, '_results.mat']);
+
+            end
+        
+        else
+        
+            if ~isempty(cons2exclude_dat_st)
+                            savefilename = fullfile(resultsdir, ['single_trial_multilevel', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '_results.mat']);
+
+            else
+                savefilename = fullfile(resultsdir, ['single_trial_multilevel', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_', results_suffix, '_results.mat']);
+
+            end
+        end
+        
+        save(savefilename, 'weight_obj','wi_weight_obj','bt_weight_obj', '-v7.3');
         
     end
     
