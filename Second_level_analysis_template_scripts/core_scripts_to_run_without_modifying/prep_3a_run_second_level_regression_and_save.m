@@ -69,6 +69,12 @@
 %                                       USAGE: use option b if you want to restrict the parcels to the
 %                                               ones included in maskname_glm, or any atlas or a subset thereof
 %
+%       * atlas_granularity         level of granularity of canlab2023 atlas for 
+%                                       1. defining parcels in parcelwise analysis
+%                                       2. labeling regions in both voxel- and parcelwise analysis
+%
+%                                       options: 1 = fine (595 parcels), 2 = intermediate (525 parcels), 3 = coarse (264 parcels)
+%
 % * design_matrix_type
 %
 %       1. 'group' 
@@ -92,6 +98,20 @@
 %       NOTE: To set up group and custom variables, see prep_1b_prep_behavioral_data
 %
 % * doBayes                     convert t-maps into Bayes Factors 
+%
+% * doroi_analysis              extract roi averages from condition (beta) or contrast (con) images using atlas objects created by LaBGAScore_atlas_binary_mask_from_atlas.m and written in secondlevel/modeldir/masks as input
+%
+%       _roi analysis options_
+%
+%         * roi_names            cell array of names corresponding to roiname variables in LaBGAScore_atlas_rois_from_atlas.m which writes atlas objects for each roi in secondlevel/modeldir/masks
+%         * roi_modelname        from same script       
+%         * roi_set_name         from same script
+%
+% * doneurotransmitter_maps     calculate spatial similarity with neurotransmitter maps from Hansen et al Nat Neurosci 2022 for each contrast/condition
+%
+%       _neurotransmitter map options_
+%
+%         * neurotransmitter_similarity_metric      'correlation' (default) or 'cosine_similarity'
 %
 % * domvpa_reg_cov              run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
 %
@@ -143,9 +163,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v6.4
+% prep_3a_run_second_level_regression_and_save.m         v8.1
 %
-% last modified: 2023/11/24
+% last modified: 2024/02/28
 %
 %
 %% GET AND SET OPTIONS
@@ -163,7 +183,7 @@ results_suffix = ''; % adds a suffix of your choice to .mat file with results th
 
 % OPTIONS IF DESIGN_MATRIX_TYPE = CUSTOM
 
-% covs2use = {'delta_rating'};      % needs to correspond to variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} AND THE ORDER IN WHICH THEY APPEAR THERE
+% covs2use = {'delta_wanting'};      % needs to correspond to variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} AND THE ORDER IN WHICH THEY APPEAR THERE
 
 % NOTE: if you want to use all variables in DAT.BETWEENPERSON.(mygroupnamefield){:} as covariates, comment this option out
 
@@ -202,13 +222,20 @@ plugin_get_options_for_analysis_script;
 
 % maskname_glm = 'mask_name';
 % atlasname_glm = 'atlas_name';
+%   atlas_granularity = 1/2/3;
 % dorobust = true/false;
 % dorobfit_parcelwise = true/false;
 %   csf_wm_covs = true/false;
 %   remove_outliers = true/false;
 % myscaling_glm = 'raw'/'scaled'/'scaled_contrasts';
-% design_matrix_type = 'custom'/'group'/'onesample';
+% design_matrix_type = 'custom';
 % doBayes = true/false;
+% doroi_analysis = true/false;
+%   roi_names = {'x','y','z'};
+%   roi_modelname = 'modelname';
+%   roi_set_name = 'setname';
+% doneurotransmitter_maps = true/false;
+%   neurotransmitter_similarity_metric = 'cosine_similarity'/'correlation';
 % domvpa_reg_cov = true/false;
 %   algorithm_mvpa_reg_cov = 'cv_pcr';
 %   holdout_set_method_mvpa_reg_cov = 'no_group'/'group';
@@ -280,8 +307,6 @@ fprintf('\n\n');
 printhdr('MASKING IMAGES IF REQUESTED IN OPTIONS');
 fprintf('\n\n');
 
-cmap = colormap('lines');
-
 if ~dorobfit_parcelwise
 
     if exist('maskname_glm', 'var') && ~isempty(maskname_glm) && exist(maskname_glm, 'file')
@@ -292,9 +317,10 @@ if ~dorobfit_parcelwise
             end
         mask_string = sprintf('masked with %s', maskname_short);
         glmmask = fmri_mask_image(maskname_glm, 'noverbose'); 
-            if any(unique(glmmask.dat) ~= 1)
+           
+             if any(unique(glmmask.dat) ~= 1)
                 glmmask.dat(glmmask.dat > 0) = 1; % binarize mask if needed
-            end
+             end
             
         fprintf('\nMasking voxelwise results visualization with %s\n\n', maskname_short);
         
@@ -325,25 +351,32 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
         [~,atlasname_short] = fileparts(atlasname_glm);
         clear mask
         
+        if logical(exist('atlas_granularity','var')) && atlas_granularity ~= 1
+            combined_atlas = combined_atlas.downsample_parcellation(['labels_' num2str(atlas_granularity)]);
+        end
+        
         if dorobfit_parcelwise
             
             maskname_short = atlasname_short;
             mask_string = sprintf('masked with %s', maskname_short);
-            fprintf('\nRunning parcelwise analysis in custom-made atlas %s\n\n', atlasname_short);
+            fprintf('\nRunning parcelwise analysis in custom-made atlas %s at granularity level labels_%d\n\n', atlasname_short, atlas_granularity);
             
         end
         
-        fprintf('\nLabeling regions using custom-made atlas %s\n\n', atlasname_short);
+        fprintf('\nLabeling regions using custom-made atlas %s at granularity level labels_%d\n\n', atlasname_short, atlas_granularity);
         
         % MONTAGE OF ATLAS
         
+        cmap = colormap('colorcube');
+        close gcf;
+                
         figure;
         o2 = canlab_results_fmridisplay([], 'compact');
         o2 = addblobs(o2, atlas2region(combined_atlas),'indexmap',cmap,'interp','nearest');
         if dorobfit_parcelwise
-            o2 = title_montage(o2, 5, ['parcel-wise analysis in atlas: ' atlasname_short]);
+            o2 = title_montage(o2, 5, ['parcel-wise analysis in atlas: ' atlasname_short ' at granularity level labels_' num2str(atlas_granularity)]);
         else
-            o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_short]);
+            o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_short ' at granularity level labels_' num2str(atlas_granularity)]);
         end
         set(gcf,'WindowState','maximized');
         drawnow,snapnow;
@@ -354,6 +387,10 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
 
         combined_atlas = load_atlas(atlasname_glm);
         
+        if logical(exist('atlas_granularity','var')) && atlas_granularity ~= 1
+            combined_atlas = combined_atlas.downsample_parcellation(['labels_' num2str(atlas_granularity)]);
+        end
+        
         if contains(atlasname_glm,'canlab2023')
             combined_atlas = combined_atlas.threshold(0.20); % only keep probability values > 0.20 in probabistic canlab2023 atlas
         end
@@ -361,46 +398,137 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
         if dorobfit_parcelwise
             mask_string = sprintf('in atlas %s',atlasname_glm);
             
-            fprintf('\nRunning parcelwise analysis in custom atlas %s\n\n', atlasname_glm);
+            fprintf('\nRunning parcelwise analysis in custom-made atlas %s at granularity level labels_%d\n\n', atlasname_glm, atlas_granularity);
             
         end
         
-        fprintf('\nLabeling regions using custom atlas %s\n\n', atlasname_glm);
+        fprintf('\nLabeling regions using custom-made atlas %s at granularity level labels_%d\n\n', atlasname_glm, atlas_granularity);
+        
         
         % MONTAGE OF ATLAS
+        
+        cmap = colormap('colorcube');
+        close gcf;
         
         figure;
         o2 = canlab_results_fmridisplay([], 'compact');
         o2 = addblobs(o2, atlas2region(combined_atlas),'indexmap',cmap,'interp','nearest');
         if dorobfit_parcelwise
-            o2 = title_montage(o2, 5, ['parcel-wise analysis in atlas: ' atlasname_glm]);
+            o2 = title_montage(o2, 5, ['parcel-wise analysis in atlas: ' atlasname_glm ' at granularity level labels_' num2str(atlas_granularity)]);
         else
-            o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_glm]);
+            o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_glm ' at granularity level labels_' num2str(atlas_granularity)]);
         end
         set(gcf,'WindowState','maximized');
         drawnow,snapnow;
         
         clear o2
-
+        
     else
 
          error('\ninvalid option "%s" defined in atlasname_glm variable, should be a keyword for load_atlas.m or a .mat file containing an atlas object, check docs"\n\n',atlasname_glm)
 
     end
-
+    
 else
 
     if dorobfit_parcelwise
         mask_string = sprintf('without masking');
         
-        fprintf('\nShowing parcelwise results without masking in 489 parcels of canlab_2018 atlas\n\n');
+        fprintf('\nShowing parcelwise results without masking in 489 parcels of canlab_2018 atlas, which is now deprecated\n\n');
         
     end
 
 end
 
-
 brainmask = fmri_mask_image(maskname_brain,'noverbose');
+
+
+%% MERGE ROI ATLAS OBJECTS
+% -------------------------------------------------------------------------
+
+if doroi_analysis
+    
+    load(fullfile(maskdir,[roi_modelname '_rois_' roi_set_name '.mat']));
+    
+    if logical(exist('roi_names','var')) && ~isempty(roi_names)
+        
+        all_rois = false;
+    
+        roi_idx = zeros(1,size(roi_atlases_flat,2));
+        roi_idx = logical(roi_idx);
+
+        for r = 1:size(roi_atlases_flat,2)
+
+            roi_idx(r) = contains(roi_atlases_flat{r}.atlas_name,roi_names);
+
+        end
+
+        clear r
+
+        roi_atlases_flat = roi_atlases_flat(roi_idx);
+        
+    else
+        
+        all_rois = true;
+        
+        roi_names = cell(1,size(roi_atlases_flat,2));
+        
+    end
+        
+    roi_atlas = roi_atlases_flat{1};
+    roi_atlas.atlas_name = 'combined_roi_atlas';
+    roi_atlas.labels{1} = roi_atlases_flat{1}.atlas_name;
+    
+    if all_rois
+        
+        roi_names{1} = roi_atlases_flat{1}.atlas_name;
+        
+    end
+    
+    roi = 2;
+    
+    while roi < (size(roi_atlases_flat,2) + 1)
+        
+        roi_atlas = merge_atlases(roi_atlas, roi_atlases_flat{roi},'noreplace');
+%           LVO: whether or not 'noreplace' option is chosen or not should
+%           not matter if all regions are from same atlas
+
+        roi_atlas.labels{roi} = roi_atlases_flat{roi}.atlas_name;
+
+            if all_rois
+
+                roi_names{roi} = roi_atlases_flat{roi}.atlas_name;
+
+            end
+        
+        roi = roi+1;
+        
+    end
+    
+    clear roi
+    
+    for roi = 1:size(roi_atlases_flat,2)
+        roi_atlas.labels{roi} = roi_atlases_flat{roi}.atlas_name;
+    end
+    
+    % MONTAGE OF ROI ATLAS OBJECT
+        
+        cmap2cell = scn_standard_colors(size(roi_atlas.labels,2));
+        cmap2 = zeros(size(roi_atlas.labels,2),3);
+        
+        for color = 1:size(cmap2cell,2)
+            cmap2(color,:) = cmap2cell{color};
+        end
+    
+        figure;
+        o2 = canlab_results_fmridisplay([], 'compact');
+        o2 = addblobs(o2, atlas2region(roi_atlas),'indexmap',cmap2,'interp','nearest');
+        o2 = title_montage(o2, 5, 'atlas used for extraction of roi averages');
+        set(gcf,'WindowState','maximized');
+        drawnow,snapnow;
+        
+        clear o2
+end
 
 
 %% RUN SECOND LEVEL REGRESSION FOR EACH CONTRAST
@@ -433,6 +561,28 @@ if ~dorobfit_parcelwise
 else
     
     parcelwise_stats_results = cell(1,kc);
+    
+end
+
+if doroi_analysis
+    
+    roi_means = cell(1,kc);
+    roi_means_table = cell(1,kc);
+    roi_adjusted_means = cell(1,kc);
+    
+end
+
+if doneurotransmitter_maps
+    
+    neurotransmitter_stats = cell(1,kc);
+    
+    if isequal(design_matrix_type,'group')
+        
+        neurotransmitter_group_stats = cell(1,kc);
+        neurotransmitter_group_tables = cell(1,kc);
+        neurotransmitter_multcomp_group = cell(1,kc);
+        
+    end
     
 end
 
@@ -635,11 +785,13 @@ for c = 1:kc
                 end
                 
             end
+            
         end
         
     else 
         
         if exist('combined_atlas','var')
+            
             voxelsize_atlas = abs(diag(combined_atlas.volInfo.mat(1:3, 1:3)))';
             if ~isequal(voxelsize_atlas,voxelsize_cat_obj)
                 combined_atlas = resample_space(combined_atlas,cat_obj);
@@ -650,7 +802,7 @@ for c = 1:kc
 
                     figure;
                     o2 = canlab_results_fmridisplay([], 'compact');
-                    o2 = addblobs(o2, atlas2region(combined_atlas),'indexmap',cmap);
+                    o2 = addblobs(o2, atlas2region(combined_atlas),'indexmap',cmap,'interp','nearest');
                     if exist('atlasname_short','var')
                         o2 = title_montage(o2, 5, ['resampled ' atlasname_short]);
                     else
@@ -664,6 +816,21 @@ for c = 1:kc
                 end
                 
             end
+            
+            if doneurotransmitter_maps
+                    
+                glmmask = fmri_mask_image(combined_atlas);
+                voxelsize_glmmask = abs(diag(glmmask.volInfo.mat(1:3, 1:3)))';
+                voxelsize_cat_obj = abs(diag(cat_obj.volInfo.mat(1:3, 1:3)))';
+                
+                if ~isequal(voxelsize_glmmask,voxelsize_cat_obj)
+                    glmmask = resample_space(glmmask,cat_obj);
+                    glmmask.dat(glmmask.dat < 1) = 0; % re-binarize mask, resample_space causes non-zero non-one values at inner cortical boundaries
+                    
+                end
+                    
+            end
+  
         end
         
     end
@@ -764,8 +931,183 @@ for c = 1:kc
         end
         
     end
+    
+    
+    %%
+    % *EXTRACT ROI AVERAGES*
+    
+    if doroi_analysis
+            
+        roi_means{c} = apply_atlas(cat_obj,roi_atlas);
+        roi_means_table{c} = array2table(roi_means{c},'VariableNames',roi_names');
+        roi_colors = mat2cell(cmap2,ones(1,size(roi_atlas.labels,2)));
+            
+        switch mygroupnamefield
         
-    %%    
+            case 'contrasts'
+                
+                fprintf('\n\n');
+                printhdr(['CONTRAST #', num2str(c), ': ', upper(DAT.contrastnames{c})]);
+                fprintf('\n\n');
+
+                switch design_matrix_type
+
+                    case 'custom'
+                        roi_means_table{c} = [roi_means_table{c} table_obj];
+                        [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(table_obj,2)),'covs',table2array(table_obj),'title',['ROI means, EFFECT: ' DAT.contrastnames{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
+                        set(gcf,'WindowState','maximized');
+                        drawnow,snapnow;
+
+                    case 'group'
+                        group_table = array2table(group,'VariableNames',groupnames);
+                        roi_means_table{c} = [roi_means_table{c} group_table];
+                        [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(group_table,2)),'covs',table2array(group_table),'title',['ROI means, EFFECT: ' DAT.contrastnames{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
+                        set(gcf,'WindowState','maximized');
+                        drawnow,snapnow;
+
+                    case 'onesample'
+                        [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c},'title',['ROI means, EFFECT: ' DAT.contrastnames{c}],'color',roi_colors');
+                        set(gcf,'WindowState','maximized');
+                        drawnow,snapnow;
+
+                end
+        
+            case 'conditions'
+                
+                fprintf('\n\n');
+                printhdr(['CONDITION #', num2str(c), ': ', upper(DAT.conditions{c})]);
+                fprintf('\n\n');
+                
+                switch design_matrix_type
+
+                    case 'custom'
+                        roi_means_table{c} = [roi_means_table{c} table_obj];
+                        [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(table_obj,2)),'covs',table2array(table_obj),'title',['ROI means, EFFECT: ' DAT.conditions{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
+                        set(gcf,'WindowState','maximized');
+                        drawnow,snapnow;
+
+                    case 'group'
+                        group_table = array2table(group,'VariableNames',groupnames);
+                        roi_means_table{c} = [roi_means_table{c} group_table];
+                        [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(group_table,2)),'covs',table2array(group_table),'title',['ROI means, EFFECT: ' DAT.conditions{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
+                        set(gcf,'WindowState','maximized');
+                        drawnow,snapnow;
+
+                    case 'onesample'
+                        [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c},'title',['ROI means, EFFECT: ' DAT.conditions{c}],'color',roi_colors');
+                        set(gcf,'WindowState','maximized');
+                        drawnow,snapnow;
+
+                end
+    
+        end
+               
+    end % if loop roi analysis
+    
+    
+    %%
+    % *CALCULATE SIMILARITY WITH NEUROTRANSMITTER MAPS*
+    
+    if doneurotransmitter_maps
+        
+        if exist('glmmask','var')
+            cat_obj_mask = apply_mask(cat_obj,glmmask);
+        else
+            cat_obj_mask = cat_obj;
+        end
+            
+        switch mygroupnamefield
+        
+            case 'contrasts'
+                
+                fprintf('\n\n');
+                printhdr(['CONTRAST #', num2str(c), ': ', upper(DAT.contrastnames{c})]);
+                fprintf('\n\n');
+                
+                switch neurotransmitter_maps_metric
+                    
+                    case 'correlation'
+                
+                        [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage');
+                        title(DAT.contrastnames{c},'Interpreter','none');
+                        set(gcf,'WindowState','maximized');
+                        drawnow,snapnow;
+
+                        if isequal(design_matrix_type,'group')
+
+                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage','compareGroups',group);
+                            title(DAT.contrastnames{c},'Interpreter','none');
+                            set(gcf,'WindowState','maximized');
+                            drawnow,snapnow;
+
+                        end
+                        
+                    case 'cosine_similarity'
+                        
+                        [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage');
+                        title(DAT.contrastnames{c},'Interpreter','none');
+                        set(gcf,'WindowState','maximized');
+                        drawnow,snapnow;
+
+                        if isequal(design_matrix_type,'group')
+
+                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage','compareGroups',group);
+                            title(DAT.contrastnames{c} ,'Interpreter','none');
+                            set(gcf,'WindowState','maximized');
+                            drawnow,snapnow;
+
+                        end
+                        
+                end  % switch similarity metric
+        
+            case 'conditions'
+                
+                fprintf('\n\n');
+                printhdr(['CONDITION #', num2str(c), ': ', upper(DAT.conditions{c})]);
+                fprintf('\n\n');
+                
+                switch neurotransmitter_maps_metric
+                    
+                    case 'correlation'
+                
+                        [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage');
+                        title(DAT.conditions{c},'Interpreter','none');
+                        set(gcf,'WindowState','maximized');
+                        drawnow,snapnow;
+
+                        if isequal(design_matrix_type,'group')
+
+                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage','compareGroups',group);
+                            title(DAT.conditions{c} ,'Interpreter','none');
+                            set(gcf,'WindowState','maximized');
+                            drawnow,snapnow;
+
+                        end
+                        
+                    case 'cosine_similarity'
+                        
+                        [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage');
+                        title(DAT.conditions{c},'Interpreter','none');
+                        set(gcf,'WindowState','maximized');
+                        drawnow,snapnow;
+
+                        if isequal(design_matrix_type,'group')
+
+                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage','compareGroups',group);
+                            title(DAT.conditions{c} ,'Interpreter','none');
+                            set(gcf,'WindowState','maximized');
+                            drawnow,snapnow;
+
+                        end
+                        
+                end % switch similarity metric
+    
+        end % switch conditions or contrasts
+               
+    end % if loop roi analysis
+    
+    
+    %%
     % *RUN GLM MODEL*
     
     % VOXEL-WISE
@@ -1466,6 +1808,41 @@ else
 end
 
 fprintf('\nFilename: %s\n', savefilenamedata);
+
+
+if doroi_analysis
+    
+    fprintf('\n\n');
+    printhdr('SAVING ROI RESULTS');
+    fprintf('\n\n');
+    
+    savefilenamedata_roi = fullfile(resultsdir, ['roi_stats_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
+    save(savefilenamedata_roi, 'roi_means_table', 'roi_adjusted_means', '-v7.3');
+    fprintf('\nSaved roi_stats for %s\n', mygroupnamefield);
+    fprintf('\nFilename: %s\n', savefilenamedata_roi);
+    
+end
+
+
+if doneurotransmitter_maps
+    
+    fprintf('\n\n');
+    printhdr('SAVING NEUROTRANSMITTER MAP RESULTS');
+    fprintf('\n\n');
+    
+    savefilenamedata_nt = fullfile(resultsdir, ['neurotransmitter_stats_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
+    
+    if isequal(design_matrix_type,'group')
+        save(savefilenamedata_nt, 'neurotransmitter_stats', 'neurotransmitter_group_tables', 'neurotransmitter_multcomp_group','-v7.3');
+    else
+        save(savefilenamedata_nt, 'neurotransmitter_stats', '-v7.3');
+    end
+        
+    fprintf('\nSaved neurotransmitter_stats for %s\n', mygroupnamefield);
+    fprintf('\nFilename: %s\n', savefilenamedata_nt);
+    
+end
+
 
 if domvpa_reg_cov
 

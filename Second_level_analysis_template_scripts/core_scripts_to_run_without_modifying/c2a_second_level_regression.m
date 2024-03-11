@@ -81,9 +81,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% c2a_second_level_regression.m         v6.2
+% c2a_second_level_regression.m         v7.0
 %
-% last modified: 2024/02/12
+% last modified: 2024/02/27
 %
 %
 %% GET AND SET OPTIONS
@@ -117,6 +117,7 @@ results_suffix = ''; % suffix of your choice added to .mat file with saved resul
 %   csf_wm_covs = true/false;
 %   remove_outliers = true/false;
 % atlasname_glm = 'atlas_name';
+% atlas_granularity = 1/2/3;
 % maskname_glm = 'mask_name';
 % myscaling_glm = 'raw'/'scaled'/'scaled_contrasts';
 % design_matrix_type = 'custom'/'group'/'onesample';
@@ -185,16 +186,30 @@ if ~dorobfit_parcelwise
     if exist('maskname_glm', 'var') && ~isempty(maskname_glm) && exist(maskname_glm, 'file')
         
         apply_mask_before_fdr = true;
+        
         [~,maskname_short] = fileparts(maskname_glm);
             if contains(maskname_short,'nii')
                 [~,maskname_short] = fileparts(maskname_short);
             end
+            
         mask_string = sprintf('masked with %s', maskname_short);
+        
         glmmask = fmri_mask_image(maskname_glm, 'noverbose'); 
             if any(unique(glmmask.dat) ~= 1)
                 glmmask.dat(glmmask.dat > 0) = 1; % binarize mask if needed
             end
+            
         fprintf('\nMasking voxelwise results visualization with %s\n\n', maskname_short);
+        
+        % MONTAGE OF MASK
+        
+        o2 = canlab_results_fmridisplay([], 'compact');
+        o2 = addblobs(o2, glmmask,'onecolor','color',[0.4 0.2 0.6],'trans','transvalue',0.50);
+        o2 = title_montage(o2, 5, ['voxel-wise analysis masked with: ' maskname_short]);
+        set(gcf,'WindowState','maximized');
+        drawnow,snapnow;
+        
+        clear o2
         
     else
         
@@ -211,26 +226,79 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
     if contains(atlasname_glm,'.mat')
         
         load(atlasname_glm);
+        [~,atlasname_short] = fileparts(atlasname_glm);
         clear mask
         
+        if logical(exist('atlas_granularity','var')) && atlas_granularity ~= 1
+            combined_atlas = combined_atlas.downsample_parcellation(['labels_' num2str(atlas_granularity)]);
+        end
+        
         if dorobfit_parcelwise
-            [~,maskname_short] = fileparts(atlasname_glm);
+            
+            maskname_short = atlasname_short;
             mask_string = sprintf('masked with %s', maskname_short);
+            fprintf('\nRunning parcelwise analysis in custom-made atlas %s at granularity level labels_%d\n\n', atlasname_short, atlas_granularity);
             
         end
         
-        fprintf('\nLabeling regions using custom-made atlas %s\n\n', maskname_short);
+        fprintf('\nLabeling regions using custom-made atlas %s at granularity level labels_%d\n\n', atlasname_short, atlas_granularity);
+        
+        % MONTAGE OF ATLAS
+        
+        cmap = colormap('colorcube');
+        close gcf;
+        
+        figure;
+        o2 = canlab_results_fmridisplay([], 'compact');
+        o2 = addblobs(o2, atlas2region(combined_atlas),'indexmap',cmap,'interp','nearest');
+        if dorobfit_parcelwise
+            o2 = title_montage(o2, 5, ['parcel-wise analysis in atlas: ' atlasname_short ' at granularity level labels_' num2str(atlas_granularity)]);
+        else
+            o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_short ' at granularity level labels_' num2str(atlas_granularity)]);
+        end
+        set(gcf,'WindowState','maximized');
+        drawnow,snapnow;
+        
+        clear o2
 
     elseif ischar(atlasname_glm)
 
         combined_atlas = load_atlas(atlasname_glm);
         
+        if logical(exist('atlas_granularity','var')) && atlas_granularity ~= 1
+            combined_atlas = combined_atlas.downsample_parcellation(['labels_' num2str(atlas_granularity)]);
+        end
+        
+        if contains(atlasname_glm,'canlab2023')
+            combined_atlas = combined_atlas.threshold(0.20); % only keep probability values > 0.20 in probabistic canlab2023 atlas
+        end
+        
         if dorobfit_parcelwise
             mask_string = sprintf('in atlas %s',atlasname_glm);
             
+            fprintf('\nRunning parcelwise analysis in custom-made atlas %s at granularity level labels_%d\n\n', atlasname_glm, atlas_granularity);
+            
         end
         
-        fprintf('\nLabeling regions using custom atlas %s\n\n', atlasname_glm);
+        fprintf('\nLabeling regions using custom-made atlas %s at granularity level labels_%d\n\n', atlasname_glm, atlas_granularity);
+        
+        % MONTAGE OF ATLAS
+        
+        cmap = colormap('colorcube');
+        close gcf;
+        
+        figure;
+        o2 = canlab_results_fmridisplay([], 'compact');
+        o2 = addblobs(o2, atlas2region(combined_atlas),'indexmap',cmap,'interp','nearest');
+        if dorobfit_parcelwise
+            o2 = title_montage(o2, 5, ['parcel-wise analysis in atlas: ' atlasname_glm ' at granularity level labels_' num2str(atlas_granularity)]);
+        else
+            o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_glm ' at granularity level labels_' num2str(atlas_granularity)]);
+        end
+        set(gcf,'WindowState','maximized');
+        drawnow,snapnow;
+        
+        clear o2
 
     else
 
@@ -727,7 +795,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     if num_effects < 4
                         o2 = legend(o2);
                     end
-                    
+                
                 o2 = title_montage(o2, 2*j, [analysisname ' |BF| > ' num2str(BF_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
 
             end % for loop over regressors in model
@@ -863,7 +931,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 %                             tj = trim_mask(tj);
                         end
                     tj = threshold(tj, q_threshold_mvpa_reg_cov, 'fdr', 'k', k_threshold_mvpa_reg_cov); 
-
+                    
                     datsig = tj.dat(logical(tj.sig));
                     datsigneg = datsig(datsig<0);
                     datsigpos = datsig(datsig>0);
@@ -881,9 +949,9 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                             o2 = addblobs(o2, region(tj), 'wh_montages', (2*j)-1:2*j, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});%, 'cmaprange', [min(datsigneg) max(datsigneg) min(datsigpos) max(datsigpos)]);
 
                         end
-                        
-                    o2 = legend(o2);    
-                        
+                    
+                    o2 = legend(o2);
+
                     o2 = title_montage(o2, 2*j, [analysisname ' FDR ' num2str(q_threshold_glm) ' ' names{j} ' ' mask_string ' ' scaling_string]);
 
                 end % for loop over regressors
@@ -913,11 +981,11 @@ printhdr('APPENDING REGION OBJECTS TO SAVED RESULTS');
 fprintf('\n\n');
     
     if ~dorobfit_parcelwise
-    
+        
         cd(resultsdir); % unannex image_names_and_setup.mat file if already datalad saved to prevent write permission problems
         ! git annex unannex regression_stats_and_maps*.mat
         cd(rootdir);
-        
+    
         savefilenamedata_region = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
         
         if ~doBayes

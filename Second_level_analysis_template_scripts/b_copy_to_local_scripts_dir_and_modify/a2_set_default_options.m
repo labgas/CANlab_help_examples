@@ -23,8 +23,8 @@
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% a2_set_default_options.m         v6.2
-% last modified: 2024/02/12
+% a2_set_default_options.m         v6.4
+% last modified: 2024/02/26
 %
 %
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -45,7 +45,7 @@ maskname_glm = which('gm_mask_canlab2023_coarse_fmriprep20_0_20.nii');  % defaul
                                                                         % if you do not want to mask, change to []
                                                                         % if you want to use a custom mask, put it in maskdir and change name here
                                                                         % used in this script only for visualization of unthresholded results
-atlasname_glm = 'canlab2023_coarse_2mm';                                % default use of new canlab2023 atlas - leaving blank will use legacy canlab2018 atlas, which is not recommended anymore
+atlasname_glm = 'canlab2023_fine_2mm';                                  % default use of new canlab2023 atlas - leaving blank will use legacy canlab2018 atlas, which is not recommended anymore
                                                                             % if specified, atlas object used for 
                                                                             % 1. defining parcels in parcelwise analysis
                                                                             % 2. labeling regions in both voxelwise and parcelwise analyses
@@ -57,7 +57,12 @@ atlasname_glm = 'canlab2023_coarse_2mm';                                % defaul
                                                                                 %           this file should contain a 'combined_atlas' var containing
                                                                                 %           an atlas object
                                                                                 %           USAGE: use this if you want to restrict the parcels to the
-                                                                                %               ones included in maskname_glm, or any atlas or a subset thereof                                                            
+                                                                                %               ones included in maskname_glm, or any atlas or a subset thereof  
+    % atlas options
+    atlas_granularity = 2;                                              % level of granularity of canlab2023 atlas for 
+                                                                                % 1. defining parcels in parcelwise analysis
+                                                                                % 2. labeling regions in both voxel- and parcelwise analysis
+                                                                            % options: 1 = fine (595 parcels), 2 = intermediate (525 parcels), 3 = coarse (264 parcels)
 myscaling_glm = 'raw';                                                  % 'raw', 'scaled', or 'scaledcontrasts'; 
                                                                             % 'scaled': use z-scored condition images prior to computing contrasts
                                                                             % 'scaled_contrasts': l2norm contrasts after computing them
@@ -78,6 +83,17 @@ dorobfit_parcelwise = false;                                            % true r
     csf_wm_covs = false;                                                    % true adds global wm & csf regressors at second level
     remove_outliers = false;                                                % true removes outlier images/subjects based on mahalanobis distance 
 doBayes = true;                                                         % converts t-maps into Bayes Factor maps -- default true
+doroi_analysis = false;                                                 % extract roi averages from condition (beta) or contrast (con) images using an atlas object created by LaBGAScore_atlas_binary_mask_from_atlas.m as input
+    % roi_analysis options
+%     roi_names = {'amINS_L','amINS_R','ventral_striatum_L','ventral_striatum_R','caudate_L','caudate_R','putamen_L','putamen_R','vmPFC_L','vmPFC_R','hypothalamus','VTA','lOFC_L','lOFC_R','mOFC_L','mOFC_R'}; 
+                                                                            % names AND ORDER need to correspond to roiname variables (WITH L AND R ADDED FOR THE BILATERAL ONES) in LaBGAScore_atlas_rois_from_atlas.m which saves atlas objects for each roi in a cell array in secondlevel/modeldir/masks
+                                                                            % comment out if you want to use all rois created by the roi script
+    roi_modelname = 'bit_rew_m1';
+    roi_set_name = 'reward_regions';
+                                                                            % need to correspond to varnames in LaBGAScore_atlas_binary_mask_from_atlas.m, do not comment out
+doneurotransmitter_maps = true;                                         % calculate similarity metric with neurotransmitter maps from Hansen et al Nat Neurosci 2022 for each contrast/condition
+    % neurotransmitter map options
+    neurotransmitter_maps_metric = 'correlation';                       % 'cosine_similarity', or 'correlation'
 domvpa_reg_cov = false;                                                 % run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
     % mvpa_reg_covariate options
     algorithm_mvpa_reg_cov = 'cv_pcr';                                      % default cv_pcr, will be passed into predict function (help fmri_data.predict for options)
