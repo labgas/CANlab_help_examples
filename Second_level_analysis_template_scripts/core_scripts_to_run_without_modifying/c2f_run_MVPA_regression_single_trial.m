@@ -1258,7 +1258,7 @@ if domultilevel_mvpa_reg_st
     
     % between
     
-    fprintf ('\nSHOWING UNTHRESHOLDED MULTILEVEL %s RESULTS, %s, WITHIN-SUBJECT EFFECT, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
+    fprintf ('\nSHOWING UNTHRESHOLDED MULTILEVEL %s RESULTS, %s, BETWEEN-SUBJECT EFFECT, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mask_string, myscaling_mvpa_reg_st);
 
     figure;
 
@@ -1500,20 +1500,20 @@ if domultilevel_mvpa_reg_st
         if exist('maskname_short', 'var')
         
             if ~isempty(cons2exclude_dat_st)
-                savefilename = fullfile(resultsdir, ['single_trial_multilevel', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '_results.mat']);
+                savefilename = fullfile(resultsdir, ['single_trial_multilevel_', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '_results.mat']);
 
             else
-                savefilename = fullfile(resultsdir, ['single_trial_multilevel', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_', results_suffix, '_results.mat']);
+                savefilename = fullfile(resultsdir, ['single_trial_multilevel_', myscaling_mvpa_reg_st, '_', maskname_short, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_', results_suffix, '_results.mat']);
 
             end
         
         else
         
             if ~isempty(cons2exclude_dat_st)
-                            savefilename = fullfile(resultsdir, ['single_trial_multilevel', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '_results.mat']);
+                            savefilename = fullfile(resultsdir, ['single_trial_multilevel_', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_exclude_cond_', char([cons2exclude_dat_st{:}]), '_', results_suffix, '_results.mat']);
 
             else
-                savefilename = fullfile(resultsdir, ['single_trial_multilevel', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_', results_suffix, '_results.mat']);
+                savefilename = fullfile(resultsdir, ['single_trial_multilevel_', myscaling_mvpa_reg_st, '_', algorithm_mvpa_reg_st, '_', behav_outcome_dat_st, '_', results_suffix, '_results.mat']);
 
             end
         end
