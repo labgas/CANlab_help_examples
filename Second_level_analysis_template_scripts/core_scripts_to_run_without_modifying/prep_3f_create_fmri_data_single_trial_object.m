@@ -37,8 +37,8 @@
 % author: lukas.vanoudenhove@kuleuven.be
 % date:   Dartmouth, March, 2021
 %__________________________________________________________________________
-% @(#)% prep_3f_create_fmri_data_single_trial_object.m     v3.1       
-% last modified: 2023/01/18
+% @(#)% prep_3f_create_fmri_data_single_trial_object.m     v3.2       
+% last modified: 2024/05/17
 
 
 %% GET AND SET OPTIONS
@@ -354,5 +354,5 @@ else
 
 end
 
-save(savefilename, 'fmri_dat', 'cons2exclude_dat_st', 'behav_outcome_dat_st', 'subj_identifier_dat_st', 'cond_identifier_dat_st');
+save(savefilename, 'fmri_dat', 'cons2exclude_dat_st', 'behav_outcome_dat_st', 'subj_identifier_dat_st', 'cond_identifier_dat_st','-v7.3');
 
