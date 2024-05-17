@@ -163,9 +163,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v8.1
+% prep_3a_run_second_level_regression_and_save.m         v8.2
 %
-% last modified: 2024/02/28
+% last modified: 2024/05/17
 %
 %
 %% GET AND SET OPTIONS
@@ -1144,17 +1144,17 @@ for c = 1:kc
             % regression_stats.t has t maps for all regressors, intercept is last
             switch mygroupnamefield
                 case 'contrasts'
-                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nodisplay'); % trick to get unthresholded maps
+                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nodisplay','residual'); % trick to get unthresholded maps
                 case 'conditions'
-                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.conditions{c}, 'variable_names', groupnames, 'nodisplay');
+                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.conditions{c}, 'variable_names', groupnames, 'nodisplay','residual');
             end
         else
             % regression_stats.t has t maps for intercept only
             switch mygroupnamefield
                 case 'contrasts'
-                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nointercept', 'nodisplay');
+                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.contrastnames{c}, 'variable_names', groupnames, 'nointercept', 'nodisplay','residual');
                 case 'conditions'
-                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.conditions{c}, 'variable_names', groupnames, 'nointercept', 'nodisplay');
+                    regression_stats = regress(cat_obj, 1, 'unc', robuststring, 'analysis_name', DAT.conditions{c}, 'variable_names', groupnames, 'nointercept', 'nodisplay','residual');
             end
         end
 
