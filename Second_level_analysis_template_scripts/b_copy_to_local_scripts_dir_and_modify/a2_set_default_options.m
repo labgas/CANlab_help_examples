@@ -23,8 +23,8 @@
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% a2_set_default_options.m         v6.4
-% last modified: 2024/02/26
+% a2_set_default_options.m         v6.5
+% last modified: 2024/06/04
 %
 %
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -45,7 +45,7 @@ maskname_glm = which('gm_mask_canlab2023_coarse_fmriprep20_0_20.nii');  % defaul
                                                                         % if you do not want to mask, change to []
                                                                         % if you want to use a custom mask, put it in maskdir and change name here
                                                                         % used in this script only for visualization of unthresholded results
-atlasname_glm = 'canlab2023_fine_2mm';                                  % default use of new canlab2023 atlas - leaving blank will use legacy canlab2018 atlas, which is not recommended anymore
+atlasname_glm = 'canlab2024_fine_2mm';                                  % default use of new canlab2024 atlas - leaving blank will use legacy canlab2018 atlas, which is not recommended anymore
                                                                             % if specified, atlas object used for 
                                                                             % 1. defining parcels in parcelwise analysis
                                                                             % 2. labeling regions in both voxelwise and parcelwise analyses
