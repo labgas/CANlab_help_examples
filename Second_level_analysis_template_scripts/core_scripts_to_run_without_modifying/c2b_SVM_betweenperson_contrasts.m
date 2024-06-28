@@ -65,9 +65,10 @@ for c = 1:kc
     printstr(['Results: ' DAT.contrastnames{c}]); printstr(dashes);
     
     ROC = roc_plot(svm_stats_results{c}.dist_from_hyperplane_xval, logical(svm_stats_results{c}.Y > 0), 'color', DAT.contrastcolors{c}, 'Optimal balanced error rate');
+    drawnow,snapnow;
     
-    plugin_save_figure;
-    close
+%     plugin_save_figure;
+%     close
     
     % Effect size, cross-validated
     dfun2 = @(x, Y) (mean(x(Y > 0)) - mean(x(Y < 0))) ./ sqrt(var(x(Y > 0)) + var(x(Y < 0))); % check this.
@@ -89,16 +90,17 @@ for c = 1:kc
     hh = figure(fig_number);  % fig_number set in slice display plugin
     figtitle = sprintf('SVM weight map nothresh %s_%s', DAT.contrastnames{c}, scaling_string);
     set(hh, 'Tag', figtitle);
-    plugin_save_figure;
+    drawnow,snapnow;
+%     plugin_save_figure;
     
     % Remove title in case fig is re-printed in html
-    axes(o2.montage{whmontage}.axis_handles(5));
-    title(' ', 'FontSize', 18)
-       
-    o2 = removeblobs(o2);
-    
-    axes(o2.montage{whmontage}.axis_handles(5));
-    title('Intentionally Blank', 'FontSize', 18); % For published reports
+%     axes(o2.montage{whmontage}.axis_handles(5));
+%     title(' ', 'FontSize', 18)
+%        
+%     o2 = removeblobs(o2);
+%     
+%     axes(o2.montage{whmontage}.axis_handles(5));
+%     title('Intentionally Blank', 'FontSize', 18); % For published reports
     
 end  % between-person contrast
 

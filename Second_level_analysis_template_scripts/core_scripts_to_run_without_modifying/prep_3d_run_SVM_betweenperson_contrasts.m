@@ -7,7 +7,7 @@
 
 %% Now set in a2_set_default_options
 %--------------------------------------------------------------------------
-options_needed = {'dosavesvmstats', 'dobootstrap', 'boot_n','myscaling_svm_between'};  % Options we are looking for. Set in a2_set_default_options
+options_needed = {'dosavesvmstats', 'dobootstrap_svm', 'boot_n','myscaling_svm_between'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed); 
 
 option_default_values = {true false 1000 'raw'};          % defaults if we cannot find info in a2_set_default_options at all 
@@ -31,7 +31,7 @@ if isempty(spath)
     disp('Warning: spider toolbox not found on path; prediction may break')
 end
 
-if dobootstrap, svmtime = tic; end
+if dobootstrap_svm, svmtime = tic; end
 
 
 %% Get mask
@@ -40,7 +40,11 @@ if dobootstrap, svmtime = tic; end
 if exist('maskname_svm', 'var') && ~isempty(maskname_svm)
     
     disp('Masking data')
-    svmmask = fmri_data(maskname_svm, 'noverbose');
+    svmmask = fmri_mask_image(maskname_svm, 'noverbose');
+    
+        if any(unique(svmmask.dat) ~= 1)
+            svmmask.dat(svmmask.dat > 0) = 1; % binarize mask if needed
+        end
     
 else
     
@@ -141,15 +145,15 @@ for c = 1:kc
     
     % Run prediction model
     % --------------------------------------------------------------------
-    if dobootstrap
-        [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, 'bootsamples', boot_n, 'error_type', 'mcr', parallelstr);
+    if dobootstrap_svm
+        [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, 'bootsamples', boot_n, 'error_type', 'mcr', parallelstr_svm);
         % Threshold, if possible - can re-threshold later with threshold() method
 %         stats.weight_obj = threshold(stats.weight_obj, .05, 'unc'); 
 %         @lukasvo76: commented out since we want to threshold flexibly at
 %         a later stage
         
     else
-        [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, 'error_type', 'mcr', parallelstr);
+        [cverr, stats, optout] = predict(cat_obj, 'algorithm_name', 'cv_svm', 'nfolds', holdout_set, 'error_type', 'mcr', parallelstr_svm);
     end
     
     % Save stats objects for results later
@@ -165,7 +169,7 @@ for c = 1:kc
     
     end
         
-    if dobootstrap, disp('Cumulative run time:'), toc(svmtime); end  
+    if dobootstrap_svm, disp('Cumulative run time:'), toc(svmtime); end  
     
 end  % between-person contrast
 

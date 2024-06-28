@@ -163,9 +163,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v8.2
+% prep_3a_run_second_level_regression_and_save.m         v8.3
 %
-% last modified: 2024/05/17
+% last modified: 2024/06/28
 %
 %
 %% GET AND SET OPTIONS
@@ -391,8 +391,8 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
             combined_atlas = combined_atlas.downsample_parcellation(['labels_' num2str(atlas_granularity)]);
         end
         
-        if contains(atlasname_glm,'canlab2023')
-            combined_atlas = combined_atlas.threshold(0.20); % only keep probability values > 0.20 in probabistic canlab2023 atlas
+        if contains(atlasname_glm,'canlab2023') || contains(atlasname_glm,'canlab2024')
+            combined_atlas = combined_atlas.threshold(0.20); % only keep probability values > 0.20 in probabistic canlab2023/4 atlas
         end
         
         if dorobfit_parcelwise
@@ -576,7 +576,7 @@ if doneurotransmitter_maps
     
     neurotransmitter_stats = cell(1,kc);
     
-    if isequal(design_matrix_type,'group')
+    if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
         
         neurotransmitter_group_stats = cell(1,kc);
         neurotransmitter_group_tables = cell(1,kc);
@@ -1033,9 +1033,9 @@ for c = 1:kc
                         set(gcf,'WindowState','maximized');
                         drawnow,snapnow;
 
-                        if isequal(design_matrix_type,'group')
+                        if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
 
-                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage','compareGroups',group);
+                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage','compareGroups',DAT.BETWEENPERSON.group');
                             title(DAT.contrastnames{c},'Interpreter','none');
                             set(gcf,'WindowState','maximized');
                             drawnow,snapnow;
@@ -1049,9 +1049,9 @@ for c = 1:kc
                         set(gcf,'WindowState','maximized');
                         drawnow,snapnow;
 
-                        if isequal(design_matrix_type,'group')
+                        if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
 
-                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage','compareGroups',group);
+                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage','compareGroups',DAT.BETWEENPERSON.group');
                             title(DAT.contrastnames{c} ,'Interpreter','none');
                             set(gcf,'WindowState','maximized');
                             drawnow,snapnow;
@@ -1075,9 +1075,9 @@ for c = 1:kc
                         set(gcf,'WindowState','maximized');
                         drawnow,snapnow;
 
-                        if isequal(design_matrix_type,'group')
+                        if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
 
-                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage','compareGroups',group);
+                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage','compareGroups',DAT.BETWEENPERSON.group');
                             title(DAT.conditions{c} ,'Interpreter','none');
                             set(gcf,'WindowState','maximized');
                             drawnow,snapnow;
@@ -1091,9 +1091,9 @@ for c = 1:kc
                         set(gcf,'WindowState','maximized');
                         drawnow,snapnow;
 
-                        if isequal(design_matrix_type,'group')
+                        if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
 
-                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage','compareGroups',group);
+                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage','compareGroups',DAT.BETWEENPERSON.group');
                             title(DAT.conditions{c} ,'Interpreter','none');
                             set(gcf,'WindowState','maximized');
                             drawnow,snapnow;
