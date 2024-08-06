@@ -126,8 +126,8 @@
 % author: lukas.vanoudenhove@kuleuven.be, bogpetre@gmail.com
 % date:   April, 2021
 %__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v6.0        
-% last modified: 2024/02/28
+% @(#)% c2f_run_MVPA_regression_single_trial     v6.1        
+% last modified: 2024/08/06
 
 
 %% GET AND SET OPTIONS
@@ -598,7 +598,7 @@ fprintf('\n\n');
 
     figure
 
-    o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+    o2 = canlab_results_fmridisplay([], 'compact');
 
         switch ml_method_mvpa_reg_st
 
@@ -783,7 +783,7 @@ fprintf('\n\n');
 
         figure
 
-        o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = canlab_results_fmridisplay([], 'compact');
 
         t = bs_stats.weight_obj;
         t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
@@ -806,7 +806,7 @@ fprintf('\n\n');
 
         figure
 
-        o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = canlab_results_fmridisplay([], 'compact');
 
         t = perm_stats_obj;
         t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
@@ -886,7 +886,7 @@ fprintf('\n\n');
 
         figure
 
-        o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = canlab_results_fmridisplay([], 'compact');
 
         w = region(source_recon_data_obj);
 
@@ -942,7 +942,7 @@ fprintf('\n\n');
 
         figure
 
-        o2 = canlab_results_fmridisplay([], 'compact', 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img');
+        o2 = canlab_results_fmridisplay([], 'compact');
 
         t = source_recon_perm_stats_obj;
         t = threshold(t, q_threshold_mvpa_reg_st, 'fdr', 'k', k_threshold_mvpa_reg_st); 
