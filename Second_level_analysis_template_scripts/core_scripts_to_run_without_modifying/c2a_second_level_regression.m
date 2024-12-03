@@ -81,9 +81,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% c2a_second_level_regression.m         v7.0
+% c2a_second_level_regression.m         v7.1
 %
-% last modified: 2024/02/27
+% last modified: 2024/12/03
 %
 %
 %% GET AND SET OPTIONS
@@ -631,7 +631,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 
                 fprintf ('\nMONTAGE REGIONCENTERS GLM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
                 
-                o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                o3 = montage(r, 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
 
                 % Activate, name, and save figure
                 figtitle = sprintf('%s_%s_%1.4f_FDR_regions_%s_%s_%s', analysisname, results_suffix, q_threshold_glm, names{j}, mask_string, scaling_string);
@@ -736,7 +736,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 
                 fprintf ('\nMONTAGE REGIONCENTERS GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
                 
-                o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
+                o3 = montage(r, 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
 
                 % Activate, name, and save figure
                 figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s_%s', analysisname, results_suffix, p_threshold_glm, names{j}, mask_string, scaling_string);
@@ -843,7 +843,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     fprintf ('\nMONTAGE REGIONCENTERS BAYESIAN GLM RESULTS AT |BF| > %1.2f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
 
-                    o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});
+                    o3 = montage(r, 'regioncenters', 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s_%s', analysisname, results_suffix, p_threshold_glm, names{j}, mask_string, scaling_string);

@@ -32,9 +32,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_2_load_image_data_and_save.m         v2.1
+% prep_2_load_image_data_and_save.m         v2.2
 %
-% last modified: 2024/01/05
+% last modified: 2024/12/02
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
@@ -88,7 +88,7 @@ fprintf('\n\n');
 clear imgs cimgs
 
 if ~isempty(subjs2exclude_data) % we have subjects to exclude
-    idx_include = ~contains(DSGN.subjects',subjs2exclude_data);
+    idx_include = ~contains(firstsubjdirs,subjs2exclude_data);
 end
 
 for i = 1:size(DAT.conditions,2)

@@ -44,8 +44,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% a_set_up_paths_always_run_first.m         v1.3
-% last modified: 2024/01/05
+% @(#)% a_set_up_paths_always_run_first.m         v1.4
+% last modified: 2024/12/02
 
 
 %% RUN PREP AND FIRST LEVEL DESIGN SCRIPT
@@ -239,7 +239,16 @@ htmlsavedir = fullfile(resultsdir,'html');
         mkdir(htmlsavedir);
     end
 
-    
+% Create list of subjects in datadir
+
+firstlist = dir(fullfile(datadir,'sub-*'));
+firstsubjs = cellstr(char(firstlist(:).name));
+
+for firstsub = 1:size(firstsubjs,1)
+    firstsubjdirs{firstsub,1} = fullfile(firstlist(firstsub).folder,firstlist(firstsub).name);
+end
+ 
+
 %% DEFINE HELPER FUNCTION CALLED BY LATER SCRIPTS
 % -------------------------------------------------------------------------
 
