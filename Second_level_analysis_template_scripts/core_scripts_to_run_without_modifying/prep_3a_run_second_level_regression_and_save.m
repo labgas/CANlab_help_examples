@@ -1750,7 +1750,7 @@ for c = 1:kc
 
                 whmontage = 5;
 
-                fprintf ('\nSHOWING UNTHRESHOLDED %s RESULTS, EFFECT: %s, MASK: %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_st), mvpa_stats.Y_names, mask_string, myscaling_glm);
+                fprintf ('\nSHOWING UNTHRESHOLDED %s RESULTS, EFFECT: %s, MASK: %s, SCALING: %s\n\n', upper(algorithm_mvpa_reg_cov), mvpa_stats.Y_names, mask_string, myscaling_glm);
 
                 figure
 
@@ -1769,9 +1769,9 @@ for c = 1:kc
                 
                 o2 = addblobs(o2, w, 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
                 o2 = legend(o2);
-                o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' unthresholded ' mvpa_stats.Y_names ' ' mask_string ' ' myscaling_glm]);
+                o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_cov ' unthresholded ' mvpa_stats.Y_names ' ' mask_string ' ' myscaling_glm]);
 
-                figtitle = sprintf('%s_unthresholded_montage_%s_%s', algorithm_mvpa_reg_st, myscaling_glm, mask_string);
+                figtitle = sprintf('%s_unthresholded_montage_%s_%s', algorithm_mvpa_reg_cov, myscaling_glm, mask_string);
                 set(gcf, 'Tag', figtitle, 'WindowState','maximized');
                 drawnow, snapnow;
 
