@@ -82,7 +82,11 @@ if ~exist('DSGN','var') || ~exist('DAT','var')
     
 end
 
-[~,subjs] = fileparts(DSGN.subjects);
+[~,subjs] = fileparts(DSGN.subjects); % assuming use of all subjects for whom firstlevel was run in this particular model
+% subjs = firstsubjs';                % use if subjects have been excluded at firstlevel stage; CAUTION: you will also need to exclude them from DAT.BEHAVIOR.behavioral_data_table to avoid mismatch, use lines below (UNTESTED)! 
+% idx_subjs = contains(DAT.BEHAVIOR.behavioral_data_table.(subj_identifier_dat_st),subjs);
+% DAT.BEHAVIOR.behavioral_data_table = DAT.BEHAVIOR.behavioral_data_table(idx_subjs,:);
+% idx_subjs_st = contains(DAT.BEHAVIOR.behavioral_st_data_table.(subj_identifier_dat_st),subjs);
 
 if ~isempty(cons2exclude_dat_st)
 
@@ -223,6 +227,9 @@ fprintf('\n');
 % -------------------------------------------------------------------------
 
 behav_dat = DAT.BEHAVIOR.behavioral_st_data_table;
+    if exist('idx_subjs_st','var')
+        behav_dat = behav_dat(idx_subj_st,:);
+    end
 behav_dat = behav_dat(ismember(behav_dat.(subj_identifier_dat_st),subjs2use),:); % exclude entire subjects to exclude because of lack of rating for all trials within a condition
 
     if ~isempty(cons2exclude_dat_st)

@@ -17,8 +17,8 @@
 % date:   Dartmouth, May, 2022
 %
 %__________________________________________________________________________
-% @(#)% prep_1_set_conditions_contrasts_colors.m         v1.2
-% last modified: 2023/11/09
+% @(#)% prep_1_set_conditions_contrasts_colors.m         v1.3
+% last modified: 2024/12/18
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST
@@ -246,4 +246,4 @@ disp('SET up conditions, colors, contrasts in DAT structure.');
 printhdr('Save DSGN & DAT structures and directory names in image_names_and_setup.mat');
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
-save(savefilename, 'dashes','printstr','printhdr','DSGN', 'DAT', 'basedir', 'datadir', 'maskdir', 'resultsdir', 'scriptsdir', 'figsavedir', 'htmlsavedir', '-v7.3');
+save(savefilename, 'dashes','printstr','printhdr','DSGN', 'DAT', 'basedir', 'datadir', 'maskdir', 'resultsdir', 'scriptsdir', 'figsavedir', 'htmlsavedir', 'firstsubjs','firstsubjdirs','-v7.3');
