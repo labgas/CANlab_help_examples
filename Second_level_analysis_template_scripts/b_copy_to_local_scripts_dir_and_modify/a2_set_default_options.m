@@ -23,8 +23,8 @@
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% a2_set_default_options.m         v6.5
-% last modified: 2024/06/04
+% a2_set_default_options.m         v6.6
+% last modified: 2024/12/20
 %
 %
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -208,6 +208,17 @@ subj_identifier_dat_st = 'participant_id';                      % name of subjec
 cond_identifier_dat_st = 'trial_type';                          % name of condition identifier variable in same table
 % group_identifier_dat_st = 'group';                            % name of group identifier variable in same table; leave commented out if you don't have groups
 vif_threshold_dat_st = 4;                                       % variance inflation threshold to exclude trials
+
+
+%% PREP_3G_CREATE_FMRI_DATA_RUNWISE_CONTRAST_OBJECT
+% -------------------------------------------------------------------------
+
+phenofile_dat_rw = 'Phenotype_long.csv';        % name of phenotype file in BIDS subdataset
+cons2include_dat_rw = {'stress','control'};     % cell array of (maximum 2) condition names to include (as they appear in DSGN/DAT.conditions as well as SPM.Vbeta.descrip), separated by commas (or blanks)
+behav_outcome_dat_rw = 'NA_sum';                % name of outcome variable in phenotype file
+subj_identifier_dat_rw = 'PPID';                % name of subject identifier variable in phenotype file
+run_included_dat_rw = 'run_included';           % name of index variable in phenotype file identifying runs for which imaging data have been excluded during QC
+% group_identifier_dat_rw = 'comorbid';           % name of group identifier variable in phenotype file; leave commented out if you don't have groups
 
 
 %% C2F_RUN_MVPA_REGRESSION_SINGLE_TRIAL
