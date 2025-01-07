@@ -37,8 +37,8 @@
 % author: lukas.vanoudenhove@kuleuven.be
 % date:   Dartmouth, March, 2021
 %__________________________________________________________________________
-% @(#)% prep_3f_create_fmri_data_single_trial_object.m     v3.2       
-% last modified: 2024/05/17
+% @(#)% prep_3f_create_fmri_data_single_trial_object.m     v3.3       
+% last modified: 2024/12/18
 
 
 %% GET AND SET OPTIONS
