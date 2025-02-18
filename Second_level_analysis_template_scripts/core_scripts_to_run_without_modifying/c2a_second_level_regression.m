@@ -269,7 +269,7 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
             combined_atlas = combined_atlas.downsample_parcellation(['labels_' num2str(atlas_granularity)]);
         end
         
-        if contains(atlasname_glm,'canlab2023')
+        if contains(atlasname_glm,'canlab2023') || contains(atlasname_glm,'canlab2024')
             combined_atlas = combined_atlas.threshold(0.20); % only keep probability values > 0.20 in probabistic canlab2023 atlas
         end
         
