@@ -23,6 +23,8 @@
 % * maskname_brain          path to brainmask
 %
 % * subjs2exclude_data      default empty, subjects to be excluded from data objects, for example because of missing session not allowing all contrasts to be calculated, example {'sub-010' 'sub-018'}
+%                           THIS WILL ALSO REMOVE THOSE SUBJECTS IN
+%                           DAT.BEHAVIOR AND DAT.BETWEENPERSON
 %
 % -------------------------------------------------------------------------
 %
@@ -32,9 +34,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_2_load_image_data_and_save.m         v2.2
+% prep_2_load_image_data_and_save.m         v2.3
 %
-% last modified: 2024/12/02
+% last modified: 2025/05/06
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
@@ -89,6 +91,17 @@ clear imgs cimgs
 
 if ~isempty(subjs2exclude_data) % we have subjects to exclude
     idx_include = ~contains(firstsubjdirs,subjs2exclude_data);
+        
+    if isfield(DAT,'BEHAVIOR')
+        DAT.BEHAVIOR.behavioral_data_table = DAT.BEHAVIOR.behavioral_data_table(idx_include,:);
+    end
+    
+    if isfield(DAT,'BETWEENPERSON')
+        if isfield(DAT.BETWEENPERSON,'group')
+            DAT.BETWEENPERSON.group = DAT.BETWEENPERSON.group(idx_include,:);
+        end
+    end
+    
 end
 
 for i = 1:size(DAT.conditions,2)
