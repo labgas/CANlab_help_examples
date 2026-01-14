@@ -163,9 +163,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v8.3
+% prep_3a_run_second_level_regression_and_save.m         v8.4
 %
-% last modified: 2024/06/28
+% last modified: 2026/01/13
 %
 %
 %% GET AND SET OPTIONS
@@ -1009,12 +1009,6 @@ for c = 1:kc
     % *CALCULATE SIMILARITY WITH NEUROTRANSMITTER MAPS*
     
     if doneurotransmitter_maps
-        
-        if exist('glmmask','var')
-            cat_obj_mask = apply_mask(cat_obj,glmmask);
-        else
-            cat_obj_mask = cat_obj;
-        end
             
         switch mygroupnamefield
         
@@ -1027,15 +1021,25 @@ for c = 1:kc
                 switch neurotransmitter_maps_metric
                     
                     case 'correlation'
-                
-                        [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage');
+                        
+                        if exist('glmmask','var')               
+                            [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj,'doAverage','mask',glmmask);
+                        else
+                            [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj,'doAverage');
+                        end
+                            
                         title(DAT.contrastnames{c},'Interpreter','none');
                         set(gcf,'WindowState','maximized');
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
-
-                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage','compareGroups',DAT.BETWEENPERSON.group');
+                            
+                            if exist('glmmask','var')
+                                [neurotransmitter_group_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'doAverage','compareGroups',DAT.BETWEENPERSON.group, 'mask',glmmask);
+                            else
+                                [neurotransmitter_group_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'doAverage','compareGroups',DAT.BETWEENPERSON.group);
+                            end
+                            
                             title(DAT.contrastnames{c},'Interpreter','none');
                             set(gcf,'WindowState','maximized');
                             drawnow,snapnow;
@@ -1044,14 +1048,24 @@ for c = 1:kc
                         
                     case 'cosine_similarity'
                         
-                        [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage');
+                        if exist('glmmask','var') 
+                            [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj,'cosine_similarity','doAverage','mask',glmmask);
+                        else
+                            [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj,'cosine_similarity','doAverage');
+                        end
+                        
                         title(DAT.contrastnames{c},'Interpreter','none');
                         set(gcf,'WindowState','maximized');
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
-
-                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage','compareGroups',DAT.BETWEENPERSON.group');
+                            
+                            if exist('glmmask','var')
+                                [neurotransmitter_group_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'cosine_similarity','doAverage','compareGroups',DAT.BETWEENPERSON.group, 'mask', glmmask);
+                            else
+                                [neurotransmitter_group_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'cosine_similarity','doAverage','compareGroups',DAT.BETWEENPERSON.group);
+                            end
+                            
                             title(DAT.contrastnames{c} ,'Interpreter','none');
                             set(gcf,'WindowState','maximized');
                             drawnow,snapnow;
@@ -1069,15 +1083,25 @@ for c = 1:kc
                 switch neurotransmitter_maps_metric
                     
                     case 'correlation'
-                
-                        [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage');
+                        
+                        if exist('glmmask','var')               
+                            [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj,'doAverage','mask',glmmask);
+                        else
+                            [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj,'doAverage');
+                        end
+
                         title(DAT.conditions{c},'Interpreter','none');
                         set(gcf,'WindowState','maximized');
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
 
-                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'doAverage','compareGroups',DAT.BETWEENPERSON.group');
+                            if exist('glmmask','var')
+                                [neurotransmitter_group_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'doAverage','compareGroups',DAT.BETWEENPERSON.group, 'mask',glmmask);
+                            else
+                                [neurotransmitter_group_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'doAverage','compareGroups',DAT.BETWEENPERSON.group);
+                            end
+                            
                             title(DAT.conditions{c} ,'Interpreter','none');
                             set(gcf,'WindowState','maximized');
                             drawnow,snapnow;
@@ -1086,14 +1110,24 @@ for c = 1:kc
                         
                     case 'cosine_similarity'
                         
-                        [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage');
+                        if exist('glmmask','var') 
+                            [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj,'cosine_similarity','doAverage','mask',glmmask);
+                        else
+                            [neurotransmitter_stats{c},~,~,~,~,~] = hansen_neurotransmitter_maps(cat_obj,'cosine_similarity','doAverage');
+                        end
+                        
                         title(DAT.conditions{c},'Interpreter','none');
                         set(gcf,'WindowState','maximized');
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
 
-                            [neurotransmitter_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj_mask,'cosine_similarity','doAverage','compareGroups',DAT.BETWEENPERSON.group');
+                            if exist('glmmask','var')
+                                [neurotransmitter_group_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'cosine_similarity','doAverage','compareGroups',DAT.BETWEENPERSON.group, 'mask', glmmask);
+                            else
+                                [neurotransmitter_group_stats{c},~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'cosine_similarity','doAverage','compareGroups',DAT.BETWEENPERSON.group);
+                            end
+                            
                             title(DAT.conditions{c} ,'Interpreter','none');
                             set(gcf,'WindowState','maximized');
                             drawnow,snapnow;
@@ -1104,9 +1138,9 @@ for c = 1:kc
     
         end % switch conditions or contrasts
                
-    end % if loop roi analysis
+    end % if loop neurotransmitter maps
     
-    
+ 
     %%
     % *RUN GLM MODEL*
     
@@ -1832,8 +1866,8 @@ if doneurotransmitter_maps
     
     savefilenamedata_nt = fullfile(resultsdir, ['neurotransmitter_stats_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
     
-    if isequal(design_matrix_type,'group')
-        save(savefilenamedata_nt, 'neurotransmitter_stats', 'neurotransmitter_group_tables', 'neurotransmitter_multcomp_group','-v7.3');
+    if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
+        save(savefilenamedata_nt, 'neurotransmitter_stats', 'neurotransmitter_group_stats', 'neurotransmitter_group_tables', 'neurotransmitter_multcomp_group','-v7.3');
     else
         save(savefilenamedata_nt, 'neurotransmitter_stats', '-v7.3');
     end
