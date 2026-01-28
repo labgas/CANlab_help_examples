@@ -23,8 +23,8 @@
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% a2_set_default_options.m         v6.6
-% last modified: 2024/12/20
+% a2_set_default_options.m         v6.7
+% last modified: 2026/01/28
 %
 %
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE
@@ -93,7 +93,7 @@ doroi_analysis = false;                                                 % extrac
                                                                             % need to correspond to varnames in LaBGAScore_atlas_binary_mask_from_atlas.m, do not comment out
 doneurotransmitter_maps = true;                                         % calculate similarity metric with neurotransmitter maps from Hansen et al Nat Neurosci 2022 for each contrast/condition
     % neurotransmitter map options
-    neurotransmitter_maps_metric = 'correlation';                       % 'cosine_similarity', or 'correlation'
+    neurotransmitter_maps_metric = 'cosine_similarity';                     % 'cosine_similarity', or 'correlation'
 domvpa_reg_cov = false;                                                 % run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
     % mvpa_reg_covariate options
     algorithm_mvpa_reg_cov = 'cv_pcr';                                      % default cv_pcr, will be passed into predict function (help fmri_data.predict for options)
@@ -288,7 +288,7 @@ dosavepdmstats = true;                                                          
 %% PREP_4_APPLY_SIGNATURES_AND_SAVE 
 % -------------------------------------------------------------------------
 myscaling_sigs = 'raw';                                         % default 'raw'                     'raw', or 'scaled', see myscaling_glm above
-similarity_metric_sigs = 'dotproduct';                          % default 'dotproduct'              other options 'cosine_similarity','correlation' - passed into apply_all_signatures
+similarity_metric_sigs = 'cosine_similarity';                   % default 'cosine_similarity'       other options 'cosine_similarity','correlation' - passed into apply_all_signatures
 keyword_sigs = {which('PleasureSignature.nii'),'ncs'};          % default 'all'                     cell array of signature images and/or keywords passed into load_image_set, help load_image_set for overview of many options
 
 
