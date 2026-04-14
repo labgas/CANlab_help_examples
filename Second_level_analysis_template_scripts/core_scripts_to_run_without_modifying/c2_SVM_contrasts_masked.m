@@ -67,9 +67,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% c2_SVM_contrasts_masked.m         v6.0
+% c2_SVM_contrasts_masked.m         v7.0
 %
-% last modified: 2023/11/15
+% last modified: 2026/04/14
 %
 %
 %% GET AND SET OPTIONS
@@ -553,23 +553,23 @@ for c = 1:kc
             printhdr(['CONTRAST #', num2str(c), ': ', upper(analysisname)]);
             fprintf('\n\n');
         
-            % GET ACCURACY MAP
+            % GET TFCE MAP
 
             sl_stats = searchlight_svm_stats{c};
 
             % FDR-CORRECTED
             
             fprintf('\n\n');
-            printhdr('FDR-corrected searchlight results');
+            printhdr('FDR-corrected searchlight TFCE results');
             fprintf('\n\n');
 
                 % montage
 
                 whmontage = 5; % montage to add title to
 
-                fprintf ('\nMONTAGE SVM SEARCHLIGHT ACCURACY RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                fprintf ('\nMONTAGE SVM SEARCHLIGHT TFCE RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
-                p = sl_stats.stat_img_obj;
+                p = sl_stats.tfce_stat_image;
                 p = threshold(p, q_threshold_svm, 'fdr', 'k', k_threshold_svm); 
                 r = region(p,'noverbose');
                 
@@ -577,7 +577,7 @@ for c = 1:kc
 
                 o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]); % colormap ~ inferno in MRIcroGL
                 o2 = legend(o2);
-                o2 = title_montage(o2, whmontage, [analysisname ' searchlight accuracy FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
+                o2 = title_montage(o2, whmontage, [analysisname ' searchlight TFCE FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                 figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
                 set(gcf, 'Tag', figtitle, 'WindowState','maximized');
@@ -596,7 +596,7 @@ for c = 1:kc
 
                 % table and montage of regioncenters
 
-                fprintf ('\nTABLE SVM SEARCHLIGHT ACCURACY RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                fprintf ('\nTABLE SVM SEARCHLIGHT TFCE RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
                 r(cat(1, r.numVox) < k_threshold_svm) = [];
                 
@@ -611,7 +611,7 @@ for c = 1:kc
                     region_objs_sl_fdr{c} = r;
                     region_tables_sl_fdr{c} = r_table;
                 
-                    fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT ACCURACY RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                    fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT TFCE RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
                     o3 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]); % colormap as above does not function well, maybe because how stats_img_obj is created in previous script
 
@@ -643,9 +643,9 @@ for c = 1:kc
 
                 whmontage = 5; % montage to add title to
 
-                fprintf ('\nMONTAGE SVM SEARCHLIGHT ACCURACY RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                fprintf ('\nMONTAGE SVM SEARCHLIGHT TFCE RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
-                p = sl_stats.stat_img_obj;
+                p = sl_stats.tfce_stat_image;
                 p = threshold(p, p_threshold_svm, 'unc', 'k', k_threshold_svm); 
                 r = region(p,'noverbose');
                 
@@ -653,7 +653,7 @@ for c = 1:kc
 
                 o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]);
                 o2 = legend(o2);
-                o2 = title_montage(o2, whmontage, [analysisname ' searchlight accuracy unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
+                o2 = title_montage(o2, whmontage, [analysisname ' searchlight TFCE unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                 figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
                 set(gcf, 'Tag', figtitle, 'WindowState','maximized');
@@ -672,7 +672,7 @@ for c = 1:kc
 
                 % table and montage of regioncenters
 
-                fprintf ('\nTABLE SVM SEARCHLIGHT ACCURACY RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                fprintf ('\nTABLE SVM SEARCHLIGHT TFCE RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
                 r(cat(1, r.numVox) < k_threshold_svm) = [];
                 
@@ -687,7 +687,7 @@ for c = 1:kc
                     region_objs_sl_unc{c} = r;
                     region_tables_sl_unc{c} = r_table;
 
-                    fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT ACCURACY RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                    fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT TFCE RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
                     o3 = montage(r, 'regioncenters', 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]);
 
