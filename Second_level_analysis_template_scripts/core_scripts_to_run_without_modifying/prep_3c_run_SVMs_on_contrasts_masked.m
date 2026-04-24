@@ -104,9 +104,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3c_run_SVMs_on_contrasts_masked.m         v7.0
+% prep_3c_run_SVMs_on_contrasts_masked.m         v7.1
 %
-% last modified: 2026/04/14
+% last modified: 2026/04/24
 %
 %
 %% GET AND SET OPTIONS
@@ -615,7 +615,7 @@ for c = 1:kc
             
             o3 = montage(s, 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(s.dat) max(s.dat)]); % colormap ~ inferno in MRIcroGL
             o3 = legend(o3);
-            o3 = title_montage(o3, whmontage, [analysisname ' searchlight accuracy > 50% ' mask_string ' ' scaling_string]);
+            o3 = title_montage(o3, whmontage, [analysisname ' TFCE where searchlight AUC > 0.50 ' mask_string ' ' scaling_string]);
 
             figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, mask_string, scaling_string);
             set(gcf, 'Tag', figtitle, 'WindowState','maximized');

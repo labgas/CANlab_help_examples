@@ -163,9 +163,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v8.5
+% prep_3a_run_second_level_regression_and_save.m         v8.6
 %
-% last modified: 2026/01/28
+% last modified: 2026/04/23
 %
 %
 %% GET AND SET OPTIONS
@@ -1248,11 +1248,9 @@ for c = 1:kc
         t = regression_stats.t;
         
         t = apply_mask(t,brainmask); % re-apply brainmask just to be sure
-%         t = trim_mask(t);
         
         if exist('maskname_short','var')
             t = apply_mask(t,glmmask);
-%             t = trim_mask(t);
         end
         
         t = threshold(t,.05,'unc');
@@ -1316,11 +1314,9 @@ for c = 1:kc
             for img = 1:size(BF,2)
                 
                 BF(img) = apply_mask(BF(img),brainmask);
-%                 BF(img) = trim_mask(BF(img));
                 
                     if exist('maskname_short','var')
                         BF(img) = apply_mask(BF(img),glmmask);
-%                         BF(img) = trim_mask(BF(img));
                     end
                 
                 BF(img) = threshold(BF(img),[-2.1972 2.1972],'raw-outside');
@@ -1792,11 +1788,9 @@ for c = 1:kc
                 w = mvpa_stats.weight_obj;
                 
                 w = apply_mask(w,brainmask);
-%                 w = trim_mask(w);
                 
                     if exist('maskname_short','var')
                         w = apply_mask(w,glmmask);
-%                         w = trim_mask(w);
                     end
                     
                 w = region(w);

@@ -34,9 +34,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_2_load_image_data_and_save.m         v2.3
+% prep_2_load_image_data_and_save.m         v2.4
 %
-% last modified: 2025/05/06
+% last modified: 2026/04/23
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
@@ -272,7 +272,6 @@ for i = 1:size(DAT.conditions,2)
     
     % DERIVED MEASURES
     
-    DATA_OBJ{i} = remove_empty(DATA_OBJ{i});
     DAT.globalmeans{i} = mean(DATA_OBJ{i}.dat)';
     DAT.globalstd{i} = std(DATA_OBJ{i}.dat)';
     
@@ -346,7 +345,6 @@ for i=1:size(DAT.conditions,2)
     
     % DERIVED MEASURES
     
-    DATA_OBJsc{i} = remove_empty(DATA_OBJsc{i});
     DAT.sc_globalmeans{i} = mean(DATA_OBJsc{i}.dat)';
     DAT.sc_globalstd{i} = std(DATA_OBJsc{i}.dat)';
     

@@ -67,9 +67,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% c2_SVM_contrasts_masked.m         v7.0
+% c2_SVM_contrasts_masked.m         v7.1
 %
-% last modified: 2026/04/14
+% last modified: 2026/04/24
 %
 %
 %% GET AND SET OPTIONS
@@ -329,6 +329,8 @@ end
 
 if dosearchlight_svm
     
+    fmri_data_objs_sl_fdr = cell(1,kc);
+    fmri_data_objs_sl_unc = cell(1,kc);
     region_objs_sl_fdr = cell(1,kc);
     region_objs_sl_unc = cell(1,kc);
     region_tables_sl_fdr = cell(1,kc);
@@ -545,6 +547,8 @@ for c = 1:kc
     %%
     % *THRESHOLDED SEARCHLIGHT MAPS IF AVAILABLE*       
     
+    % NEEDS FURTHER TESTING!!!
+    
     if dosearchlight_svm
         
         if isempty(cons2searchlight_svm) || ismember(c,cons2searchlight_svm)
@@ -553,137 +557,139 @@ for c = 1:kc
             printhdr(['CONTRAST #', num2str(c), ': ', upper(analysisname)]);
             fprintf('\n\n');
         
-            % GET TFCE MAP
+            % GET TFCE P-MAP
 
             sl_stats = searchlight_svm_stats{c};
+            TFCE_real = sl_stats.TFCE_real;
 
             % FDR-CORRECTED
             
             fprintf('\n\n');
             printhdr('FDR-corrected searchlight TFCE results');
             fprintf('\n\n');
-
-                % montage
-
-                whmontage = 5; % montage to add title to
-
-                fprintf ('\nMONTAGE SVM SEARCHLIGHT TFCE RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
-
-                p = sl_stats.tfce_stat_image;
-                p = threshold(p, q_threshold_svm, 'fdr', 'k', k_threshold_svm); 
-                r = region(p,'noverbose');
-                
-                figure;
-
-                o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]); % colormap ~ inferno in MRIcroGL
-                o2 = legend(o2);
-                o2 = title_montage(o2, whmontage, [analysisname ' searchlight TFCE FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
-
-                figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                
-                disableDefaultInteractivity(gca);
-                
-                snapnow;
-                    if save_figures_svm
-                        plugin_save_figure;
-                    end
-
-
-                clear o2, clear figtitle
-                
-                drawnow nocallbacks;
-
-                % table and montage of regioncenters
-
+            
+                % table
+            
                 fprintf ('\nTABLE SVM SEARCHLIGHT TFCE RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
-
-                r(cat(1, r.numVox) < k_threshold_svm) = [];
                 
-                if ~isempty(r)
+                [tfce_fmri_data_fdr, r, r_table] = thresholded_fmri_data_from_statistic_image (tfce_stat_image_fdr, TFCE_real, combined_atlas, q_threshold_svm, 'TFCE', 'fdr', k_threshold_svm);
                 
-                    if exist('combined_atlas','var')
-                        [r, r_table] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
-                    else
-                        [r, r_table] = table(r);                            % add labels from default canlab_2018 atlas 
-                    end
- 
-                    region_objs_sl_fdr{c} = r;
-                    region_tables_sl_fdr{c} = r_table;
+                % montage
                 
-                    fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT TFCE RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                if ~isempty(tfce_fmri_data_fdr)
+                    
+                    fmri_data_objs_sl_fdr{c} = tfce_fmri_data_fdr;
 
-                    o3 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]); % colormap as above does not function well, maybe because how stats_img_obj is created in previous script
+                    whmontage = 5; % montage to add title to
 
-                    % Activate, name, and save figure
-                    figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
+                    fprintf ('\nMONTAGE SVM SEARCHLIGHT TFCE RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string)
+                    
+                    figure;
+
+                    o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(tfce_fmri_data_fdr.dat(logical(tfce_fmri_data_fdr.sig))) max(tfce_fmri_data_fdr.dat)]); % colormap ~ inferno in MRIcroGL
+                    o2 = legend(o2);
+                    o2 = title_montage(o2, whmontage, [analysisname ' searchlight TFCE FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
+
+                    figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
                     set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                    
+
                     disableDefaultInteractivity(gca);
-                    
+
                     snapnow;
                         if save_figures_svm
                             plugin_save_figure;
                         end
+
+
+                    clear o2, clear figtitle
+
+                    drawnow nocallbacks;
                     
+                end
+
+                % montage of regioncenters
+
+                if ~isempty(r)
+                    
+                    r(cat(1, r.numVox) < k_threshold_svm) = [];
+
+                    region_objs_sl_fdr{c} = r;
+                    region_tables_sl_fdr{c} = r_table;
+
+                    fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT TFCE RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+
+                    o3 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(tfce_fmri_data_fdr.dat(logical(tfce_fmri_data_fdr.sig))) max(tfce_fmri_data_fdr.dat)]);
+
+                    % Activate, name, and save figure
+                    figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
+                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+
+                    disableDefaultInteractivity(gca);
+
+                    snapnow;
+                        if save_figures_svm
+                            plugin_save_figure;
+                        end
+
 
                     clear o3, clear figtitle, clear p, clear r, clear r_table
-                    
+
                     drawnow nocallbacks;
 
                 end % conditional montage plot if there are regions to show
+                
 
             % UNCORRECTED
 
             fprintf('\n\n');
             printhdr('uncorrected searchlight results');
             fprintf('\n\n');
+            
+                % table
+                
+                fprintf ('\nTABLE SVM SEARCHLIGHT TFCE RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                
+                [tfce_fmri_data, r] = thresholded_fmri_data_from_statistic_image (tfce_stat_image, TFCE_real, combined_atlas, p_threshold_svm, 'TFCE', 'unc', k_threshold_svm);
 
                 % montage
-
-                whmontage = 5; % montage to add title to
-
-                fprintf ('\nMONTAGE SVM SEARCHLIGHT TFCE RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
-
-                p = sl_stats.tfce_stat_image;
-                p = threshold(p, p_threshold_svm, 'unc', 'k', k_threshold_svm); 
-                r = region(p,'noverbose');
                 
-                figure;
+                if ~isempty(tfce_fmri_data)
+                    
+                    fmri_data_objs_sl_unc{c} = tfce_fmri_data_unc;
+                    
+                    whmontage = 5; % montage to add title to
 
-                o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]);
-                o2 = legend(o2);
-                o2 = title_montage(o2, whmontage, [analysisname ' searchlight TFCE unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
+                    fprintf ('\nMONTAGE SVM SEARCHLIGHT TFCE RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                
+                    figure;
 
-                figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                
-                disableDefaultInteractivity(gca);
-                
-                snapnow;
-                
-                    if save_figures_svm
-                        plugin_save_figure;
-                    end
-                
-                clear o2, clear figtitle
-                
-                drawnow nocallbacks;
+                    o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(tfce_fmri_data.dat(logical(p.sig))) max(tfce_fmri_data.dat)]);
+                    o2 = legend(o2);
+                    o2 = title_montage(o2, whmontage, [analysisname ' searchlight TFCE unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
-                % table and montage of regioncenters
+                    figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
+                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
 
-                fprintf ('\nTABLE SVM SEARCHLIGHT TFCE RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
+                    disableDefaultInteractivity(gca);
 
-                r(cat(1, r.numVox) < k_threshold_svm) = [];
-                
+                    snapnow;
+
+                        if save_figures_svm
+                            plugin_save_figure;
+                        end
+
+                    clear o2, clear figtitle
+
+                    drawnow nocallbacks;
+                    
+                end
+
+                % montage of regioncenters
+
                 if ~isempty(r)
-                
-                    if exist('combined_atlas','var')
-                        [r, r_table] = table(r,'atlas_obj',combined_atlas); % add labels from combined_atlas
-                    else
-                        [r, r_table] = table(r);                            % add labels from default canlab_2018 atlas 
-                    end
- 
+
+                    r(cat(1, r.numVox) < k_threshold_svm) = [];
+
                     region_objs_sl_unc{c} = r;
                     region_tables_sl_unc{c} = r_table;
 
@@ -694,20 +700,20 @@ for c = 1:kc
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_regions_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
                     set(gcf, 'Tag', figtitle, 'WindowState','maximized');
-                    
+
                     disableDefaultInteractivity(gca);
-                    
+
                     snapnow;
                         if save_figures_svm
                             plugin_save_figure;
                         end
-                    
+
 
                     clear o3, clear figtitle, clear p, clear r, clear r_table
-                    
+
                     drawnow nocallbacks;
 
-                end % conditional montage plot if there are regions to show
+                end % conditional montage plot if there are regions to show                  
             
         end % if loop cons2searchlight
         
@@ -732,7 +738,7 @@ if dosavesvmstats
     end
     
     if dosearchlight_svm
-        save(savefilenamedata, 'region_objs_sl_fdr', 'region_objs_sl_unc', 'region_tables_sl_fdr', 'region_tables_sl_unc','-append');
+        save(savefilenamedata, 'fmri_data_objs_sl_fdr','fmri_data_objs_sl_unc','region_objs_sl_fdr', 'region_objs_sl_unc', 'region_tables_sl_fdr', 'region_tables_sl_unc','-append');
         fprintf('\nAdded searchlight results to saved svm_stats_results\n');
     end
     
