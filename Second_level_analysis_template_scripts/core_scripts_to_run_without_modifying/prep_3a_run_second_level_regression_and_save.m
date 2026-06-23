@@ -163,9 +163,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v8.6
+% prep_3a_run_second_level_regression_and_save.m         v8.7
 %
-% last modified: 2026/04/23
+% last modified: 2026/06/23
 %
 %
 %% GET AND SET OPTIONS
@@ -938,7 +938,7 @@ for c = 1:kc
     
     if doroi_analysis
             
-        roi_means{c} = apply_atlas(cat_obj,roi_atlas);
+        roi_means{c} = apply_parcellation(cat_obj,roi_atlas);
         roi_means_table{c} = array2table(roi_means{c},'VariableNames',roi_names');
         roi_colors = mat2cell(cmap2,ones(1,size(roi_atlas.labels,2)));
             
