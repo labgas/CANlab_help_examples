@@ -67,9 +67,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% c2_SVM_contrasts_masked.m         v7.1
+% c2_SVM_contrasts_masked.m         v8.0
 %
-% last modified: 2026/04/24
+% last modified: 2026/07/01
 %
 %
 %% GET AND SET OPTIONS
@@ -206,9 +206,16 @@ end
 % -------------------------------------------------------------------------
 
 resultsvarname = 'svm_stats_results';
+
+% TO DO: test alternative newapi code
+% pmvarname = 'svm_pm_objects';
+
 resultsstring = 'svm_stats_results_contrasts_';
 
 if ~exist(resultsvarname,'var')
+
+% TO DO: test alternative newapi code
+% if ~exist(resultsvarname,'var') || ~exist(pmvarname,'var')
     
     fprintf('\n\n');
     printhdr('LOADING DATA');
@@ -289,30 +296,9 @@ end
 if ~all(ispaired)
     fprintf('\n');
     error('This script should only be run on paired, within-person contrasts. Check images and results. Skipping this analysis.');
+else
+    rocpairstring = 'twochoice';  % 'twochoice' or 'unpaired'
 end
-
-
-%% DEFINE EFFECT SIZE FUNCTIONS AND ROC TYPE
-% -------------------------------------------------------------------------
-
-% Define paired and uppaired functions here for reference
-% This script uses the paired option because it runs within-person
-% contrasts
-
-% ROC plot is different for paired samples and unpaired. Paired samples
-% must be in specific order, 1:n for condition 1 and 1:n for condition 2.
-% If samples are paired, this is set up by default in these scripts.
-% But some contrasts entered by the user may be unbalanced, i.e., different
-% numbers of images in each condition, unpaired. Other SVM scripts are set up
-% to handle this condition explicitly and run the unpaired version.  
-
-% Effect size, cross-validated, paired samples
-dfun_paired = @(x, Y) mean(x(Y > 0) - x(Y < 0)) ./ std(x(Y > 0) - x(Y < 0));
-
-% Effect size, cross-validated, unpaired sampled
-dfun_unpaired = @(x, Y) (mean(x(Y > 0)) - mean(x(Y < 0))) ./ sqrt(var(x(Y > 0)) + var(x(Y < 0))); % check this. @lukasvo76 appears unused here hence we may not need it, but does not harm
-
-rocpairstring = 'twochoice';  % 'twochoice' or 'unpaired'
 
 
 %% CROSS-VALIDATED ACCURACY, ROC PLOTS, AND MONTAGES FOR EACH CONTRAST
@@ -366,9 +352,6 @@ for c = 1:kc
     fprintf('\n\n');
     
     ROC = roc_plot(dist_from_hyperplane{c}, logical(Y{c} > 0), 'color', DAT.contrastcolors{c}, rocpairstring);
-    
-%     d_paired = dfun_paired(dist_from_hyperplane{c}, Y{c});
-%     fprintf('\nEffect size, cross-validated: Forced choice: d = %3.2f\n\n', d_paired);
     
     disableDefaultInteractivity(gca);
     

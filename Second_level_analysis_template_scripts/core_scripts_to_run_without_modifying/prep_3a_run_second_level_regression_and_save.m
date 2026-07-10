@@ -99,6 +99,14 @@
 %
 % * doBayes                     convert t-maps into Bayes Factors 
 %
+% * doTFCE                      calculate TFCE maps from fmri_data_object
+%
+%       _TFCE analysis options_
+%
+%         * perm_n_tfce         number of permutations for TFCE-based stats
+%         * tfce_sidedness      'one' versus 'two'-tailed test for TFCE-based stats
+%         * tfce_tail           'pos' or 'neg' if tfce_sidedness = 'one'
+%
 % * doroi_analysis              extract roi averages from condition (beta) or contrast (con) images using atlas objects created by LaBGAScore_atlas_binary_mask_from_atlas.m and written in secondlevel/modeldir/masks as input
 %
 %       _roi analysis options_
@@ -144,8 +152,9 @@
 % *OPTIONS TO BE SPECIFIED IN THIS SCRIPT IF DESIGN_MATRIX_TYPE = CUSTOM*
 %
 % * covs2use                    variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} to be used as covariates in GLM and, if domvpa_reg_cov = true, outcome in MVPA regression
+% * nuisance_covs               variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} to be used as nuisance covariate rather than covariate of interest in GLM
 %
-%       NOTE: only use this option if you don't want to use all variables in the above table as covariate, otherwise delete or comment out below
+%       NOTE: only use the first option if you don't want to use all variables in the above table as covariate, otherwise delete or comment out below
 %
 %
 % *OPTIONS TO BE SPECIFIED IN THIS SCRIPT IF DESIGN_MATRIX_TYPE = GROUP*
@@ -163,9 +172,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v8.7
+% prep_3a_run_second_level_regression_and_save.m         v9.0
 %
-% last modified: 2026/06/23
+% last modified: 2026/07/06
 %
 %
 %% GET AND SET OPTIONS
@@ -184,6 +193,7 @@ results_suffix = ''; % adds a suffix of your choice to .mat file with results th
 % OPTIONS IF DESIGN_MATRIX_TYPE = CUSTOM
 
 % covs2use = {'delta_wanting'};      % needs to correspond to variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} AND THE ORDER IN WHICH THEY APPEAR THERE
+% nuisance_covs = {'center'};
 
 % NOTE: if you want to use all variables in DAT.BETWEENPERSON.(mygroupnamefield){:} as covariates, comment this option out
 
@@ -230,6 +240,10 @@ plugin_get_options_for_analysis_script;
 % myscaling_glm = 'raw'/'scaled'/'scaled_contrasts';
 % design_matrix_type = 'custom';
 % doBayes = true/false;
+% doTFCE = true/false;
+%     perm_n_tfce = [number];                                                    
+%     tfce_sidedness = 'two'/'one';                                                
+%     tfce_tail = 'pos/neg';                                               
 % doroi_analysis = true/false;
 %   roi_names = {'x','y','z'};
 %   roi_modelname = 'modelname';
@@ -558,6 +572,14 @@ if ~dorobfit_parcelwise
     
     regression_stats_results = cell(1, kc);
     
+    if doBayes
+        bayesian_regression_stats_results = cell(1, kc);
+    end
+    
+    if doTFCE
+        tfce_regression_stats_results = cell(1, kc);
+    end
+    
 else
     
     parcelwise_stats_results = cell(1,kc);
@@ -635,6 +657,15 @@ for c = 1:kc
                     table_obj = table_obj(:,idx_covar);
                     groupnames = groupnames(idx_covar);
 
+                end
+                
+                if exist('nuisance_covs','var')
+                    idx_nuisance = ismember(groupnames,nuisance_covs);
+                    
+                        if sum(idx_nuisance) == 0
+                            error('\nOne or more covariates defined in covs2use not present in DAT.BETWEENPERSON.%s{%d}, please correct before proceeding\n',mygroupnamefield,c);
+                        end
+                        
                 end
                     
             X = table2array(table_obj);
@@ -891,6 +922,8 @@ for c = 1:kc
         design_table = table;
         design_table.Mean = mean(X)';
         design_table.Var = var(X)';
+        disp(design_table)
+        disp(' ');
         
     end % if loop design_matrix_type
     
@@ -921,6 +954,8 @@ for c = 1:kc
     % ----------------------------------------------------------
     
     if domvpa_reg_cov
+        
+        mvpa_data_objects = cell(size(cat_obj.X,2),1);
         
         for covar = 1:size(cat_obj.X,2)
             
@@ -1192,17 +1227,20 @@ for c = 1:kc
             end
         end
 
-        % MAKE SURE VARIABLES ARE THE RIGHT DATA FORMAT
         
-        regression_stats.design_table = design_table;
-        regression_stats.t = enforce_variable_types(regression_stats.t);
-        regression_stats.b = enforce_variable_types(regression_stats.b);
-        regression_stats.df = enforce_variable_types(regression_stats.df);
-        regression_stats.sigma = enforce_variable_types(regression_stats.sigma);
+        % RUN DIAGNOSTICS ON FITTED MODEL AND SUMMARIZE
+        
+        regression_stats.nuisance_columns = find(idx_nuisance);
+        
+        regression_stats = validate_object(regression_stats);
+        regression_stats = run_diagnostics(regression_stats);
+        summary(regression_stats);
+        
         
         if doBayes
             
-            % CALCULATE BAYES FACTORS FROM T-MAPŜ AND ADD TO RESULTS
+            % CALCULATE BAYES FACTORS FROM T-MAPŜ AND SAVE TO SEPARATE
+            % RESULTS STRUCT
             
             fprintf('\n\n');
             printhdr('Calculating voxel-wise Bayes Factor maps');
@@ -1214,31 +1252,107 @@ for c = 1:kc
                 
                 t_for_Bayes = get_wh_image(regression_stats.t, reg);
                 t_for_Bayes.N = N';
-                regression_stats.BF(reg) = estimateBayesFactor(t_for_Bayes,'t');
+                bayesian_regression_stats.BF(reg) = estimateBayesFactor(t_for_Bayes,'t');
             
             end
             
         end
-
-        % ADD CONTRASTNAMES, REGRESSORS, AND OTHER METADATA
         
-        switch mygroupnamefield
-            case 'contrasts'
-                regression_stats.contrastname = DAT.contrastnames{c};
-                regression_stats.contrast = DAT.contrasts(c, :);
-            case 'conditions'
-                regression_stats.contrastname = DAT.conditions{c};
-                regression_stats.contrast = 1;
-        end
-
-        % ADD VARIABLE NAMES
+        LaBGAScore_smart_parallel_pool_setup;      
         
-        if ~strcmpi(design_matrix_type,'onesample')
-            regression_stats.variable_names = [groupnames {'intercept'}];
-        else
-            regression_stats.variable_names = groupnames;
-        end
+        if doTFCE
+            
+            % CALCULATE TFCE STATS FROM DATA OBJECT
+            
+            fprintf('\n\n');
+            printhdr('Calculating voxel-wise TFCE maps');
+            fprintf('\n\n');
+            
+            switch design_matrix_type
+                
+                case 'onesample'
+                    
+                    switch tfce_sidedness
+                        
+                        case 'two'
+                            
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'onesample',[],[],perm_n_tfce,'sidedness',tfce_sidedness);
+                        
+                        case 'one'
+                            
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'onesample',[],[],perm_n_tfce,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                            
+                    end
+                    
+                case 'group'
+                    
+                    switch tfce_sidedness
+                        
+                        case 'two'
+                            
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'sidedness',tfce_sidedness);
+                        
+                        case 'one'
+                            
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                            
+                    end
+                    
+                case 'custom'
+                    
+                    if ~isempty(DAT.BETWEENPERSON.group)
+                              
+                           
+                       if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
+                               
+                           switch tfce_sidedness
 
+                                case 'two'
+
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,regression_stats.X(:,regression_stats.wh_nuisance),perm_n_tfce,'sidedness',tfce_sidedness);
+
+                                case 'one'
+
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,regression_stats.X(:,regression_stats.wh_nuisance),perm_n_tfce,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                                    
+                           end
+                           
+                       else
+                           
+                           switch tfce_sidedness
+                        
+                                case 'two'
+
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'sidedness',tfce_sidedness);
+
+                                case 'one'
+
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                            
+                            end
+
+                       end
+                       
+                    else
+                        
+                        warning('TFCE stats not implemented yet for continuous regressors, skipping TFCE for this contrast')
+                        
+                    end
+                    
+            end % switch design_matrix_type
+            
+            tfce_regression_stats.tfce_dat = tfce_dat;
+            tfce_regression_stats.tfce_stat_img = tfce_stat_img;
+            tfce_regression_stats.tfce_info = tfce_info;
+            
+            fprintf('\nMaximum real TFCE = %s\n',tfce_info.TFCE_real_max);
+            fprintf('\nMaximum null TFCE = %s\n',tfce_info.TFCE_null_max);
+            fprintf('\nGlobal TFCE p-value = %s\n',tfce_info.p_TFCE_global);
+                    
+            
+        end % if doTFCE
+
+        
         % PLOT MONTAGE (MASKED IF SPECIFIED IN MASKNAME_GLM)
 
         fprintf('\n\n');
@@ -1255,10 +1369,10 @@ for c = 1:kc
         
         t = threshold(t,.05,'unc');
         
-        fprintf ('\nMONTAGE VOXELWISE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.contrastname, groupnames_string, mask_string, scaling_string);
+        fprintf ('\nMONTAGE VOXELWISE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
                 
         num_effects = size(t.dat, 2); % number of regressors
-        o2 = canlab_results_fmridisplay([], 'multirow', num_effects);%, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img'); % using new default underlay based on fmriprep template
+        o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
 
         for j = 1:num_effects
 
@@ -1287,11 +1401,11 @@ for c = 1:kc
                     o2 = legend(o2);
                 end
             
-            o2 = title_montage(o2, 2*j, [regression_stats.contrastname ' ' regression_stats.variable_names{j} ' ' mask_string ' ' scaling_string]);
+            o2 = title_montage(o2, 2*j, [regression_stats.analysis_name ' ' regression_stats.variable_names{j} ' ' mask_string ' ' scaling_string]);
 
         end
 
-        figtitle = sprintf('%s_05_unc_montage_%s_%s_%s', regression_stats.contrastname, groupnames_string, mask_string, scaling_string);
+        figtitle = sprintf('%s_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
         set(gcf, 'Tag', figtitle, 'WindowState','maximized');
         drawnow, snapnow;
             if save_figures_glm
@@ -1305,11 +1419,11 @@ for c = 1:kc
             printhdr('Plotting voxel-wise Bayesian GLM results');
             fprintf('\n\n');
             
-            BF = regression_stats.BF;
+            BF = bayesian_regression_stats.BF;
             
-            fprintf ('\nMONTAGE VOXELWISE BAYESIAN GLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.contrastname, groupnames_string, mask_string, scaling_string);
+            fprintf ('\nMONTAGE VOXELWISE BAYESIAN GLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
             
-            o2 = canlab_results_fmridisplay([], 'multirow', num_effects);%, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img'); % using new default underlay based on fmriprep template
+            o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
             
             for img = 1:size(BF,2)
                 
@@ -1343,11 +1457,11 @@ for c = 1:kc
                         o2 = legend(o2);
                     end
                 
-                o2 = title_montage(o2, 2*img, [regression_stats.contrastname ' ' regression_stats.variable_names{img} ' ' mask_string ' ' scaling_string]);
+                o2 = title_montage(o2, 2*img, [regression_stats.analysis_name ' ' regression_stats.variable_names{img} ' ' mask_string ' ' scaling_string]);
             
             end
 
-            figtitle = sprintf('%s_BF_3_montage_%s_%s_%s', regression_stats.contrastname, groupnames_string, mask_string, scaling_string);
+            figtitle = sprintf('%s_BF_3_montage_%s_%s_%s', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
             set(gcf, 'Tag', figtitle, 'WindowState','maximized');
             drawnow, snapnow;
                 if save_figures_glm
@@ -1356,18 +1470,74 @@ for c = 1:kc
             clear o2, clear figtitle, clear img, clear BF
             
         end
+        
+        if doTFCE
+            
+            fprintf('\n\n');
+            printhdr('Plotting voxel-wise TFCE GLM results');
+            fprintf('\n\n');
+            
+            tfce_stat_img_thr_unc_05 = threshold(tfce_stat_img,0.05,'unc');
+            tfce_dat_thr_unc_05 = thresholded_fmri_data_from_statistic_image(tfce_stat_img_thr_unc_05,tfce_dat.dat,combined_atlas,0.05,'tfce','unc',0);
+            
+            tfce_regression_stats.tfce_stat_img_thr_unc_05 = tfce_stat_img_thr_unc_05;
+            tfce_regression_stats.tfce_dat_thr_unc_05 = tfce_dat_thr_unc_05;
+            
+                if exist('maskname_short','var')
+                    tfce_dat_thr_unc_05 = apply_mask(tfce_dat_thr_unc_05, glmmask);
+                end
+                
+                switch design_matrix_type
+                    
+                    case 'onesample'
+            
+                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
+                        
+                    case 'group'
+                        
+                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
+                        
+                    case 'custom'
+                        
+                        if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
+                            
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), char(regression_stats.variable_names(regression_stats.wh_nuisance)), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_05_unc_montage_%s_nuisance_%s_%s_%s', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), char(regression_stats.variable_names(regression_stats.wh_nuisance)), mask_string, scaling_string);
+                            
+                        else
+                        
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
+                            
+                        end
+                        
+                end
+            
+            o2 = montage(tfce_dat_thr_unc_05,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
+            o2 = title_montage(o2, 5, ['tfce ' regression_stats.analysis_name ' ' char(regression_stats.variable_names(regression_stats.wh_interest)) ' ' mask_string ' ' scaling_string]);
+            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            drawnow, snapnow;
+                if save_figures_glm
+                    plugin_save_figure;
+                end
+            clear o2, clear figtitle
+            
+        end
 
         % KEEP RESULTS OBJECTS IN CELL ARRAY FOR SAVING
 
         regression_stats_results{c} = regression_stats;
         
-        if exist(maskname_glm,'file')
-            regression_stats_results{c}.maskname = maskname_glm;
+        if doBayes
+            bayesian_regression_stats_results{c} = bayesian_regression_stats;
         end
         
-        if dorobust
-            fprintf('\nCumulative run time:\n'), toc(regresstime); 
+        if doTFCE
+            tfce_regression_stats_results{c} = tfce_regression_stats;
         end
+
         
     % PARCEL-WISE
     % -----------
@@ -1504,7 +1674,7 @@ for c = 1:kc
         fprintf ('\nMONTAGE PARCELWISE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
         
         num_effects = size(parcelwise_stats.t_obj.dat, 2); % number of regressors
-        o2 = canlab_results_fmridisplay([], 'multirow', num_effects);%, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img'); % using new default underlay based on fmriprep template
+        o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
 
         for j = 1:num_effects
 
@@ -1553,7 +1723,7 @@ for c = 1:kc
            
             fprintf ('\nMONTAGE BAYESIAN PARCELWISE GLM RESULTS AT |BF| > 3, EFFECT: %s, REGRESSOR(S): %s, MASK: %s, SCALING: %s\n\n', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
         
-            o2 = canlab_results_fmridisplay([], 'multirow', num_effects);%, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img'); % using new default underlay based on fmriprep template
+            o2 = canlab_results_fmridisplay([], 'multirow', num_effects);
             
             for img = 1:size(parcelwise_stats.BF,2)
                 
@@ -1598,10 +1768,7 @@ for c = 1:kc
         % KEEP RESULTS OBJECTS IN CELL ARRAY FOR SAVING
 
         parcelwise_stats_results{c} = parcelwise_stats;
-        
-        if exist(maskname_glm,'file')
-            parcelwise_stats_results{c}.maskname = maskname_glm;
-        end
+
         
     end % if loop voxel- versus parcelwise
     
@@ -1706,7 +1873,7 @@ for c = 1:kc
                             fprintf('\n');
                         end
 
-                        cv=cvpartition(size(mvpa_dat.dat,2),'KFold',nfolds_mvpa_reg_cov);
+                        cv = cvpartition(size(mvpa_dat.dat,2),'KFold',nfolds_mvpa_reg_cov);
                         fold_labels = zeros(size(mvpa_dat.dat,2),1);
                             for subj = 1:cv.NumTestSets
                                 fold_labels(cv.test(subj)) = subj;
@@ -1784,7 +1951,7 @@ for c = 1:kc
 
                 figure
 
-                o2 = canlab_results_fmridisplay([], 'compact');%, 'overlay', 'mni_icbm152_t1_tal_nlin_sym_09a_brainonly.img'); % using new default underlay based on fmriprep template
+                o2 = canlab_results_fmridisplay([], 'compact');
                 w = mvpa_stats.weight_obj;
                 
                 w = apply_mask(w,brainmask);
@@ -1827,6 +1994,12 @@ fprintf('\n\n');
 if ~dorobfit_parcelwise
         savefilenamedata = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
         save(savefilenamedata, 'regression_stats_results', '-v7.3');
+        if doBayes
+            save(savefilenamedata, 'bayesian_regression_stats_results', '-append');
+        end
+        if doTFCE
+            save(savefilenamedata, 'tfce_regression_stats_results', '-append');
+        end
         fprintf('\nSaved regression_stats_results for %s\n', mygroupnamefield);
 
 else
