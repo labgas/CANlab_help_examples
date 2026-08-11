@@ -172,9 +172,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v9.0
+% prep_3a_run_second_level_regression_and_save.m         v9.1
 %
-% last modified: 2026/07/06
+% last modified: 2026/07/14
 %
 %
 %% GET AND SET OPTIONS
@@ -1906,9 +1906,25 @@ for c = 1:kc
                 fprintf('\n\n');
 
                 t0 = tic;
+                
+                switch algorithm_mvpa_reg_cov
+                    
+                    case 'cv_lassopcr'
 
-                [mvpa_cverr, mvpa_stats, mvpa_optout] = predict(mvpa_dat, 'algorithm_name', algorithm_mvpa_reg_cov, ...
+                        [mvpa_cverr, mvpa_stats, mvpa_optout, pm] = predict(mvpa_dat, 'algorithm_name', algorithm_mvpa_reg_cov, ...
+                            'nfolds', fold_labels, 'error_type', 'mse', 'estimateparams', 'parallel', 'verbose', 0, 'newapi');
+                        
+                    case 'cv_lassopcrmatlab'
+
+                        [mvpa_cverr, mvpa_stats, mvpa_optout] = predict(mvpa_dat, 'algorithm_name', algorithm_mvpa_reg_cov, ...
+                            'nfolds', fold_labels, 'error_type', 'mse', 'EstimateParams', 'parallel', 'verbose', 0);
+                                
+                    otherwise
+                        
+                        [mvpa_cverr, mvpa_stats, mvpa_optout] = predict(mvpa_dat, 'algorithm_name', algorithm_mvpa_reg_cov, ...
                             'nfolds', fold_labels, 'error_type', 'mse', 'parallel', 'verbose', 0);
+                        
+                end
 
                 t_end = toc(t0); 
                 
