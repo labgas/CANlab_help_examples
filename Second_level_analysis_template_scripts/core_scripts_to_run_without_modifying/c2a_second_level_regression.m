@@ -81,7 +81,7 @@
 %
 % -------------------------------------------------------------------------
 %
-% c2a_second_level_regression.m         v8.2
+% c2a_second_level_regression.m         v8.3
 %
 % last modified: 2026/08/11
 %
@@ -439,21 +439,26 @@ end
 
 region_objs_fdr = cell(1,size(results,2));
 region_tables_fdr = cell(1,size(results,2));
+region_tables_cov_fdr = cell(1,size(results,2));
 
 region_objs_unc = cell(1,size(results,2));
 region_tables_unc = cell(1,size(results,2));
+region_tables_cov_unc = cell(1,size(results,2));
 
     if doBayes
         region_objs_Bayes = cell(1,size(bayesian_results,2));
         region_tables_Bayes = cell(1,size(bayesian_results,2));
+        region_tables_cov_Bayes = cell(1,size(bayesian_results,2));
     end
     
     if doTFCE
         region_objs_tfce_fdr = cell(1,size(tfce_results,2));
         region_tables_tfce_fdr = cell(1,size(tfce_results,2));
+        region_tables_cov_tfce_fdr = cell(1,size(tfce_results,2));
 
         region_objs_tfce_unc = cell(1,size(tfce_results,2));
         region_tables_tfce_unc = cell(1,size(tfce_results,2)); 
+        region_tables_cov_tfce_unc = cell(1,size(tfce_results,2));
     end
         
 
@@ -607,6 +612,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     
         region_fdr = cell(1,num_effects);
         table_fdr = cell(1,num_effects);
+        table_cov_fdr = cell(1,num_effects);
         
         for j = 1:num_effects
 
@@ -620,21 +626,34 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         
                 end
 
-            r = region(tj, 'noverbose');
+            r = region(tj);
             r(cat(1, r.numVox) < k_threshold_glm) = [];
             
             if ~isempty(r)
             
                 if exist('combined_atlas','var')
-                    [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);    % add labels from combined_atlas
-                    r = [rpos rneg];                                                % re-concatenate labeled regions
+                    
+                    [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+                    
+                    r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
+                    
+                    [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
+                        r_table_cov] = table_of_atlas_regions_covered(tj,'atlas',combined_atlas);           % print results details table with regions covered and label using atlasname_glm
+                    
                 else
-                    [rpos, rneg, r_table] = table(r);                               % add labels from default canlab_2018 atlas 
-                    r = [rpos rneg];                                                % re-concatenate labeled regions
+                    
+                    [rpos, rneg, r_table] = table(r);                                                       % print results summary table, label using default atlas, and split positive and negative regions
+                    
+                    r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
+                    
+                    [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
+                        r_table_cov] = table_of_atlas_regions_covered(tj,'atlas',combined_atlas);           % print results details table with regions covered and label using default atlas
+
                 end
             
                 region_fdr{j} = r;
                 table_fdr{j} = r_table;
+                table_cov_fdr{j} = r_table_cov;
 
                 % Montage of regions in table (plot and save)
                 
@@ -649,7 +668,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     if save_figures_glm
                         plugin_save_figure;
                     end
-                clear o3, clear figtitle, clear j, clear tj, clear r, clear r_table
+                clear o3, clear figtitle, clear j, clear tj, clear r, clear rpos rneg r_cov, clear r_table*
 
             end % conditional montage plot if there are regions to show
             
@@ -657,6 +676,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
         
         region_objs_fdr{c} = region_fdr;
         region_tables_fdr{c} = table_fdr;
+        region_tables_cov_fdr{c} = table_cov_fdr;
         
   
     % BETWEEN-SUBJECT REGRESSORS & INTERCEPT: uncorrected
@@ -716,6 +736,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
         
         region_unc = cell(1,num_effects);
         table_unc = cell(1,num_effects);
+        table_cov_unc = cell(1,num_effects);
     
         for j = 1:num_effects
 
@@ -725,21 +746,34 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             tj = threshold(tj, p_threshold_glm, 'unc', 'k', k_threshold_glm); 
 
-            r = region(tj, 'noverbose');
+            r = region(tj);
             r(cat(1, r.numVox) < k_threshold_glm) = [];
             
             if ~isempty(r)
             
                 if exist('combined_atlas','var')
-                    [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);    % add labels from combined_atlas
-                    r = [rpos rneg];                                                % re-concatenate labeled regions
+                    
+                    [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+                    
+                    r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
+                    
+                    [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
+                        r_table_cov] = table_of_atlas_regions_covered(tj,'atlas',combined_atlas);           % print results details table with regions covered and label using atlasname_glm
+                    
                 else
-                    [rpos, rneg, r_table] = table(r);                               % add labels from default canlab_2018 atlas 
-                    r = [rpos rneg];                                                % re-concatenate labeled regions
-                end       
+                    
+                    [rpos, rneg, r_table] = table(r);                                                       % print results summary table, label using default atlas, and split positive and negative regions
+                    
+                    r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
+                    
+                    [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
+                        r_table_cov] = table_of_atlas_regions_covered(tj,'atlas',combined_atlas);           % print results details table with regions covered and label using default atlas
+
+                end
             
                 region_unc{j} = r;
                 table_unc{j} = r_table;
+                table_cov_unc{j} = r_table_cov;
 
                 % Montage of regions in table (plot and save)
                 
@@ -754,7 +788,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     if save_figures_glm
                         plugin_save_figure;
                     end
-                clear o3, clear figtitle, clear j, clear tj, clear r, clear r_table
+                clear o3, clear figtitle, clear j, clear tj, clear r, clear rpos rneg r_cov, clear r_table*
 
             end % conditional montage plot if there are regions to show
         
@@ -762,6 +796,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
         
     region_objs_unc{c} = region_unc;
     region_tables_unc{c} = table_unc;
+    region_tables_cov_unc{c} = table_cov_unc;
 
     
     % BETWEEN-SUBJECT REGRESSORS & INTERCEPT: Bayesian
@@ -823,6 +858,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             region_Bayes = cell(1,num_effects);
             table_Bayes = cell(1,num_effects);
+            table_cov_Bayes = cell(1,num_effects);
         
             for j = 1:num_effects
 
@@ -831,22 +867,35 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 BFj = BF(1,j);
                 BFj = threshold(BFj, [-2*(log(BF_threshold_glm)) 2*(log(BF_threshold_glm))], 'raw-outside'); 
 
-                r = region(BFj, 'noverbose');
+                r = region(BFj);
                 
                 r(cat(1, r.numVox) < k_threshold_glm) = [];
                 
                 if ~isempty(r)
                 
                     if exist('combined_atlas','var')
-                        [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);    % add labels from combined_atlas
-                        r = [rpos rneg];                                                % re-concatenate labeled regions
+
+                        [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+
+                        r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
+
+                        [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
+                            r_table_cov] = table_of_atlas_regions_covered(BFj,'atlas',combined_atlas);          % print results details table with regions covered and label using atlasname_glm
+
                     else
-                        [rpos, rneg, r_table] = table(r);                               % add labels from default canlab_2018 atlas 
-                        r = [rpos rneg];                                                % re-concatenate labeled regions
+
+                        [rpos, rneg, r_table] = table(r);                                                       % print results summary table, label using default atlas, and split positive and negative regions
+
+                        r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
+
+                        [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
+                            r_table_cov] = table_of_atlas_regions_covered(BFj,'atlas',combined_atlas);          % print results details table with regions covered and label using default atlas
+
                     end
-                    
+
                     region_Bayes{j} = r;
                     table_Bayes{j} = r_table;
+                    table_cov_Bayes{j} = r_table_cov;
 
                     % Montage of regions in table (plot and save)
 
@@ -861,7 +910,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         if save_figures_glm
                             plugin_save_figure;
                         end
-                    clear o3, clear figtitle, clear j, clear tj, clear r, clear r_table
+                    clear o3, clear figtitle, clear j, clear BFj, clear r, clear rpos rneg r_cov, clear r_table*
 
                 end % conditional montage plot if there are regions to show
 
@@ -869,6 +918,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             
         region_objs_Bayes{c} = region_Bayes;
         region_tables_Bayes{c} = table_Bayes;
+        region_tables_cov_Bayes{c} = table_cov_Bayes;
             
     end % if loop doBayes
     
@@ -984,22 +1034,37 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             region_tfce_fdr = cell(1);
             table_tfce_fdr = cell(1);
+            table_cov_tfce_fdr = cell(1);
 
-            r = region(tfce_dat_thr_fdr, 'noverbose');
+            r = region(tfce_dat_thr_fdr);
             r(cat(1, r.numVox) < k_threshold_glm) = [];
+            r.Z_descrip = 'TFCE';
 
                 if ~isempty(r)
 
                     if exist('combined_atlas','var')
-                        [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);    % add labels from combined_atlas
-                        r = [rpos rneg];                                                % re-concatenate labeled regions
+
+                        [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);                                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+
+                        r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
+
+                        [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
+                            r_table_cov] = table_of_atlas_regions_covered(tfce_dat_thr_fdr,'atlas',combined_atlas);             % print results details table with regions covered and label using atlasname_glm
+
                     else
-                        [rpos, rneg, r_table] = table(r);                               % add labels from default canlab_2018 atlas 
-                        r = [rpos rneg];                                                % re-concatenate labeled regions
-                    end       
+
+                        [rpos, rneg, r_table] = table(r);                                                                       % print results summary table, label using default atlas, and split positive and negative regions
+
+                        r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
+
+                        [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
+                            r_table_cov] = table_of_atlas_regions_covered(tfce_dat_thr_fdr,'atlas',combined_atlas);             % print results details table with regions covered and label using default atlas
+
+                    end     
 
                     region_tfce_fdr{1} = r;
                     table_tfce_fdr{1} = r_table;
+                    table_cov_tfce_fdr{1} = r_table_cov;
 
                     % Montage of regions in table (plot and save)
 
@@ -1011,12 +1076,13 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         if save_figures_glm
                             plugin_save_figure;
                         end
-                    clear o3, clear figtitle, clear j, clear tj, clear r, clear r_table
+                    clear o3, clear figtitle, clear j, clear r, clear rpos rneg r_cov, clear r_table*
 
                 end % conditional montage plot if there are regions to show
 
             region_objs_tfce_fdr{c} = region_tfce_fdr;
             region_tables_tfce_fdr{c} = table_tfce_fdr;
+            region_tables_cov_tfce_fdr{c} = table_cov_tfce_fdr;
             
         else
             
@@ -1134,22 +1200,37 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             region_tfce_unc = cell(1);
             table_tfce_unc = cell(1);
+            table_cov_tfce_unc = cell(1);
 
             r = region(tfce_dat_thr_unc, 'noverbose');
             r(cat(1, r.numVox) < k_threshold_glm) = [];
+            r.Z_descrip = 'TFCE';
 
                 if ~isempty(r)
 
                     if exist('combined_atlas','var')
-                        [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);    % add labels from combined_atlas
-                        r = [rpos rneg];                                                % re-concatenate labeled regions
+
+                        [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);                                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+
+                        r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
+
+                        [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
+                            r_table_cov] = table_of_atlas_regions_covered(tfce_dat_thr_unc,'atlas',combined_atlas);             % print results details table with regions covered and label using atlasname_glm
+
                     else
-                        [rpos, rneg, r_table] = table(r);                               % add labels from default canlab_2018 atlas 
-                        r = [rpos rneg];                                                % re-concatenate labeled regions
-                    end       
+
+                        [rpos, rneg, r_table] = table(r);                                                                       % print results summary table, label using default atlas, and split positive and negative regions
+
+                        r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
+
+                        [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
+                            r_table_cov] = table_of_atlas_regions_covered(tfce_dat_thr_unc,'atlas',combined_atlas);             % print results details table with regions covered and label using default atlas
+
+                    end     
 
                     region_tfce_unc{1} = r;
                     table_tfce_unc{1} = r_table;
+                    table_cov_tfce_unc{1} = r_table_cov;
 
                     % Montage of regions in table (plot and save)
 
@@ -1161,12 +1242,13 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         if save_figures_glm
                             plugin_save_figure;
                         end
-                    clear o3, clear figtitle, clear j, clear tj, clear r, clear r_table
+                    clear o3, clear figtitle, clear j, clear tj, clear r, clear rpos rneg r_cov, clear r_table*
 
                 end % conditional montage plot if there are regions to show
 
             region_objs_tfce_unc{c} = region_tfce_unc;
             region_tables_tfce_unc{c} = table_tfce_unc;
+            region_tables_cov_tfce_unc{c} = table_cov_tfce_unc;
         
         end % if loop TFCE unc
         
@@ -1313,14 +1395,15 @@ fprintf('\n\n');
         cd(rootdir);
     
         savefilenamedata_region = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
-        save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr', 'region_tables_unc', 'region_tables_fdr','-append');
+        save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr', 'region_tables_unc', 'region_tables_fdr', 'region_tables_cov_unc', 'regions_tables_cov_fdr', '-append');
         
         if doBayes
-            save(savefilenamedata_region, 'region_objs_Bayes', 'region_tables_Bayes', '-append');
+            save(savefilenamedata_region, 'region_objs_Bayes', 'region_tables_Bayes', 'region_tables_cov_Bayes', '-append');
         end
         
         if doTFCE
-            save(savefilenamedata_region, 'region_objs_tfce_unc', 'region_objs_tfce_fdr', 'region_tables_tfce_unc', 'region_tables_tfce_fdr','-append'); 
+            save(savefilenamedata_region, 'region_objs_tfce_unc', 'region_objs_tfce_fdr', 'region_tables_tfce_unc', 'region_tables_tfce_fdr', ...
+                'region_tables_cov_tfce_unc','region_tables_cov_tfce_fdr', '-append'); 
         end
         
     else
@@ -1330,15 +1413,10 @@ fprintf('\n\n');
         cd(rootdir);
         
         savefilenamedata_region = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
-        
-        if ~doBayes
+        save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr', 'region_tables_unc', 'region_tables_fdr', 'region_tables_cov_unc', 'region_tables_cov_fdr', '-append');
             
-                save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr', 'region_objs_Bayes', '-append');
-            
-        else
-            
-                save(savefilenamedata_region, 'region_objs_unc', 'region_objs_Bayes', 'region_objs_fdr', 'region_tables_unc', 'region_tables_fdr', 'region_tables_Bayes','-append');
-                  
+        if doBayes
+            save(savefilenamedata_region, 'region_objs_Bayes', 'region_tables_Bayes', 'region_tables_cov_Bayes', '-append');
         end
         
     end 
