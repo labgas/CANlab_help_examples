@@ -274,7 +274,7 @@ dosavemvparegstats = true;                                                      
 domultilevel_mvpa_reg_st = false;                                               % default false; fits multilevel mvpa models - WORK IN PROGRESS
 
 
-%% C2G_RUN_MULTILEVEL_MEDIATION_SINGLE_TRIAL
+%% C2G_RUN_MULTIVARIATE_MEDIATION_SINGLE_TRIAL
 % -------------------------------------------------------------------------
 
 % GENERAL OPTIONS
@@ -295,7 +295,7 @@ dosourcerecon_pdm = false;                                                      
 dosavepdmstats = true;                                                          % see saving options above
 
 
-%% PREP_4_APPLY_SIGNATURES_AND_SAVE 
+%% PREP_4_APPLY_SIGNATURES_AND_SAVE & H_SIGNATURE_RESPONSES_GROUP_DIFF
 % -------------------------------------------------------------------------
 myscaling_sigs = 'raw';                                         % default 'raw'                     'raw', or 'scaled', see myscaling_glm above
 similarity_metric_sigs = 'cosine_similarity';                   % default 'cosine_similarity'       other options 'cosine_similarity','correlation' - passed into apply_all_signatures

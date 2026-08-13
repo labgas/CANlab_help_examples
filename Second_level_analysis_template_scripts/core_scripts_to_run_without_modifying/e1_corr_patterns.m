@@ -1,4 +1,4 @@
-%% e1_corr_patterns_conds.m
+%% e1_corr_patterns.m
 % 
 % 
 % *USAGE*
@@ -9,7 +9,7 @@
 % searchlight_correlation() under the hood
 % 
 % Run this script with Matlab's publish function to generate html report of results:
-% publish('e1_corr_patterns_conds','outputDir',htmlsavedir)
+% publish('e1_corr_patterns','outputDir',htmlsavedir)
 % 
 % 
 % *MANDATORY OPTIONS*
@@ -47,7 +47,7 @@
 % 
 % -------------------------------------------------------------------------
 %
-% e1_corr_patterns_conds.m            v1.1
+% e1_corr_patterns.m            v1.1
 %
 % last modified: 2023/02/17
 % 
@@ -57,7 +57,7 @@
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
 
-ery_4a_secondlevel_m6m_s0_a_set_up_paths_always_run_first;
+a_set_up_paths_always_run_first;
 
 % NOTES 
 %   1. CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
