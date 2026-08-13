@@ -314,7 +314,11 @@ st = en - images_per_condition(wh(1)) + 1;
 
 % Get outcome YY, 1 or -1 for each observation
 % ---------------------------------------------------------------------
-z = false(size(stats.yfit,1), 2);  % images x 2, pos contrast value and neg contrast value
+try 
+    z = false(size(stats.yfit,1), 2);  % images x 2, pos contrast value and neg contrast value
+catch % if stats is from a new @predictive_model obj
+    z = false(size(stats.fitted_values.yfit,1), 2);  % images x 2, pos contrast value and neg contrast value
+end
 
 for i = 1:length(wh)
     
