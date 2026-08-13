@@ -1,8 +1,55 @@
-%% h_signature_responses_group_diff
-
-% Runs a two-sample t-test for a set of signature responses, for each
-% contrast.  Also runs NPS subregions. 
-% Signatures, scaling, etc. are defined below.
+%% h_signature_responses_group_diff.m
+%
+%
+% *USAGE*
+%
+% This script runs a two-sample t-test for a set of signature responses,
+% for each contrast, plotting group differences in signature response and
+% printing between-group test statistics for each. Calls
+% plugin_get_group_names_colors, barplot_columns, and ttest2_printout
+% under the hood.
+%
+% NOTE: NPS-subregion group-difference code exists at the bottom of the
+% script but is currently commented out/inactive.
+%
+%
+% *OPTIONS*
+%
+% NOTE: this script has no dedicated section of its own in
+% a2_set_default_options.m. mysignature/scalenames/simnames below are set
+% directly from that file's PREP_4_APPLY_SIGNATURES_AND_SAVE &
+% H_SIGNATURE_RESPONSES_GROUP_DIFF section (keyword_sigs, myscaling_sigs,
+% similarity_metric_sigs respectively) - the same options prep_4 uses.
+%
+% mygroupnamefield = 'contrasts';   hardcoded below (not an a2 option);
+%                                   change to 'conditions' directly in
+%                                   this script if needed
+%
+%
+% *NOTES*
+%
+% Group membership comes from DAT.BETWEENPERSON.group, or the
+% condition/contrast-specific DAT.BETWEENPERSON.conditions/.contrasts
+% fields if set, both defined in prep_1b_prep_behavioral_data.m. Continuous
+% grouping variables are binarized via median split.
+%
+% Unlike other Group 2 scripts, this script does not call
+% a_set_up_paths_always_run_first or reload DAT/DATA_OBJ from saved .mat
+% files itself; it assumes these are already in the workspace from a
+% previous script run earlier in the same MATLAB session (e.g.
+% prep_4_apply_signatures_and_save.m).
+%
+% -------------------------------------------------------------------------
+%
+% author: Lukas Van Oudenhove
+%
+% date:   Leuven, December, 2024
+%
+% -------------------------------------------------------------------------
+%
+% h_signature_responses_group_diff.m       v1.1
+%
+% last modified: 2026/08/13
 
 
 %% USER OPTIONS
