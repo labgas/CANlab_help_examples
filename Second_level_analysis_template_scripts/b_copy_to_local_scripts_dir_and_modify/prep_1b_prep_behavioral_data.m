@@ -1,71 +1,73 @@
 %% prep_1b_prep_behavioral_data.m
 %
-% CANLAB NOTES:
 %
-% Optional: Run these load and attach behavioral data from files (e.g., from Excel)            
+% *USAGE*
 %
-% This script is an example script only.  You should modify it to fit your
-% needs, which will depend on which types of behavioral/non-imaging data
-% you have and what variables you want to store and analyze. The basics are
-% desribed here:
+% This optional script attaches behavioral/non-imaging data to the DAT
+% structure defined by prep_1_set_conditions_contrasts_colors.m. It
 %
-% - Store behavioral data tables in any ad hoc format in DAT.BEHAVIOR.
-% This can be a useful reference if you want to change/add custom analyses
-% relating brain to behavior. You can create custom scripts that pull data 
-% from .BEHAVIOR and use it in analyses.
+% # calls a_set_up_paths_always_run_first, then loads DAT from
+%   image_names_and_setup.mat if not already in the workspace (falling back
+%   to running prep_1_set_conditions_contrasts_colors if that file doesn't
+%   exist yet)
+% # reads behavioral data from .tsv files in BIDS/phenotype, computes
+%   z-scored condition- and contrast-level rating variables, and stores the
+%   resulting tables in DAT.BEHAVIOR
+% # initializes DAT.BETWEENPERSON.group/.groupnames/.groupcolors and the
+%   per-condition/per-contrast DAT.BETWEENPERSON.conditions/.contrasts table
+%   cell arrays
+% # (CUSTOM CODE section) populates those tables from DAT.BEHAVIOR for this
+%   study's specific design
+% # resaves image_names_and_setup.mat, appending the new DAT fields (runs
+%   git annex unannex first, since this .mat file is typically already
+%   tracked by datalad/git-annex by the time this script runs)
 %
-% - Store a between-person grouping variable (e.g., patient vs. control,
-% etc.) in DAT.BETWEENPERSON.group. This should be coded with values of 1
-% and -1. Also add fields (see below) for names and colors associated with
-% each group, and a description of what the 1/-1 codes mean.
-% Some analyses consider this variable and run between-group contrasts
-% and/or control for them in analyses of the entire sample (e.g.,
-% "signature response" analyses).  
-% SVM analyses can also be run that use the .group variable. See:
-% prep_3d_run_SVM_betweenperson_contrasts and 
-% c2b_SVM_betweenperson_contrasts  
 %
-% - If you have no binary group variable,  it is OK to leave the .group
-% field empty. 
+% *WORKED EXAMPLE, NOT A TEMPLATE*
 %
-% - Instead of a single .group variable to be tested with all
-% conditions/contrasts, you can also enter different variables for each
-% condition and/or contrast.  This is useful if you want to correlate each
-% contrast with a different behavioral variable (maybe, e.g., for each contrast,
-% reaction time differences for the same contrast). 
-% If so, enter DAT.BETWEENPERSON.conditions and/or
-% DAT.BETWEENPERSON.contrasts.  These should be cell arrays with one cell
-% per condition or contrast.  Each cell contains a matlab "table" object
-% with the data and possibly subject IDs (see below).
-% 
-% - You can run this script as part of a workflow (prep_1...
-% prep_2...prep_3 etc)
-% You can also run the script AFTER you've prepped all the imaging data, just
-% to add behavioral data to the existing DAT structure.  If so, make sure
-% you RELOAD the existing DAT structure with b_reload_saved_matfiles.m
-% before you run this script.  Otherwise, if you create a new DAT
-% structure, important information saved during the data prep (prep_2...,
-% prep_3...) process will be missing, and you will need to re-run the whole
-% prep sequence.
+% Like prep_1_set_conditions_contrasts_colors.m, this is a real example from
+% one LaBGAS study's design, not a generic template - study-specific
+% modifications will typically be extensive. Two more worked examples are
+% embedded further down in this script itself ("CANLAB EXAMPLE #1",
+% commented out, and "CANLAB EXAMPLE #2"/"LABGAS EXAMPLES", pointers to
+% further example scripts/repos). See also README.md and LaBGAS's project
+% folders on the KU Leuven server and GIN/Github repos.
 %
-% LABGAS NOTES:
 %
-% - Always make a study-specific copy of this script in your code subdataset, do NOT edit in the repo!
-% - This script is highly study-specific, but since we use a fixed
-%       BIDS-compatible directory structure and format for the phenotype
-%       files, there should be common elements across studies
-% - This is an example from a design with different sessions, see LaBGAS
-%       Github and GIN for more (and simpler) examples which may suit your
-%       purpose better 
+% *CANLAB NOTES*
 %
-%__________________________________________________________________________
+% * store behavioral data in any ad hoc format in DAT.BEHAVIOR - useful if
+%   you want to write custom scripts relating brain to behavior
+% * store a between-person grouping variable (patient vs. control, etc.) in
+%   DAT.BETWEENPERSON.group, coded 1/-1; leave empty if you have no such
+%   variable. Some analyses use it to run between-group contrasts and/or
+%   control for it across the whole sample
+% * instead of (or in addition to) a single .group variable, you can enter a
+%   different behavioral variable per condition/contrast in
+%   DAT.BETWEENPERSON.conditions/.contrasts - cell arrays with one table per
+%   condition/contrast
+%
+%
+% *LABGAS NOTES*
+%
+% * always make a study-specific copy of this script in your code
+%   subdataset - do NOT edit in the repo!
+% * this script is highly study-specific, but since LaBGAS uses a fixed
+%   BIDS-compatible directory structure and phenotype-file format, there
+%   should be common elements across studies
+% * this example is from a design with different sessions
+%
+% -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
+%
 % date:   Dartmouth, May, 2022
 %
-%__________________________________________________________________________
-% @(#)% prep_1b_prep_behavioral_data.m         v1.4
-% last modified: 2023/11/09
+% -------------------------------------------------------------------------
+%
+% prep_1b_prep_behavioral_data.m         v1.5
+%
+% last modified: 2026/08/14
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
@@ -273,7 +275,7 @@ end
 
 % % e.g., Vars of interest
 % %
-% %   12×1 cell array
+% %   12Ã—1 cell array
 % % 
 % %     'Subject'
 % %     'SALINESEDATION'
@@ -288,7 +290,7 @@ end
 % %     'SREMIINTENSITY'
 % %     'SREMIUNPL'
 % % 
-% %   6×1 cell array
+% %   6Ã—1 cell array
 % % 
 % %     'Sal vs Remi ResistStrong'
 % %     'Sal vs Remi AntStrong'

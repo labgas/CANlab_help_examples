@@ -1,24 +1,70 @@
 %% prep_1_set_conditions_contrasts_colors.m
 %
-% CANLAB NOTES:
-% - Modify to specify image file subdirectories, wildcards to locate images, condition names
 %
-% LABGAS NOTES:
-% - Always make a study-specific copy of this script in your code subdataset, do NOT edit in the repo!
-% - Study-specific modifications should in principle be limited to design-related rather
-%       than directory structure-related issues since we use a fixed organisation
-% - This is an example from a design with different sessions, see LaBGAS
-%       Github and GIN for more (and simpler) examples which may suit your
-%       purpose better
+% *USAGE*
 %
-%__________________________________________________________________________
+% This script defines DAT.conditions, DAT.contrasts, DAT.colors (and
+% optionally DAT.between_condition_cons) - the core design specification
+% consumed by every later script - and saves them, together with DSGN and
+% standard paths, to image_names_and_setup.mat. It
+%
+% # calls a_set_up_paths_always_run_first (which also calls
+%   a2_set_default_options)
+% # sets DAT.conditions and the file-locating fields (DAT.subfolders,
+%   DAT.structural_wildcard, DAT.functional_wildcard) used by
+%   prep_2_load_image_data_and_save.m to find each condition's images
+% # sets DAT.contrasts/DAT.contrastnames, the within-person contrasts used
+%   by prep_3_calc_univariate_contrast_maps_and_save.m and downstream
+%   scripts
+% # sets DAT.colors/DAT.contrastcolors for plots
+% # optionally sets DAT.between_condition_cons for between-subject
+%   contrasts (not used by any currently in-scope Group 2 script)
+% # saves DSGN, DAT, and standard paths to image_names_and_setup.mat
+%
+%
+% *WORKED EXAMPLE, NOT A TEMPLATE*
+%
+% This is a real example from one LaBGAS study's design (with multiple
+% within-session conditions), not a generic template to run with minor
+% edits - study-specific modifications will typically be extensive. See
+% README.md, and LaBGAS's project folders on the KU Leuven server and
+% GIN/Github repos, for further worked examples that may better match your
+% design.
+%
+%
+% *CANLAB NOTES*
+%
+% * modify to specify image file subdirectories, wildcards to locate
+%   images, and condition names for your study
+% * see the "SET UP CONDITIONS"/"SET UP CONTRASTS"/"SET UP COLORS" sections
+%   below for CANlab's generic explanation of within-person vs.
+%   between-person vs. between-condition designs, and how each maps onto
+%   the (out-of-scope) SVM scripts that use them
+%
+%
+% *LABGAS NOTES*
+%
+% * always make a study-specific copy of this script in your code
+%   subdataset - do NOT edit in the repo!
+% * study-specific modifications should in principle be limited to
+%   design-related rather than directory-structure-related issues, since
+%   LaBGAS uses a fixed BIDS-compatible organization
+% * this example uses DSGN.contrastnames (rather than DSGN.conditions) as
+%   its condition source because the underlying design has multiple
+%   sessions - see the "in a design with different sessions..." note in the
+%   "SET UP CONDITIONS" section below
+%
+% -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
+%
 % date:   Dartmouth, May, 2022
 %
-%__________________________________________________________________________
-% @(#)% prep_1_set_conditions_contrasts_colors.m         v1.3
-% last modified: 2024/12/18
+% -------------------------------------------------------------------------
+%
+% prep_1_set_conditions_contrasts_colors.m         v1.4
+%
+% last modified: 2026/08/13
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST

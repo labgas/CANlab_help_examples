@@ -1,33 +1,46 @@
-%% d_signature_responses_generic
+%% d_signature_responses_generic.m
 %
 %
-% USAGE
+% *USAGE*
 %
-% This script plots selected signature responses calculated in
-% prep_4_apply_signatures_and_save, and test their significance for
-% conditions and contrasts defined in DAT, by calling
-% plugin_signature_condition_contrast_plot
+% This script plots selected signature responses calculated by
+% prep_4_apply_signatures_and_save.m, and tests their significance, for
+% conditions and contrasts defined in DAT. It
+%
+% # calls a_set_up_paths_always_run_first, then loads DAT/DATA_OBJ*/DATA_OBJ_CON*
+%   if not already in the workspace
+% # checks that DAT.SIG_conditions/DAT.SIG_contrasts exist (i.e. that
+%   prep_4_apply_signatures_and_save.m has been run)
+% # if signatures_to_plot is empty, defaults to all signatures in
+%   keyword_sigs (as computed by prep_4)
+% # plots and tests significance for each selected signature by calling
+%   plugin_signature_condition_contrast_plot
+%
+% Run this script with Matlab's publish function to generate html report of results:
+% publish('d_signature_responses_generic','outputDir',htmlsavedir)
 %
 %
-% OPTIONS
-% 
-% NOTE: 
-% defaults are specified in a2_set_default_options for any given model,
-% but if you want to run the same model with different options, 
-% you can make a copy of this script with a letter index (e.g. _s6a_) 
-% and change the default option below
-% 
-% signatures_to_plot = {'signame1','signame2',...};   
+% *OPTIONS*
 %
+% NOTE:
+%       defaults are specified in a2_set_default_options for any given model,
+%       but if you want to run the same model with different options, you can
+%       make a copy of this script with a letter index (e.g. _s6a_) and
+%       change the default option below
 %
-%__________________________________________________________________________
+% * signatures_to_plot     default empty (plot all signatures in keyword_sigs); cell array of selected signature names, e.g. {'signame1','signame2',...}
+%
+% -------------------------------------------------------------------------
 %
 % adapted by: Lukas Van Oudenhove
+%
 % date:   Leuven, January, 2023
 %
-%__________________________________________________________________________
-% @(#)% d_signature_responses_generic.m         v1.1
-% last modified: 2023/10/02
+% -------------------------------------------------------------------------
+%
+% d_signature_responses_generic.m         v1.2
+%
+% last modified: 2026/08/14
 
 
 %% GET PATHS AND OPTIONS AND CHECK OPTIONS

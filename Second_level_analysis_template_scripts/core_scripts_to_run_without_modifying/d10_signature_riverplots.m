@@ -1,35 +1,47 @@
-%% d10_signature_riverplots
+%% d10_signature_riverplots.m
 %
 %
-% USAGE
+% *USAGE*
 %
-% This script generates riverplots for selected signature responses based
-% on cosine similarity with condition and contrast images in DAT
-% 
+% This script generates riverplots (cosine similarity) for selected
+% signature responses against condition and contrast images in DAT. It
 %
-% OPTIONS
-% 
-% NOTE: 
-% defaults are specified in a2_set_default_options for any given model,
-% but if you want to run the same model with different options, 
-% you can make a copy of this script with a letter index (e.g. _s6a_) 
-% and change the default option below
-% 
-% signatures_to_plot = {'signame1','signame2',...};   
+% # calls a_set_up_paths_always_run_first, then loads DAT/DATA_OBJ*/DATA_OBJ_CON*
+%   if not already in the workspace
+% # loads signature image sets via load_image_set() - either keyword_sigs
+%   (if signatures_to_plot is empty) or each element of signatures_to_plot
+% # plots a condition riverplot and a contrast riverplot per signature set,
+%   showing statistically significant associations only
 %
-% NOTE: contrary to d_signature_responses_generic, this script will only
-% work on groups of signatures as defined in load_image_sets, not on
-% individual signatures!
+% Run this script with Matlab's publish function to generate html report of results:
+% publish('d10_signature_riverplots','outputDir',htmlsavedir)
 %
 %
-%__________________________________________________________________________
+% *OPTIONS*
+%
+% NOTE:
+%       defaults are specified in a2_set_default_options for any given model,
+%       but if you want to run the same model with different options, you can
+%       make a copy of this script with a letter index (e.g. _s6a_) and
+%       change the default option below
+%
+% * signatures_to_plot     default empty (uses keyword_sigs); cell array of signature GROUP keywords passed individually into load_image_set, e.g. {'signame1','signame2',...}
+%
+%       NOTE: unlike d_signature_responses_generic.m, this script only works
+%       on groups of signatures as defined in load_image_set, not on
+%       individual signatures
+%
+% -------------------------------------------------------------------------
 %
 % adapted by: Lukas Van Oudenhove
+%
 % date:   Leuven, January, 2023
 %
-%__________________________________________________________________________
-% @(#)% d10_signature_riverplots.m         v2.0
-% last modified: 2023/01/23
+% -------------------------------------------------------------------------
+%
+% d10_signature_riverplots.m         v2.1
+%
+% last modified: 2026/08/14
 
 
 %% GET PATHS AND OPTIONS AND CHECK OPTIONS

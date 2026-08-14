@@ -1,74 +1,96 @@
 %% c2g_run_multivariate_mediation_single_trial.m
 %
 %
-% USAGE
-% -----
+% *USAGE*
 %
-% This script runs multivariate mediation analysis on a continuous outcome Y
-% on an fmri_data_st object created using prep_3f_create_fmri_data_single_trial_object.m
-% That script should be run first, or the present script will load the data
-% object if it is saved by the previous script.
+% This script runs multivariate mediation analysis (PDM) on a continuous
+% outcome Y, on an fmri_data_st object created by
+% prep_3f_create_fmri_data_single_trial_object.m. That script should be run
+% first, or this script will load the saved data object if it exists.
 %
-% Options for this script are set in a2_set_default_options.m, see that
-% script and below for more info. Many of these options get passed into CANlab's
-% multivariateMediation function.
+% Many of the options below get passed into CANlab's multivariateMediation
+% function.
 %
-% Run this script with Matlab's publish function to generate html report of
-% results:
+% Run this script with Matlab's publish function to generate html report of results:
 % publish('c2g_run_multivariate_mediation_single_trial','outputDir',htmlsavedir)
 %
-% TUTORIALS AND DOCUMENTATION
-% ---------------------------
 %
-% Here is the PDM toolbox within CANlab's MediationToolbox on Github
-% https://github.com/canlab/MediationToolbox/tree/master/PDM_toolbox
+% *DOCUMENTATION*
 %
-% It includes a helpful example scripts and a README referring to papers
-% https://github.com/canlab/MediationToolbox/blob/master/PDM_toolbox/Multivariate_Mediation_ExampleScript.m
-% https://github.com/canlab/MediationToolbox/blob/master/PDM_toolbox/README.md
+% * PDM toolbox within CANlab's MediationToolbox on Github: https://github.com/canlab/MediationToolbox/tree/master/PDM_toolbox
+%       - example script: https://github.com/canlab/MediationToolbox/blob/master/PDM_toolbox/Multivariate_Mediation_ExampleScript.m
+%       - README referring to papers: https://github.com/canlab/MediationToolbox/blob/master/PDM_toolbox/README.md
+% * an older script performing single-level rather than multilevel mediation, among other types of mediation analyses: https://github.com/labgas/proj-emosymp/blob/main/secondlevel/model_1_CANlab_classic_GLM/emosymp_m1_s6_mediation_NPS.m
 %
-% Here is an older script performing single-level rather than multilevel
-% mediation, among other types of mediation analyses
-% https://github.com/labgas/proj-emosymp/blob/main/secondlevel/model_1_CANlab_classic_GLM/emosymp_m1_s6_mediation_NPS.m
-% 
-% OPTIONS
-% -------
 %
-% NOTE: 
-% defaults are specified in a2_set_default_options for any given model,
-% but if you want to run the same model with different options, 
-% you can make a copy of this script with a letter index (e.g. _s6a_) 
-% and change the default options below
+% *OPTIONS*
 %
-% GENERAL OPTIONS
+% NOTE:
+%       defaults are specified in a2_set_default_options for any given model,
+%       but if you want to run the same model with different options, you can
+%       make a copy of this script with a letter index (e.g. _s6a_) and
+%       change the default options below
 %
-% zscore_outcome_pdm: default false; true zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
-% maskname_pdm: default which('gray_matter_mask_sparse.img');
-%       - default use of sparse gray matter mask
-%       - maskdir now defined in a_set_up_paths_always_run_first script
-%       - if you do not want to mask, change to []
-%       - if you want to use a custom mask, put it in maskdir and change name here.
-% myscaling_pdm: default 'raw'; options are 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
+% _General options_
 %
-% STATISTICS AND RESULTS VISUALIZATION OPTIONS
-% --------------------------------------------
-% nPDM = 10: default 10; number of PDMs to retain, chances are very low that meaningful variance is explained by PDM # > 10
-% dobootstrap_pdm: default false; bootstrapping, does not take an awful lot of time in this case
-%     boot_n_pdm: default 5000; number of bootstrap samples, reduce number for quick results, increase to 10k for publication
-% dosourcerecon_pdm: default false; source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
-% dosavepdmstats: default true; saves all results as .mat files
+% * zscore_outcome_pdm       default false; true zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
 %
-% FEATURES TO IMPLEMENT UPON NEXT USE/REVISION
-% --------------------------------------------
-% 1. single multi-row montages for different pdms per contrast - as in
-%       prep_3a etc
-%__________________________________________________________________________
+% * maskname_pdm
+%
+%       * default use of sparse gray matter mask
+%       * maskdir defined in a_set_up_paths_always_run_first script
+%       * if you do not want to mask, change to []
+%       * if you want to use a custom mask, put it in maskdir and change name here
+%
+% * myscaling_pdm            default 'raw'; 'raw', 'centerimages', 'zscoreimages', 'l2normimages', or 'zscorevoxels'
+%
+% _Statistics and results visualization options_
+%
+% * nPDM                     default 10; number of PDMs to retain, chances are very low that meaningful variance is explained by PDM # > 10
+%
+% * dobootstrap_pdm          default false; bootstrapping, does not take an awful lot of time in this case
+%
+%       * boot_n_pdm               default 5000; number of bootstrap samples, reduce number for quick results, increase to 10k for publication
+%
+% * k_threshold_pdm          extent threshold for bootstrapped FDR-corrected results
+%
+% * dosourcerecon_pdm        default false; source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
+%
+% * dosavepdmstats           default true; saves all results as .mat files
+%
+% * save_figures_pdm         default false; true saves .svg files of all figures (slow, takes up space)
+%
+%
+% *OPTIONS TO COPY FROM CORRESPONDING PREP_3f_ SCRIPT*
+%
+% _Mandatory option_
+%
+% * results_suffix           name added to results file by prep_3f script in case of multiple versions of model
+%
+% _Options to copy if specified in prep_3f script_
+%
+% * cons2exclude_dat_st      cell array of excluded condition names
+% * behav_outcome_dat_st     outcome variable name
+% * subj_identifier_dat_st   subject identifier variable name
+% * group_identifier_dat_st  group identifier variable name
+%
+%
+% *NOTES*
+%
+% * features to implement upon next use/revision: single multi-row montages
+%   for different PDMs per contrast, as in prep_3a etc
+%
+% -------------------------------------------------------------------------
 %
 % author: lukas.vanoudenhove@kuleuven.be
+%
 % date:   August, 2022
-%__________________________________________________________________________
-% @(#)% c2g_run_multivariate_mediation_single_trial     v2.0        
-% last modified: 2023/11/17
+%
+% -------------------------------------------------------------------------
+%
+% c2g_run_multivariate_mediation_single_trial.m         v2.1
+%
+% last modified: 2026/08/14
 
 
 %% GET AND SET OPTIONS

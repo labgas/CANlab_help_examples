@@ -1,40 +1,66 @@
-%% prep_3g_create_fmri_data_runwise_contrast_object
+%% prep_3g_create_fmri_data_runwise_contrast_object.m
 %
 %
-% USAGE
+% *USAGE*
 %
-% This script creates and saves an fmri_data_st object with runwise contrast 
-% images calculated from condition beta images
-% rootdir/firstlevel/model_x_yyy/sub-zz,
-% and adds a convenient metadata_table field containing runwise ratings
-% from the corresponding contrast from a data file BIDS/phenotype.tsv
+% This script creates and saves an fmri_data_st object with runwise contrast
+% images, calculated by subtracting one condition's beta image from
+% another's, from rootdir/firstlevel/model_x_yyy/sub-zz. It
 %
-% OPTIONS
+% # loads DAT if not already in the workspace
+% # reads the phenotype file from the BIDS subdataset, matching subjects and
+%   runs against those available at first level and passing QC
+%   (run_included_dat_rw) and having a non-NaN behavioral outcome
+% # for each subject/run, computes the runwise contrast image (difference
+%   between the two beta images named in cons2include_dat_rw) and combines
+%   them into one fmri_data_st object, with metadata_table/Y holding the
+%   matched runwise behavioral ratings
+% # runs four sanity checks that the number of runs/ratings/image names
+%   line up correctly
+% # saves the resulting object
 %
-% NOTE: defaults are specified in a2_set_default_options for any given model,
-% but if you want to run the same model with different options (for example
-% voxel- and parcelwise regression), you can make a copy of this script with
-% a letter index (e.g. _s6a_) and change the default option here
+% Run this script with Matlab's publish function to generate html report of results:
+% publish('prep_3g_create_fmri_data_runwise_contrast_object','outputDir',htmlsavedir)
 %
-% phenofile_dat_rw:         name of phenotype file in BIDS subdataset
-% cons2include_dat_rw:      cell array of (maximum 2) condition names to include (as they appear in DSGN/DAT.conditions as well as SPM.Vbeta.descrip), separated by commas (or blanks)
-% behav_outcome_dat_rw:     name of outcome variable in phenotype file
-% subj_identifier_dat_rw:   name of subject identifier variable in phenotype file
-% run_included_dat_rw;      name of index variable in phenotype file identifying runs for which imaging data have been excluded during QC
-% group_identifier_dat_rw:  name of group identifier variable in phenotype file; leave commented out if you don't have groups
 %
-% MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT
+% *OPTIONS*
 %
-% results_suffix: name to add to results file to specify model in case of
-% multiple models
+% NOTE:
+%       defaults are specified in a2_set_default_options for any given model,
+%       but if you want to run the same model with different options, you can
+%       make a copy of this script with a letter index (e.g. _s6a_) and
+%       change the default option here
 %
-%__________________________________________________________________________
+% * phenofile_dat_rw             name of phenotype file in BIDS subdataset
+%
+% * cons2include_dat_rw          cell array of (maximum 2) condition names to include (as they appear in DSGN/DAT.conditions as well as SPM.Vbeta.descrip), separated by commas (or blanks)
+%
+% * behav_outcome_dat_rw         name of outcome variable in phenotype file
+%
+% * subj_identifier_dat_rw       name of subject identifier variable in phenotype file
+%
+% * run_included_dat_rw          name of index variable in phenotype file identifying runs for which imaging data have been excluded during QC
+%
+% * group_identifier_dat_rw      name of group identifier variable in phenotype file; leave commented out if you don't have groups
+%
+%       NOTE: this option is currently unused in the script body - reserved for possible future group-covariate support
+%
+%
+% *MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT*
+%
+% * results_suffix               name to add to results file to specify model in case of multiple models
+%
+% -------------------------------------------------------------------------
 %
 % author: lukas.vanoudenhove@kuleuven.be
+%
 % date:   KU Leuven, December, 2024
-%__________________________________________________________________________
-% @(#)% prep_3g_create_fmri_data_runwise_contrast_object.m     v1.0       
-% last modified: 2025/01/07
+%
+% -------------------------------------------------------------------------
+%
+% prep_3g_create_fmri_data_runwise_contrast_object.m         v1.1
+%
+% last modified: 2026/08/14
 
 
 %% GET AND SET OPTIONS

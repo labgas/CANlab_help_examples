@@ -5,10 +5,10 @@
 %
 % This script
 %
-% # runs second⁻level (i.e. across subjects) support vector machines
-% for each within-subject CONTRAST registered in DAT.contrasts
-% # plots montages of the uncorrected results
-% # saves the results using standard naming and location
+% # Runs second-level (i.e. across subjects) support vector machines
+%   for each within-subject CONTRAST registered in DAT.contrasts
+% # Plots montages of the uncorrected results
+% # Saves the results using standard naming and location
 %
 % Run this script with Matlab's publish function to generate html report of results:
 % publish('prep_3c_run_SVMs_on_contrasts_masked','outputDir',htmlsavedir)
@@ -63,7 +63,7 @@
 %
 %       * *boot_n_ss_svm*                   number of bootstrap samples, reduce number for quick results
 %       * *k_ss_svm*                        top-k voxels by |w| per bootstrap
-%       * *ẗhreshold_ss_svm*                "stable" if selected in >= x% of boots
+%       * *threshold_ss_svm*                "stable" if selected in >= x% of boots
 %       * *cons2ss_svm*                     vector of indices for contrasts to run stability selection on if you want to do this on a subset
 %
 % * *parallelstr_svm*                       parallel processing for bootstrapping; 'parallel' or 'noparallel'
@@ -116,9 +116,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3c_run_SVMs_on_contrasts_masked.m         v8.0
+% prep_3c_run_SVMs_on_contrasts_masked.m         v8.1
 %
-% last modified: 2026/07/01
+% last modified: 2026/08/14
 %
 %
 %% GET AND SET OPTIONS

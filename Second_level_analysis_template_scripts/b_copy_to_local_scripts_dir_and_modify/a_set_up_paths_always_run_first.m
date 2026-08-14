@@ -1,53 +1,82 @@
 %% a_set_up_paths_always_run_first.m
 %
-% 
-% USAGE
-% 
-% Always run this first before you run other CANlab_help_examples second level batch scripts.
+%
+% *USAGE*
+%
+% Always run this first before you run any other CANlab_help_examples
+% second-level script. This script
+%
+% # runs LaBGAScore_prep_s0_define_directories (if rootdir/githubrootdir are
+%   not already in the workspace) to set study-specific root/code/github
+%   directories
+% # runs LaBGAScore_firstlevel_s1_options_dsgn_struct (if DSGN is not already
+%   in the workspace) to load the first-level design structure, from which
+%   the model name is derived
+% # calls a2_set_default_options, which sets default options for all core
+%   secondlevel scripts
+% # checks that SPM and the CANlab Github repos (CanlabCore, CanlabPrivate,
+%   CANlab_help_examples, canlab_single_trials) are cloned and on the Matlab
+%   path, cloning any that are missing
+% # creates (if needed) and stores paths to the standard secondlevel
+%   subdirectory structure (basedir, maskdir, scriptsdir, resultsdir,
+%   figsavedir, notesdir, htmlsavedir)
+% # defines the printhdr/printstr helper functions used by later scripts to
+%   print section headers to the console/html report
 %
 %
-% CANLAB NOTES
+% *STUDY-SPECIFIC EDITS REQUIRED*
 %
-% - standard folders and variable names are created by these scripts
+% This script cannot be run unmodified from the repo - three lines are
+% marked "STUDY-SPECIFIC" in the code below and must be adapted in your
+% study's copy:
 %
-% - in "prep_" scripts: 
-%   image names, conditions, contrasts, colors, global gray/white/CSF
-%   values are saved automatically in a DAT structure
-% 
-% - extracted fmri_data objects are saved in DATA_OBJ variables
-% - contrasts are estimated and saved in DATA_OBJ_CON variables
-%
-% - files with these variables are saved and loaded automatically when you
-%   run the scripts
-%   meta-data saved in image_names_and_setup.mat
-%   image data saved in data_objects.mat
-%
-% - you only need to run the prep_ scripts once.  After that, use 
-%   b_reload_saved_matfiles.m to re-load saved files
-% 
-% - when all scripts working properly, run z_batch_publish_analyses.m
-%   to create html report.  customize by editing z_batch_list_to_publish.m
-%
-% - saved in results folder:
-%   figures
-%   html report with figures and stats, in "published_output"
+% * the call to LaBGAScore_prep_s0_define_directories - replace "LaBGAScore"
+%   with your study's directory-setup function
+% * the call to LaBGAScore_firstlevel_s1_options_dsgn_struct - replace
+%   "LaBGAScore" with your study's design-options function, and add a model
+%   index if your study defines DSGN per model
+% * the call to a2_set_default_options - update to call your study- and
+%   model-specific renamed copy (per the projname_mM_sN_scriptname
+%   convention, see README.md)
 %
 %
-% LaBGAS NOTES
+% *CANLAB NOTES*
 %
-% - script to be run from rootdir of superdataset for your study
-% - DO NOT FORGET TO MAKE STUDY-SPECIFIC CHANGES INDICATED BELOW
+% * standard folders and variable names are created by these scripts
+% * in "prep_" scripts: image names, conditions, contrasts, colors, and
+%   global gray/white/CSF values are saved automatically in a DAT structure
+% * extracted fmri_data objects are saved in DATA_OBJ variables; contrasts
+%   are estimated and saved in DATA_OBJ_CON variables
+% * files with these variables are saved and loaded automatically when you
+%   run the scripts: meta-data in image_names_and_setup.mat, image data in
+%   data_objects.mat
+% * you only need to run the prep_ scripts once - after that, use
+%   b_reload_saved_matfiles.m to reload saved files
+% * when all scripts are working properly, run z_batch_publish_analyses.m to
+%   create an html report; customize by editing z_batch_list_to_publish.m
+% * results are saved in the results folder: figures, and an html report
+%   with figures and stats in "published_output"
 %
-%__________________________________________________________________________
+%
+% *LABGAS NOTES*
+%
+% * this script should be run from the rootdir of the DataLad superdataset
+%   for your study
+% * do not forget to make the study-specific changes listed above
+%
+% -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
+%
 % date:   Dartmouth, May, 2022
 %
-%__________________________________________________________________________
-% @(#)% a_set_up_paths_always_run_first.m         v1.4
-% last modified: 2024/12/02
-
-
+% -------------------------------------------------------------------------
+%
+% a_set_up_paths_always_run_first.m         v1.5
+%
+% last modified: 2026/08/13
+%
+%
 %% RUN PREP AND FIRST LEVEL DESIGN SCRIPT
 % -------------------------------------------------------------------------
 

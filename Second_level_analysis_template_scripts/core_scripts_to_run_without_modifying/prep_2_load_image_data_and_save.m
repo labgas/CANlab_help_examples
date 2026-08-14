@@ -3,13 +3,26 @@
 %
 % *USAGE*
 %
-% This prep script 
+% This prep script
 %
-% # loads first-level beta/con images into CANlab's fmri_data_st objects 
+% # calls a_set_up_paths_always_run_first, then loads DAT from
+%   image_names_and_setup.mat if not already in the workspace (falling back
+%   to prep_1_set_conditions_contrasts_colors and prep_1b_prep_behavioral_data
+%   if that file doesn't exist yet)
+% # loads first-level beta/con images into CANlab's fmri_data_st objects
 % # performs quality control, including plots if requested in a2 script
-% # z-scores images and then repeats 1) and 2)
-% # saves the relevant resulting objects/variables in a .mat file to resultsdir
-% # publishes an html report (run using Matlab's publish function)
+% # z-scores images and then repeats steps 2-3
+% # saves DAT (appended to image_names_and_setup.mat), raw condition images
+%   (data_objects.mat), and z-scored condition images
+%   (data_objects_scaled.mat) to resultsdir
+%
+% * the quality-control plots and metrics produced in steps 2-4 should be
+%   inspected in the resulting html report before proceeding to
+%   prep_3_calc_univariate_contrast_maps_and_save.m - this is the routine
+%   check that images loaded correctly
+%
+% Run this script with Matlab's publish function to generate html report of results:
+% publish('prep_2_load_image_data_and_save','outputDir',htmlsavedir)
 %
 %
 % *OPTIONS*
@@ -34,9 +47,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_2_load_image_data_and_save.m         v2.4
+% prep_2_load_image_data_and_save.m         v2.5
 %
-% last modified: 2026/04/23
+% last modified: 2026/08/14
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED

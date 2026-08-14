@@ -3,7 +3,7 @@
 % 
 % *USAGE*
 % 
-% This script displays calculates, thresholds, and plots correlation maps
+% This script calculates, thresholds, and plots correlation maps
 % between all pairwise combinations of condition or contrast images using
 % the searchlight approach, calling the CANlab function
 % searchlight_correlation() under the hood
@@ -12,7 +12,7 @@
 % publish('e1_corr_patterns','outputDir',htmlsavedir)
 % 
 % 
-% *MANDATORY OPTIONS*
+% *MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT*
 % 
 % * mygroupnamefield = 'conditions'/'contrasts';      calculate correlations between conditions or contrasts defined in DAT  
 %
@@ -23,9 +23,15 @@
 %   2. do NOT use to add a suffix specifying the scaling or masking option, this will be added automatically
 % 
 %
-% *CUSTOM OPTIONS FOR THIS SCRIPT SET IN A2 SCRIPT* 
-% 
-% * r_threshold_corr = 0.xx;                          r threshold for correlation coeffs 
+% *CUSTOM OPTIONS FOR THIS SCRIPT SET IN A2 SCRIPT*
+%
+% NOTE:
+%       defaults are specified in a2_set_default_options for any given model,
+%       but if you want to run the same model with different options, you can
+%       make a copy of this script with a letter index (e.g. _s6a_) and
+%       change the default option below
+%
+% * r_threshold_corr = 0.xx;                          r threshold for correlation coeffs
 %
 % * corr_type = 'Pearson'/'Spearman'/'Kendall';
 %
@@ -47,9 +53,9 @@
 % 
 % -------------------------------------------------------------------------
 %
-% e1_corr_patterns.m            v1.1
+% e1_corr_patterns.m            v1.2
 %
-% last modified: 2023/02/17
+% last modified: 2026/08/14
 % 
 % 
 %% GET AND SET OPTIONS

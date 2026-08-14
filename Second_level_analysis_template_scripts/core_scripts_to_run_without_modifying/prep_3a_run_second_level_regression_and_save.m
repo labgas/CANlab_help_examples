@@ -5,7 +5,7 @@
 %
 % This script
 %
-% 1.runs second⁻level (i.e. across subjects) regression analyses
+% 1. Runs second-level (i.e. across subjects) regression analyses
 %   for each within-subject CONTRAST or CONDITION registered in the DAT
 %   structure, either
 %
@@ -15,14 +15,14 @@
 %       * parcel-wise, calling CANlab's robfit_parcelwise() function under the
 %       hood, which is robust by default
 %
-% 2.the option to convert t-maps into BayesFactor maps using CANlab's
+% 2. The option to convert t-maps into BayesFactor maps using CANlab's
 %   estimateBayesFactor() function is built in - see walkthrough 
 %   https://canlab.github.io/_pages/EmoReg_BayesFactor_walkthrough/EmoReg_BayesFactor_walkthrough.html
 %
-% 3.runs cross-validated MVPA regression models predicting continuous
+% 3. Runs cross-validated MVPA regression models predicting continuous
 %   covariates if desired using CANlab's predict() function
 %
-% 4.saves the results using standard naming and location
+% 4. Saves the results using standard naming and location
 % 
 % Run this script with Matlab's publish function to generate html report of results:
 % publish('prep_3a_run_second_level_regression_and_save','outputDir',htmlsavedir)
@@ -119,7 +119,7 @@
 %
 %       _neurotransmitter map options_
 %
-%         * neurotransmitter_similarity_metric      'correlation' (default) or 'cosine_similarity'
+%         * neurotransmitter_maps_metric      'correlation' (default) or 'cosine_similarity'
 %
 % * domvpa_reg_cov              run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
 %
@@ -172,9 +172,9 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v9.1
+% prep_3a_run_second_level_regression_and_save.m         v9.2
 %
-% last modified: 2026/07/14
+% last modified: 2026/08/14
 %
 %
 %% GET AND SET OPTIONS

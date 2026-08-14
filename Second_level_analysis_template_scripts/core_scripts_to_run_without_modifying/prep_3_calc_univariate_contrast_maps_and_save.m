@@ -5,13 +5,30 @@
 %
 % This prep script
 %
-% # calculates contrast images from first-level beta/con condition images included in prep_2 script, and stores them as CANlab's fmri_data_st objects 
-% # performs l2norm-rescaling of resulting contrast images
-% # performs quality control, including plots if requested in a2 script
-% # saves the relevant resulting objects/variables in a .mat file to resultsdir
-% # publishes an html report (run using Matlab's publish function)
+% # calls a_set_up_paths_always_run_first, then loads DAT/DATA_OBJ/DATA_OBJsc
+%   from image_names_and_setup.mat/data_objects.mat/data_objects_scaled.mat
+%   if not already in the workspace (falling back to prep_1/prep_1b/prep_2
+%   if those files don't exist yet)
+% # calculates contrast images from prep_2's raw condition images (DATA_OBJ)
+%   and z-scored condition images (DATA_OBJsc), storing them as CANlab's
+%   fmri_data_st objects in DATA_OBJ_CON and DATA_OBJ_CONsc respectively
+% # l2norm-rescales the raw contrast images into DATA_OBJ_CONscc
+% # performs quality control, including plots if requested in a2 script, on
+%   all three contrast-object variants
+% # saves DATA_OBJ_CON/DATA_OBJ_CONsc/DATA_OBJ_CONscc to
+%   contrast_data_objects.mat, and appends DAT (including the new
+%   DAT.gray_white_csf_contrasts field) to image_names_and_setup.mat
 %
-% *NOTE* 
+% * the quality-control plots and metrics produced in step 4 should be
+%   inspected in the resulting html report before proceeding to
+%   prep_3a_run_second_level_regression_and_save.m (or other downstream
+%   scripts) - this is the routine check that images loaded and contrasts
+%   were computed correctly
+%
+% Run this script with Matlab's publish function to generate html report of results:
+% publish('prep_3_calc_univariate_contrast_maps_and_save','outputDir',htmlsavedir)
+%
+% *NOTE*
 %   We can include image sets with different numbers of images, as occurs with between-person designs, as
 %   long as the contrast weights are zero for all elements with different numbers of images.
 %
@@ -30,9 +47,9 @@
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% prep_3_calc_univariate_contrast_maps_and_save.m         v2.0
+% prep_3_calc_univariate_contrast_maps_and_save.m         v2.1
 %
-% last modified: 2023/11/09
+% last modified: 2026/08/14
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED

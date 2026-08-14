@@ -1,133 +1,140 @@
 %% c2f_run_MVPA_regression_single_trial.m
 %
 %
-% USAGE
-% -----
+% *USAGE*
 %
 % This script runs MVPA regression analysis on a continuous outcome Y
-% (default pcr, but can easily be adapted to pls or
-% other machine learning algorithms) on an fmri_data_st
-% object created using prep_3f_create_fmri_data_single_trial_object.m
-% That script should be run first, or the present script will load the data
-% object if it is saved by the previous script.
+% (default pcr, but can easily be adapted to pls or other machine learning
+% algorithms) on an fmri_data_st object created by
+% prep_3f_create_fmri_data_single_trial_object.m. That script should be run
+% first, or this script will load the saved data object if it exists.
 %
-% Options for this script are set in a2_set_default_options.m, see that
-% script and below for more info. 
-% Many of these options get passed into CANlab's predict function:
-% help fmri_data.predict in Matlab command window for more info
+% Many of the options below get passed into CANlab's predict function -
+% help fmri_data.predict in the Matlab command window for more info.
 %
 % Run this script with Matlab's publish function to generate html report of results:
 % publish('c2f_run_MVPA_regression_single_trial','outputDir',htmlsavedir)
 %
 %
-% TUTORIALS AND DOCUMENTATION
-% ---------------------------
+% *DOCUMENTATION*
 %
 % A. CANLAB'S PREDICT FUNCTION
 %
 % This is the classic CANlab method of running ML models, and can be chosen
-% by setting the ml_method_mvpa_reg_st option in a2_set_default_options.m
-% to 'predict'
+% by setting the ml_method_mvpa_reg_st option in a2_set_default_options.m to
+% 'predict'. This script is based on the extremely helpful tutorials on
+% single-trial MVPA analysis by @bogpetre @CANlab:
 %
-% This script is based on the extremely helpful tutorials on 
-% single trial MVPA analysis by @bogpetre @CANlab.
+% * https://canlab.github.io/_pages/canlab_single_trials_demo/demo_norming_comparison.html
+% * https://canlab.github.io/_pages/mlpcr_demo/mlpcr_demo.html (WiP)
 %
-% Here are Bogdan's walkthroughs:
-% https://canlab.github.io/_pages/canlab_single_trials_demo/demo_norming_comparison.html
-% https://canlab.github.io/_pages/mlpcr_demo/mlpcr_demo.html (WiP)
+% Two scripts @lukasvo76 adapted from these walkthroughs:
+% * https://www.dropbox.com/sh/e17nl3ew1db1twk/AACO9QAEt6Sy3TejH-n-tbdEa?dl=0
+% * https://www.dropbox.com/sh/bm0at2dr81isk70/AABD67D_bF8A0NFa4gtt2dHNa?dl=0
 %
-% Here are two scripts @lukasvo76 adapted from these walkthroughs
-% https://www.dropbox.com/sh/e17nl3ew1db1twk/AACO9QAEt6Sy3TejH-n-tbdEa?dl=0
-% https://www.dropbox.com/sh/bm0at2dr81isk70/AABD67D_bF8A0NFa4gtt2dHNa?dl=0
-% 
-% Another highly helpful resource in this context is this Nature Methods
-% paper by Tor and Wani Woo
-% https://www.nature.com/articles/s41596-019-0289-5
-%
-% @lukasvo76's version of the script for this paper can be found here
-% https://www.dropbox.com/sh/v2nsgoqmbi0cqnk/AAD6I1Gn5KUM6aViom4TLeVJa?dl=0
+% Another highly helpful resource is this Nature Methods paper by Tor and
+% Wani Woo: https://www.nature.com/articles/s41596-019-0289-5
+% (@lukasvo76's version of the script for this paper:
+% https://www.dropbox.com/sh/v2nsgoqmbi0cqnk/AAD6I1Gn5KUM6aViom4TLeVJa?dl=0)
 %
 % B. BOGDAN'S MACHINE LEARNING TOOLKIT FOR FMRI_DATA OBJECTS
 %
-% This is a newer method inspired by Python's scikit-learn, including more
-% flexible options for algorithm and feature selection, 
-% hyperparameter optimization, nested cross-validation, etc. However, it
-% does require more advanced programming skills and understanding the logic
-% of the method
+% A newer method inspired by Python's scikit-learn, with more flexible
+% options for algorithm/feature selection, hyperparameter optimization, and
+% nested cross-validation - but requiring more advanced programming skills
+% and understanding of the method.
 %
-% Dependency: https://github.com/canlab/ooFmriDataObjML
-%
-% Tutorial: https://canlab.github.io/_pages/canlab_pipelines_walkthrough/estimateBestRegionPerformance.html
-% Example script: https://github.com/labgas/LaBGAScore/blob/main/secondlevel/LaBGAScore_secondlevel_ooFmriDataObjML_example.m
-% 
-%
-% OPTIONS
-% -------
-%
-% NOTE: 
-% defaults are specified in a2_set_default_options for any given model,
-% but if you want to run the same model with different options, 
-% you can make a copy of this script with a letter index (e.g. _s6a_) 
-% and change the default options below
-%
-% GENERAL OPTIONS
-%
-% ml_method_mvpa_reg_st: 'oofmridataobj', or 'predict'
-%       'oofmridataobj':
-%           use @bogpetre's object-oriented method
-%           https://github.com/canlab/ooFmriDataObjML
-%       'predict'
-%           use CANlab's predict function
-%           https://github.com/canlab/CanlabCore/blob/master/CanlabCore/%40fmri_data/predict.m
-% algorithm_mvpa_reg_st: default cv_pcr
-%       will be passed into predict function (help predict for options) if ml_method_mvpa_reg_st == 'predict' or adapted correctly if 'oofmridataobj'
-%       if ml_method_mvpa_reg_st = 'oofmridataobj', only cv_pls and cv_pcr are implemented in this script for now
-% holdout_set_method_mvpa_reg_st: 'group', or 'onesample'
-%       'group': use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group;
-%           balances holdout sets over groups
-%       'onesample': use subject id only
-%           no group factor, stratifies by subject (i.e. leave whole subject out)
-% nfolds_mvpa_reg_st: default 5; number of cross-validation folds for kfold
-% zscore_outcome_mvpa_reg_st: default false; true zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
-% maskname_mvpa_reg_st: default which('gray_matter_mask_sparse.img');
-%       - default use of sparse gray matter mask
-%       - maskdir now defined in a_set_up_paths_always_run_first script
-%       - if you do not want to mask, change to []
-%       - if you want to use a custom mask, put it in maskdir and change name here.
-% myscaling_mvpa_reg_st: default 'raw'; options are 'raw', 'centerimages', 'zscoreimages', 'l2normimages', 'zscorevoxels'
-%
-% STATISTICS AND RESULTS VISUALIZATION OPTIONS
-%
-% dobootstrap_mvpa_reg_st: default false; true bootstraps weights - takes AN AWFUL LOT OF TIME, hence only use true for final analysis
-%    boot_n_mvpa_reg_st: default 5000; number of bootstrap samples, reduce number for quick results
-%    parallelstr_mvpa_reg_st: default 'parallel'; parallel proc for bootstrapping
-% doperm_mvpa_reg_st: default false; true performs permutation testing - takes AN AFWUL LOT OF TIME, hence only use true for final analysis
-%    perm_n_mvpa_reg_st: default 5000; number of permutations, reduce number for quick results
-%    perm_sidedness: default 'both'; tails for permutation test, 'both','smaller', or 'larger'
-% dosourcerecon_mvpa_reg_st: default false; true performs source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
-%    dosourcerecon_perm_mvpa_reg_st: default false; true performs
-%    permutation testing on source recon images; takes an AWFUL LOT OF TIME
-% q_threshold_mvpa_reg_st: default .05; threshold for FDR-corrected display items
-% k_threshold_mvpa_reg_st: default = true;                                      % see saving options above 10; extent threshold for FDR-corrected display items 
-% dosavemvparegstats: default true; Save statistics and weight map objects
-% domultilevel_mvpa_reg_st: default false; fits multilevel mvpa models - WORK IN PROGRESS
+% * Dependency: https://github.com/canlab/ooFmriDataObjML
+% * Tutorial: https://canlab.github.io/_pages/canlab_pipelines_walkthrough/estimateBestRegionPerformance.html
+% * Example script: https://github.com/labgas/LaBGAScore/blob/main/secondlevel/LaBGAScore_secondlevel_ooFmriDataObjML_example.m
 %
 %
-% IMPORTANT NOTE
-% --------------
+% *OPTIONS*
 %
-% This script is work in progress, particularly the permutation and multilevel
-% options are still undergoing improvement and full testing
-% lukasvo76 note to self: see Bogdan's hyp_opt_and_mlpcr_demo script in
-% this repo to implement the latter!
+% NOTE:
+%       defaults are specified in a2_set_default_options for any given model,
+%       but if you want to run the same model with different options, you can
+%       make a copy of this script with a letter index (e.g. _s6a_) and
+%       change the default options below
 %
-%__________________________________________________________________________
+% _General options_
+%
+% * ml_method_mvpa_reg_st        'oofmridataobj' (use @bogpetre's object-oriented method, https://github.com/canlab/ooFmriDataObjML) or 'predict' (use CANlab's predict function, https://github.com/canlab/CanlabCore/blob/master/CanlabCore/%40fmri_data/predict.m)
+%
+% * algorithm_mvpa_reg_st        default 'cv_pcr'; passed into predict function (help predict for options) if ml_method_mvpa_reg_st = 'predict', or adapted if 'oofmridataobj' (only cv_pls and cv_pcr implemented there for now)
+%
+% * holdout_set_method_mvpa_reg_st     'group' (use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.contrasts{c}.group; balances holdout sets over groups) or 'onesample' (use subject id only; stratifies by subject, i.e. leave whole subject out)
+%
+% * nfolds_mvpa_reg_st           default 5; number of cross-validation folds for kfold
+%
+% * zscore_outcome_mvpa_reg_st   default false; true zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
+%
+% * maskname_mvpa_reg_st
+%
+%       * default use of sparse gray matter mask
+%       * maskdir defined in a_set_up_paths_always_run_first script
+%       * if you do not want to mask, change to []
+%       * if you want to use a custom mask, put it in maskdir and change name here
+%
+% * myscaling_mvpa_reg_st        default 'raw'; 'raw', 'centerimages', 'zscoreimages', 'l2normimages', or 'zscorevoxels'
+%
+% _Statistics and results visualization options_
+%
+% * dobootstrap_mvpa_reg_st      default false; true bootstraps weights - takes AN AWFUL LOT OF TIME, hence only use true for final analysis
+%
+%       * boot_n_mvpa_reg_st           default 5000; number of bootstrap samples, reduce number for quick results
+%       * parallelstr_mvpa_reg_st      default 'parallel'; parallel processing for bootstrapping
+%
+% * doperm_mvpa_reg_st           default false; true performs permutation testing - takes AN AWFUL LOT OF TIME, hence only use true for final analysis
+%
+%       * perm_n_mvpa_reg_st           default 5000; number of permutations, reduce number for quick results
+%       * perm_sidedness               default 'both'; tails for permutation test, 'both', 'smaller', or 'larger'
+%
+% * dosourcerecon_mvpa_reg_st    default false; true performs source reconstruction/"structure coefficients", i.e. regressing each voxel's activity onto yhat - see Haufe et al NeuroImage 2014
+%
+%       * dosourcerecon_perm_mvpa_reg_st     default false; true performs permutation testing on source recon images; takes an AWFUL LOT OF TIME
+%
+% * q_threshold_mvpa_reg_st      default .05; threshold for FDR-corrected display items
+%
+% * k_threshold_mvpa_reg_st      extent threshold for FDR-corrected display items (see a2_set_default_options.m for current default)
+%
+% * dosavemvparegstats           default true; save statistics and weight map objects
+%
+% * domultilevel_mvpa_reg_st     default false; fits multilevel mvpa models - WORK IN PROGRESS
+%
+%
+% *OPTIONS TO COPY FROM CORRESPONDING PREP_3f_ SCRIPT*
+%
+% _Mandatory option_
+%
+% * results_suffix               name added to results file by prep_3f script in case of multiple versions of model
+%
+% _Options to copy if specified in prep_3f script_
+%
+% * cons2exclude_dat_st          cell array of excluded condition names
+% * behav_outcome_dat_st         outcome variable name
+% * subj_identifier_dat_st       subject identifier variable name
+% * group_identifier_dat_st      group identifier variable name
+%
+%
+% *NOTES*
+%
+% * this script is work in progress - the permutation and multilevel options
+%   in particular are still undergoing improvement and full testing (see
+%   Bogdan's hyp_opt_and_mlpcr_demo script in this repo for a reference
+%   implementation of the multilevel option)
+%
+% -------------------------------------------------------------------------
 %
 % author: lukas.vanoudenhove@kuleuven.be, bogpetre@gmail.com
+%
 % date:   April, 2021
-%__________________________________________________________________________
-% @(#)% c2f_run_MVPA_regression_single_trial     v6.1        
-% last modified: 2024/08/06
+%
+% -------------------------------------------------------------------------
+%
+% c2f_run_MVPA_regression_single_trial.m         v6.2
+%
+% last modified: 2026/08/14
 
 
 %% GET AND SET OPTIONS

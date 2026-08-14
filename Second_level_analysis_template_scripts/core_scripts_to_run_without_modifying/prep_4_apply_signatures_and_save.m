@@ -1,45 +1,68 @@
-%% prep_4_apply_signatures_and_save
+%% prep_4_apply_signatures_and_save.m
 %
 %
-% USAGE
+% *USAGE*
 %
-% This script 
-% 1) calculates selected signature responses for conditions and
-%       contrasts included in DAT, and saves them to new fields in DAT.
-% 2) calculated responses per NPS subregion if NPS is selected, can/should
-%       later be expanded to all signatures?
+% This script
+%
+% # calls a_set_up_paths_always_run_first, then loads DAT/DATA_OBJ*/DATA_OBJ_CON*
+%   from image_names_and_setup.mat/data_objects*.mat/contrast_data_objects.mat
+%   if not already in the workspace
+% # calculates selected CANlab signature responses for all conditions and
+%   contrasts in DAT, calling apply_all_signatures(), and saves them to
+%   DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(signature_name)
+%   and the equivalent DAT.SIG_contrasts field
+% # if 'nps' is among keyword_sigs (or keyword_sigs = 'all'), additionally
+%   computes NPS subregion responses for conditions and contrasts via
+%   apply_nps(), saved to DAT.npsresponse/DAT.npscontrasts/DAT.NPSsubregions
+% # appends the updated DAT to image_names_and_setup.mat
+%
+% Run this script with Matlab's publish function to generate html report of results:
+% publish('prep_4_apply_signatures_and_save','outputDir',htmlsavedir)
 %
 %
-% OUTPUT
+% *OUTPUT*
 %
-% These fields contain data tables whose columns are conditions or contrasts, 
-% with variable names based on DAT.conditions or DAT.contrastnames, 
-% but with spaces replaced with underscores:
+% DAT.SIG_conditions/DAT.SIG_contrasts contain data tables whose columns are
+% conditions or contrasts, with variable names based on DAT.conditions or
+% DAT.contrastnames (spaces replaced with underscores):
+%
 % DAT.SIG_conditions.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).signature_name
 % DAT.SIG_contrasts.(myscaling_sigs).(similarity_metric_sigs).(keyword_sigs).signature_name
-% 
 %
-% OPTIONS
 %
-% NOTE: 
-% defaults are specified in a2_set_default_options, but can be changed below
-% in case you want to add signature responses calculated with different
-% options, e.g. scaling, and save your new version of the script with a
-% letter index
+% *OPTIONS*
 %
-% myscaling_sigs = 'raw'/'scaled';
-% similarity_metric_sigs = 'dotproduct/'cosine_similarity','correlation';
-% keyword_sigs = 'all'/any option from load_image_set;
-% 
+% NOTE:
+%       defaults are specified in a2_set_default_options for any given model,
+%       but if you want to add signature responses calculated with different
+%       options (e.g. scaling), you can make a copy of this script with a
+%       letter index (e.g. _s6a_) and change the default option here
 %
-%__________________________________________________________________________
+% * myscaling_sigs             'raw' or 'scaled'
+%
+% * similarity_metric_sigs     'dotproduct', 'cosine_similarity', or 'correlation'
+%
+% * keyword_sigs                cell array of signature images and/or keywords passed into load_image_set; 'all' includes every available signature
+%
+%
+% *NOTES*
+%
+% * NPS subregions are only computed if 'nps' is included in keyword_sigs
+%   (or keyword_sigs = 'all') - this could/should later be expanded to
+%   other signatures with subregion definitions
+%
+% -------------------------------------------------------------------------
 %
 % revamped by: Lukas Van Oudenhove
+%
 % date:   Leuven, January, 2023
 %
-%__________________________________________________________________________
-% @(#)% prep_4_apply_signatures_and_save.m         v2.1
-% last modified: 2023/10/02
+% -------------------------------------------------------------------------
+%
+% prep_4_apply_signatures_and_save.m         v2.2
+%
+% last modified: 2026/08/14
 
 
 %% GET PATHS AND OPTIONS AND CHECK OPTIONS
@@ -58,7 +81,7 @@ a_set_up_paths_always_run_first;
 % NOTE: only specify if you want to run multiple versions of your model with different options
 % than the defaults you set in your model-specific version of a2_set_default_options.m
 % 
-% use_scaled_images_sigs = true/false;
+% myscaling_sigs = 'raw'/'scaled';
 % similarity_metric_sigs = 'keyword';
 % keyword_sigs = 'keyword';
 

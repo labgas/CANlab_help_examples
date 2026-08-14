@@ -1,30 +1,48 @@
 %% a2_set_default_options.m
 %
 %
-% USAGE
+% *USAGE*
 %
-% * Set default options used in various core secondlevel scripts included in
-% CANlab_help_examples (LaBGAS fork). 
-% * This script is automatically called by many other scripts, including 
-% a_set_up_paths_always_run_first, hence it does not often need to run
-% standalone
-% 
+% * Sets default options used by the core secondlevel scripts included in
+%   CANlab_help_examples (LaBGAS fork), organized into one section per
+%   script (see below)
+% * Automatically called by many other scripts, including
+%   a_set_up_paths_always_run_first, so it does not often need to be run
+%   standalone
 %
-% NOTES
-% 
-% * Always make a study-specific copy of this script in your code subdataset, do NOT edit in the repo!
-% * The below can be considered LaBGAS default options, but decisions will be study- or model-specific!
-% * Various options added by @lukasvo76 spring 21, summer 22, and winter 23
-% * If the title of the section below is capitalized, the scripts and their options have been revamped by @lukasvo76 already
+%
+% *STRUCTURE*
+%
+% * Each %% section below corresponds to one (or occasionally two) core
+%   secondlevel script(s); sections sharing a script pair (e.g.
+%   PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE)
+%   indicate that both scripts consume the same set of default options
+% * If a section title is capitalized, that script and its options have
+%   already been revamped/brought up to date by @lukasvo76; lowercase
+%   section titles (prep_3d_run_SVMs_betweenperson_contrasts,
+%   z_batch_publish_everything/z_batch_publish_analyses) have not
+% * See the corresponding script's own header for what each option does -
+%   this file only sets the defaults, it does not document them individually
+%
+%
+% *NOTES*
+%
+% * Always make a study-specific copy of this script in your code
+%   subdataset - do NOT edit the checked-in repo copy!
+% * The options below are LaBGAS defaults, but the right choice for any
+%   given option will often be study- or model-specific
 %
 % -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
+%
 % date:   Dartmouth, May, 2022
 %
 % -------------------------------------------------------------------------
-% a2_set_default_options.m         v7.1
-% last modified: 2026/07/10
+%
+% a2_set_default_options.m         v7.2
+%
+% last modified: 2026/08/13
 %
 %
 %% PREP_2_LOAD_IMAGE_DATA_AND_SAVE & PREP_3_CALC_UNIVARIATE_CONTRAST_MAPS_AND_SAVE

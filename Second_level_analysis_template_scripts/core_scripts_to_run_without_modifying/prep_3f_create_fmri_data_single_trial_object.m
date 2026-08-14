@@ -1,44 +1,77 @@
-%% prep_3f_create_fmri_data_single_trial_object
+%% prep_3f_create_fmri_data_single_trial_object.m
 %
 %
-% USAGE
+% *USAGE*
 %
-% This script creates and saves an fmri_data_st object from the single trial 
-% con images written in rootdir/firstlevel/model_x_yyy/sub-zz by
-% LaBGAScore_firstlevel_s2_fit_model.m and 
-% adds a convenient metadata_table field containing
-% 1. single trial ratings from rootdir/BIDS/phenotype/<phenotype_trial>.tsv
-% 2. single trial vifs
+% This script creates and saves an fmri_data_st object from the single-trial
+% con images written to rootdir/firstlevel/model_x_yyy/sub-zz by
+% LaBGAScore_firstlevel_s2_fit_model.m. It
 %
-% OPTIONS
+% # loads DSGN/DAT if not already in the workspace, and excludes subjects
+%   missing behavioral ratings for an entire condition
+% # reads each subject's single-trial con images and per-trial variance
+%   inflation factors (vifs), combining them into one fmri_data_st object
+%   with a metadata_table field (conname, subjname, vifname, vifvalue),
+%   running four sanity checks that trial/subject identifiers line up
+%   correctly across images, vifs, and behavioral data
+% # attaches single-trial ratings from
+%   rootdir/BIDS/phenotype/<phenotype_trial>.tsv to metadata_table and to
+%   the object's Y field (dropping trials with a NaN outcome)
+% # plots vifs across all trials and per subject, excludes trials exceeding
+%   the vif threshold, and saves the resulting object
 %
-% NOTE: defaults are specified in a2_set_default_options for any given model,
-% but if you want to run the same model with different options (for example
-% voxel- and parcelwise regression), you can make a copy of this script with
-% a letter index (e.g. _s6a_) and change the default option here
+% * the vif plots produced in the last step should be inspected in the
+%   resulting html report - trials with high vifs indicate multicollinearity
+%   with noise regressors at the first level and are automatically excluded
 %
-% cons2exclude_dat_st: cell array of condition names to exclude, separated by commas (or blanks)
-% behav_outcome_dat_st: name of outcome variable in DAT.BEHAVIOR.behavioral_data_table_st
-% subj_identifier_dat_st: name of subject identifier variable in same table
-% cond_identifier_dat_st: name of condition identifier variable in same table
-% group_identifier_dat_st: name of group identifier variable in same table; leave commented out if you don't have groups
-% vif_threshold_dat_st: variance inflation threshold to exclude trials
+% Run this script with Matlab's publish function to generate html report of results:
+% publish('prep_3f_create_fmri_data_single_trial_object','outputDir',htmlsavedir)
 %
-% MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT
 %
-% results_suffix: name to add to results file to specify model in case of
-% multiple models, e.g. 'water_excluded'
+% *OPTIONS*
 %
-% IMPORTANT NOTE: this script has not been extensively tested on messy data
-% yet (i.e. missing trials, NaNs for outcome, etc)!
+% NOTE:
+%       defaults are specified in a2_set_default_options for any given model,
+%       but if you want to run the same model with different options, you can
+%       make a copy of this script with a letter index (e.g. _s6a_) and
+%       change the default option here
 %
-%__________________________________________________________________________
+% * cons2exclude_dat_st          cell array of condition names to exclude, separated by commas (or blanks)
+%
+% * behav_outcome_dat_st         name of outcome variable in DAT.BEHAVIOR.behavioral_st_data_table
+%
+% * subj_identifier_dat_st       name of subject identifier variable in same table
+%
+% * cond_identifier_dat_st       name of condition identifier variable in same table
+%
+% * group_identifier_dat_st      name of group identifier variable in same table; leave commented out if you don't have groups
+%
+%       NOTE: this option is currently unused in the script body - reserved for possible future group-covariate support
+%
+% * vif_threshold_dat_st         variance inflation threshold to exclude trials
+%
+%
+% *MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT*
+%
+% * results_suffix               name to add to results file to specify model in case of multiple models, e.g. 'water_excluded'
+%
+%
+% *NOTES*
+%
+% * this script has not been extensively tested on messy data yet (i.e.
+%   missing trials, NaNs for outcome, etc)
+%
+% -------------------------------------------------------------------------
 %
 % author: lukas.vanoudenhove@kuleuven.be
+%
 % date:   Dartmouth, March, 2021
-%__________________________________________________________________________
-% @(#)% prep_3f_create_fmri_data_single_trial_object.m     v3.3       
-% last modified: 2024/12/18
+%
+% -------------------------------------------------------------------------
+%
+% prep_3f_create_fmri_data_single_trial_object.m         v3.4
+%
+% last modified: 2026/08/14
 
 
 %% GET AND SET OPTIONS
