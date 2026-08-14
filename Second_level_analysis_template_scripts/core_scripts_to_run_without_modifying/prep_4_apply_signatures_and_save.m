@@ -192,7 +192,7 @@ if sum(contains(keyword_sigs,'nps')) > 0 || isequal(keyword_sigs{1},'all')
 
                 [DAT.npsresponse(i), ~, ~, DAT.NPSsubregions.npspos_by_region(i), DAT.NPSsubregions.npsneg_by_region(i)] = apply_nps(data_object_conds{i}, 'noverbose', 'notables');
                 
-            case 'cosine_similatiry'
+            case 'cosine_similarity'
 
                 [DAT.npsresponse(i), ~, ~, DAT.NPSsubregions.npspos_by_region(i), DAT.NPSsubregions.npsneg_by_region(i)] = apply_nps(data_object_conds{i}, 'noverbose', 'notables', similarity_metric_sigs);
 
