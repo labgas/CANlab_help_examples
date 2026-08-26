@@ -103,6 +103,11 @@ dorobfit_parcelwise = false;                                            % true r
 doBayes = true;                                                         % converts t-maps into Bayes Factor maps -- default true
 doTFCE = false;                                                         % calculate TFCE maps from fmri_data_object - default false, permutations take a lot of time
     % TFCE analysis options
+    % Classic TFCE (Smith & Nichols 2009) via LaBGAScore's
+    % group_tfce_from_subject_maps, with a sign-flip (one-sample) or
+    % label-exchange (two-sample) permutation null. H, E and connectivity stay
+    % at their defaults (2, 0.5, 26); change them by calling that function
+    % directly. Results predating the 2026 TFCE overhaul are not comparable.
     perm_n_tfce = 1000;                                                     % number of permutations for TFCE-based stats
     tfce_sidedness = 'two';                                                 % 'one' versus 'two'-tailed test for TFCE-based stats
     tfce_tail = 'pos';                                                      % 'pos' or 'neg' if tfce_sidedness = 'one'

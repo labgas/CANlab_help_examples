@@ -103,6 +103,19 @@
 %
 %       _TFCE analysis options_
 %
+%         TFCE here is classic threshold-free cluster enhancement (Smith &
+%         Nichols 2009), computed by LaBGAScore's group_tfce_from_subject_maps
+%         with a sign-flip (one-sample) or label-exchange (two-sample)
+%         permutation null. Height and extent exponents and connectivity are
+%         left at their defaults (H = 2, E = 0.5, conn = 26); pass them through
+%         group_tfce_from_subject_maps directly if you need to change them.
+%
+%         NOTE: results produced before the 2026 TFCE overhaul of LaBGAScore
+%         are not comparable. That work replaced a mis-parameterised pTFCE call
+%         and repaired both permutation schemes; the two-sample null had been
+%         degenerate, and one-sample with covariates could never reject.
+%
+%
 %         * perm_n_tfce         number of permutations for TFCE-based stats
 %         * tfce_sidedness      'one' versus 'two'-tailed test for TFCE-based stats
 %         * tfce_tail           'pos' or 'neg' if tfce_sidedness = 'one'
