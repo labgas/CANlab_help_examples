@@ -569,7 +569,7 @@ for c = 1:kc
                     
                     figure;
 
-                    o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(tfce_fmri_data_fdr.dat(logical(tfce_fmri_data_fdr.sig))) max(tfce_fmri_data_fdr.dat)]); % colormap ~ inferno in MRIcroGL
+                    o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(tfce_fmri_data_fdr.dat(tfce_fmri_data_fdr.dat ~= 0)) max(tfce_fmri_data_fdr.dat)]); % colormap ~ inferno in MRIcroGL
                     o2 = legend(o2);
                     o2 = title_montage(o2, whmontage, [analysisname ' searchlight TFCE FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
@@ -601,7 +601,7 @@ for c = 1:kc
 
                     fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT TFCE RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
-                    o3 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(tfce_fmri_data_fdr.dat(logical(tfce_fmri_data_fdr.sig))) max(tfce_fmri_data_fdr.dat)]);
+                    o3 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(tfce_fmri_data_fdr.dat(tfce_fmri_data_fdr.dat ~= 0)) max(tfce_fmri_data_fdr.dat)]);
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
@@ -632,11 +632,11 @@ for c = 1:kc
                 
                 fprintf ('\nTABLE SVM SEARCHLIGHT TFCE RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
                 
-                [tfce_fmri_data, r] = thresholded_fmri_data_from_statistic_image (tfce_stat_image, TFCE_real, combined_atlas, p_threshold_svm, 'TFCE', 'unc', k_threshold_svm);
+                [tfce_fmri_data_unc, r, r_table] = thresholded_fmri_data_from_statistic_image (tfce_stat_image, TFCE_real, combined_atlas, p_threshold_svm, 'TFCE', 'unc', k_threshold_svm);
 
                 % montage
                 
-                if ~isempty(tfce_fmri_data)
+                if ~isempty(tfce_fmri_data_unc)
                     
                     fmri_data_objs_sl_unc{c} = tfce_fmri_data_unc;
                     
@@ -646,7 +646,7 @@ for c = 1:kc
                 
                     figure;
 
-                    o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(tfce_fmri_data.dat(logical(p.sig))) max(tfce_fmri_data.dat)]);
+                    o2 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(tfce_fmri_data_unc.dat(tfce_fmri_data_unc.dat ~= 0)) max(tfce_fmri_data_unc.dat)]);
                     o2 = legend(o2);
                     o2 = title_montage(o2, whmontage, [analysisname ' searchlight TFCE unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
@@ -678,7 +678,7 @@ for c = 1:kc
 
                     fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT TFCE RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
-                    o3 = montage(r, 'regioncenters', 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(p.dat(logical(p.sig))) max(p.dat)]);
+                    o3 = montage(r, 'regioncenters', 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(tfce_fmri_data_unc.dat(tfce_fmri_data_unc.dat ~= 0)) max(tfce_fmri_data_unc.dat)]);
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_regions_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);

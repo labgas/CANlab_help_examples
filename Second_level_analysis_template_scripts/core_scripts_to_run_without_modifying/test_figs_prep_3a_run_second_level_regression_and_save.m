@@ -1345,9 +1345,9 @@ for c = 1:kc
             tfce_regression_stats.tfce_stat_img = tfce_stat_img;
             tfce_regression_stats.tfce_info = tfce_info;
             
-            fprintf('\nMaximum real TFCE = %s\n',tfce_info.TFCE_real_max);
-            fprintf('\nMaximum null TFCE = %s\n',tfce_info.TFCE_null_max);
-            fprintf('\nGlobal TFCE p-value = %s\n',tfce_info.p_TFCE_global);
+            fprintf('\nMaximum real TFCE = %g\n',tfce_info.TFCE_real_max);
+            fprintf('\nMaximum null TFCE = %g\n',max(tfce_info.TFCE_null_max));
+            fprintf('\nGlobal TFCE p-value = %g\n',tfce_info.p_TFCE_global);
                     
             
         end % if doTFCE
