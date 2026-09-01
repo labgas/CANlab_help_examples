@@ -132,7 +132,51 @@ Several Group 1/2 scripts call into a separate sibling repo, **LaBGAScore** (loc
 | `LaBGAScore_atlas_binary_mask_from_atlas.m`    | referenced by`atlasname_glm`/`atlasname_svm` options in `a2_set_default_options.m`              | Generates custom`.mat` atlas/mask objects (`combined_atlas` variable) usable as `atlasname_glm`/`atlasname_svm`/`e1_corr_patterns.m`'s masking option. |
 | `LaBGAScore_atlas_rois_from_atlas.m`           | referenced by`roi_names`/`roi_modelname`/`roi_set_name` options in `a2_set_default_options.m` | Generates per-ROI atlas objects for`prep_3a_...`'s `doroi_analysis` option.                                                                                  |
 
+Three further LaBGAScore functions are called from these scripts and were missing from the
+table above until the dependency tooling found them:
+
+| Function                                        | Called from                                                                                          | Purpose                                                     |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `LaBGAScore_smart_parallel_pool_setup.m`      | `c2a_second_level_regression.m`, `prep_3a_...`, `prep_3c_run_SVMs_on_contrasts_masked.m`       | Sets up the parallel pool before bootstrapping/permutation. |
+| `group_tfce_from_subject_maps.m`              | `prep_3a_run_second_level_regression_and_save.m`                                                   | Group TFCE from subject-level maps.                         |
+| `thresholded_fmri_data_from_statistic_image.m` | `prep_3a_run_second_level_regression_and_save.m`, `c2_SVM_contrasts_masked.m`                    | Thresholded `fmri_data` object from a `statistic_image`.  |
+
 This is intentionally a high-level summary — LaBGAScore's own internals are out of scope here.
+
+## Dependency and provenance documentation
+
+[`DEPENDENCIES.md`](DEPENDENCIES.md) documents what each script calls and which repository
+each of those lives in. It covers exactly the **19 scripts listed above** (4 Group 1 + 15
+Group 2) — the set LaBGAS actively uses and maintains — not the ~113 scripts in this
+folder, the rest of which are generic CANlab machinery LaBGAS does not document.
+
+That file, along with `dependencies.tsv` and `dependencies.yml`, is **generated** by
+`LaBGAScore_dep_report` (in LaBGAScore's `clean/` folder) — regenerate rather than edit.
+
+Because these templates are copied and renamed per study, the version of CanlabCore they
+ran against is not recorded anywhere by default. LaBGAScore's `clean/LaBGAScore_prov_*`
+tooling closes that gap:
+
+- **Going forward** — publish with `LaBGAScore_prov_publish` instead of `publish`. The
+  report gains a Provenance section naming the commit of every dependency the script
+  reaches, plus the screen and figure dimensions it was produced at.
+- **Looking back** — `LaBGAScore_prov_resolve_retrospective` reconstructs the same record
+  from each artifact's embedded date and each clone's git reflog, covering the `.mat` files
+  the `prep_` scripts write as well as the reports the others publish. It has been run over
+  `proj_cfs` and `proj_discoverie`.
+
+Two things follow for anyone editing these scripts:
+
+- **`publish()` captures figures from the screen**, so a figure larger than the X2go
+  session is captured at display size. `plugin_set_figure_size` fits the request to the
+  display, preserving aspect ratio — see the note in
+  [`CLAUDE.md`](CLAUDE.md) and the recommended X2go settings in
+  [`LaBGAS_fMRI_analysis_workflow.md`](https://github.com/labgas/LaBGAScore/blob/main/LaBGAS_fMRI_analysis_workflow.md).
+- **Renaming a script per study is fine** — the tooling maps a study's renamed copy back
+  onto the template it came from, by token overlap on the step designator.
+
+See [`clean/README_provenance.md`](https://github.com/labgas/LaBGAScore/blob/main/clean/README_provenance.md)
+for the full guide.
 
 ## Out of scope
 
