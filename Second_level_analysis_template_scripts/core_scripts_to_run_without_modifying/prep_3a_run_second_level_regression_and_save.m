@@ -119,6 +119,10 @@
 %         * perm_n_tfce         number of permutations for TFCE-based stats
 %         * tfce_sidedness      'one' versus 'two'-tailed test for TFCE-based stats
 %         * tfce_tail           'pos' or 'neg' if tfce_sidedness = 'one'
+%         * tfce_seed           base RNG seed for the permutation null. Optional:
+%                               if unset a seed is drawn and printed, and is also
+%                               returned in tfce_info.seed. Set it to reproduce a
+%                               previous run exactly.
 %
 % * doroi_analysis              extract roi averages from condition (beta) or contrast (con) images using atlas objects created by LaBGAScore_atlas_binary_mask_from_atlas.m and written in secondlevel/modeldir/masks as input
 %
@@ -256,7 +260,8 @@ plugin_get_options_for_analysis_script;
 % doTFCE = true/false;
 %     perm_n_tfce = [number];                                                    
 %     tfce_sidedness = 'two'/'one';                                                
-%     tfce_tail = 'pos/neg';                                               
+%     tfce_tail = 'pos/neg';
+%     tfce_seed = [integer];                                               
 % doroi_analysis = true/false;
 %   roi_names = {'x','y','z'};
 %   roi_modelname = 'modelname';
@@ -1277,6 +1282,19 @@ for c = 1:kc
             
             % CALCULATE TFCE STATS FROM DATA OBJECT
             
+            % Resolve ONE seed for this run and pass it to every call below, so the
+            % permutation null is reproducible. group_tfce_from_subject_maps permutes
+            % inside a parfor, whose workers a client-side rng() never reaches, so
+            % without this the TFCE maps differ from run to run - which matters most
+            % where it is least visible, near threshold and at the p floor.
+            % Set tfce_seed in a2_set_default_options to fix it across runs; left
+            % unset, a seed is drawn here and reported, so the run stays random but
+            % can be reproduced exactly afterwards.
+            if ~exist('tfce_seed','var') || isempty(tfce_seed)
+                tfce_seed = randi(2^31-1);
+            end
+            fprintf('\nTFCE permutation seed for this run: %d\n', tfce_seed);
+            
             fprintf('\n\n');
             printhdr('Calculating voxel-wise TFCE maps');
             fprintf('\n\n');
@@ -1289,11 +1307,11 @@ for c = 1:kc
                         
                         case 'two'
                             
-                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'onesample',[],[],perm_n_tfce,'sidedness',tfce_sidedness);
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'onesample',[],[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
                         
                         case 'one'
                             
-                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'onesample',[],[],perm_n_tfce,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'onesample',[],[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
                             
                     end
                     
@@ -1303,11 +1321,11 @@ for c = 1:kc
                         
                         case 'two'
                             
-                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'sidedness',tfce_sidedness);
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
                         
                         case 'one'
                             
-                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
                             
                     end
                     
@@ -1322,11 +1340,11 @@ for c = 1:kc
 
                                 case 'two'
 
-                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,regression_stats.X(:,regression_stats.wh_nuisance),perm_n_tfce,'sidedness',tfce_sidedness);
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,regression_stats.X(:,regression_stats.wh_nuisance),perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
 
                                 case 'one'
 
-                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,regression_stats.X(:,regression_stats.wh_nuisance),perm_n_tfce,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,regression_stats.X(:,regression_stats.wh_nuisance),perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
                                     
                            end
                            
@@ -1336,11 +1354,11 @@ for c = 1:kc
                         
                                 case 'two'
 
-                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'sidedness',tfce_sidedness);
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
 
                                 case 'one'
 
-                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
                             
                             end
 
