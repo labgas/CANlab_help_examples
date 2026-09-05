@@ -1395,7 +1395,7 @@ fprintf('\n\n');
         cd(rootdir);
     
         savefilenamedata_region = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
-        save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr', 'region_tables_unc', 'region_tables_fdr', 'region_tables_cov_unc', 'regions_tables_cov_fdr', '-append');
+        save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr', 'region_tables_unc', 'region_tables_fdr', 'region_tables_cov_unc', 'region_tables_cov_fdr', '-append');
         
         if doBayes
             save(savefilenamedata_region, 'region_objs_Bayes', 'region_tables_Bayes', 'region_tables_cov_Bayes', '-append');
