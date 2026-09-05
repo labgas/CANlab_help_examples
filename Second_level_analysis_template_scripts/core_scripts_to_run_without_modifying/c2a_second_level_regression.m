@@ -126,6 +126,20 @@ results_suffix = ''; % suffix of your choice added to .mat file with saved resul
 %     perm_n_tfce = 1000;                                                    
 %     tfce_sidedness = 'two';                                                
 %     tfce_tail = 'pos/neg';  
+%     tfce_correction = 'fwe'/'fdr';                                         
+%         which multiple-comparisons correction to report for TFCE. 'fwe'
+%         (default) uses the max-statistic FWE p-values (Smith & Nichols
+%         2009) returned in tfce_info.p_FWE by group_tfce_from_subject_maps;
+%         'fdr' uses FDR on the uncorrected permutation p-values, the old
+%         behaviour. Both thresholded maps are saved either way - only the
+%         reported one gets montages and region tables, since labelling
+%         regions against an atlas is by far the slowest step here.
+%         TFCE results generated before p_FWE was implemented carry no
+%         p_FWE field and fall back to 'fdr' with a warning.
+%     p_threshold_fwe = .05;                                                 
+%         threshold for the FWE-corrected TFCE p-values. These are already
+%         corrected, so they are thresholded uncorrected at this value -
+%         applying FDR on top would correct twice.
 % domvpa_reg_cov = true/false;
 %   algorithm_mvpa_reg_cov = 'cv_pcr'/'cv_pls'/etc;
 %   holdout_set_method_mvpa_reg_cov = 'no_group'/'group';
@@ -210,7 +224,7 @@ if ~dorobfit_parcelwise
         o2 = canlab_results_fmridisplay([], 'compact');
         o2 = addblobs(o2, glmmask,'onecolor','color',[0.4 0.2 0.6],'trans','transvalue',0.50);
         o2 = title_montage(o2, 5, ['voxel-wise analysis masked with: ' maskname_short]);
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -260,7 +274,7 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
         else
             o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_short ' at granularity level labels_' num2str(atlas_granularity)]);
         end
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -299,7 +313,7 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
         else
             o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_glm ' at granularity level labels_' num2str(atlas_granularity)]);
         end
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -452,9 +466,16 @@ region_tables_cov_unc = cell(1,size(results,2));
     end
     
     if doTFCE
-        region_objs_tfce_fdr = cell(1,size(tfce_results,2));
-        region_tables_tfce_fdr = cell(1,size(tfce_results,2));
-        region_tables_cov_tfce_fdr = cell(1,size(tfce_results,2));
+        % region output is produced for the REPORTED correction only (see
+        % tfce_correction) - labelling regions against an atlas is the slowest
+        % step in this script, and the maps below are saved either way.
+        region_objs_tfce_corr = cell(1,size(tfce_results,2));
+        region_tables_tfce_corr = cell(1,size(tfce_results,2));
+        region_tables_cov_tfce_corr = cell(1,size(tfce_results,2));
+        
+        % both corrections' thresholded maps, saved regardless of which is reported
+        tfce_stat_imgs_thr_fdr = cell(1,size(tfce_results,2));
+        tfce_stat_imgs_thr_fwe = cell(1,size(tfce_results,2));
 
         region_objs_tfce_unc = cell(1,size(tfce_results,2));
         region_tables_tfce_unc = cell(1,size(tfce_results,2)); 
@@ -527,9 +548,78 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             tfce_stat_img = tfce_results{c}.tfce_stat_img;  % NOTE: unthresholded and unmasked
             tfce_dat = tfce_results{c}.tfce_dat;
             
+            % WHICH TFCE CORRECTION TO REPORT
+            % -------------------------------
+            % tfce_info.p_FWE holds the max-statistic FWE-corrected p-values.
+            % They are already corrected, so they get thresholded 'unc' at
+            % p_threshold_fwe further down; running FDR on them would correct
+            % twice. The swap of .p happens HERE, before apply_mask, because
+            % p_FWE is indexed over the unmasked voxel list - masking first
+            % would misalign the two.
+            
+            if ~exist('tfce_correction','var') || isempty(tfce_correction)
+                tfce_correction = 'fwe';
+            end
+            
+            if ~exist('p_threshold_fwe','var') || isempty(p_threshold_fwe)
+                p_threshold_fwe = 0.05;
+            end
+            
+            % p_FWE was added to group_tfce_from_subject_maps only recently, so
+            % results generated before that carry none. It is fully recoverable
+            % from what they DO store - the observed TFCE map and the
+            % max-statistic null - so recompute it rather than force a rerun of
+            % the permutations, which is by far the most expensive step here.
+            
+            tfce_p_fwe = [];
+            
+            if isfield(tfce_results{c},'tfce_info')
+                
+                if isfield(tfce_results{c}.tfce_info,'p_FWE') && ~isempty(tfce_results{c}.tfce_info.p_FWE)
+                    
+                    tfce_p_fwe = tfce_results{c}.tfce_info.p_FWE;
+                    
+                elseif all(isfield(tfce_results{c}.tfce_info,{'TFCE_real','TFCE_null_max'}))
+                    
+                    n_perm_saved = numel(tfce_results{c}.tfce_info.TFCE_null_max);
+                    
+                    fprintf(['\nNOTE: no p_FWE stored for contrast %d - these TFCE results predate the FWE\n' ...
+                             'implementation. Recomputing it from the saved max-statistic null:\n' ...
+                             '%d permutations, so the finest attainable p is %.4f.\n\n'], ...
+                             c, n_perm_saved, 1/(n_perm_saved+1));
+                    
+                    tfce_p_fwe = tfce_fwe_from_null(tfce_results{c}.tfce_info.TFCE_real, ...
+                                                    tfce_results{c}.tfce_info.TFCE_null_max);
+                    
+                end
+                
+            end
+            
+            has_p_fwe = ~isempty(tfce_p_fwe);
+            
+            if ~has_p_fwe && ~strcmpi(tfce_correction,'fdr')
+                warning('c2a:noTFCEfwe', ...
+                    ['contrast %d carries neither p_FWE nor the max-statistic null needed to\n' ...
+                     'recompute it, so FWE is unavailable. Reporting FDR instead.'], c);
+                tfce_correction = 'fdr';
+            end
+            
+            tfce_stat_img_fwe = [];
+            
+            if has_p_fwe
+                % swap uncorrected for FWE-corrected p BEFORE masking, so the p
+                % vector and the image voxels stay aligned
+                tfce_stat_img_fwe = tfce_stat_img;
+                tfce_stat_img_fwe.p = tfce_p_fwe;
+            end
+            
             if apply_mask_before_fdr
                 
                 tfce_stat_img = apply_mask(tfce_stat_img, glmmask);
+                
+                if ~isempty(tfce_stat_img_fwe)
+                    tfce_stat_img_fwe = apply_mask(tfce_stat_img_fwe, glmmask);
+                end
                 
                 % Lukas' original code
                 % causes mismatch in length of .dat fields between 
@@ -599,7 +689,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
         end % for loop over regressors in model
     
     figtitle = sprintf('%s_%s_%1.4f_FDR_montage_%s_%s_%s', analysisname, results_suffix, q_threshold_glm, names_string, mask_string, scaling_string);
-    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
     drawnow, snapnow;
     
         if save_figures_glm
@@ -627,7 +717,9 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 end
 
             r = region(tj);
-            r(cat(1, r.numVox) < k_threshold_glm) = [];
+            if ~isempty(r)
+                r(cat(1, r.numVox) < k_threshold_glm) = [];
+            end
             
             if ~isempty(r)
             
@@ -663,7 +755,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                 % Activate, name, and save figure
                 figtitle = sprintf('%s_%s_%1.4f_FDR_regions_%s_%s_%s', analysisname, results_suffix, q_threshold_glm, names{j}, mask_string, scaling_string);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                 drawnow, snapnow;
                     if save_figures_glm
                         plugin_save_figure;
@@ -723,7 +815,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
         end % for loop over regressors in model
     
     figtitle = sprintf('%s_%s_%1.4f_unc_montage_%s_%s_%S', analysisname, results_suffix, p_threshold_glm, names_string, mask_string, scaling_string);
-    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
     drawnow, snapnow;
     
         if save_figures_glm
@@ -747,7 +839,9 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             tj = threshold(tj, p_threshold_glm, 'unc', 'k', k_threshold_glm); 
 
             r = region(tj);
-            r(cat(1, r.numVox) < k_threshold_glm) = [];
+            if ~isempty(r)
+                r(cat(1, r.numVox) < k_threshold_glm) = [];
+            end
             
             if ~isempty(r)
             
@@ -783,7 +877,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                 % Activate, name, and save figure
                 figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s_%s', analysisname, results_suffix, p_threshold_glm, names{j}, mask_string, scaling_string);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                 drawnow, snapnow;
                     if save_figures_glm
                         plugin_save_figure;
@@ -845,7 +939,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             end % for loop over regressors in model
 
         figtitle = sprintf('%s_%s_%1.4f_Bayes_montage_%s_%s_%s', analysisname, results_suffix, BF_threshold_glm, names_string, mask_string, scaling_string);
-        set(gcf,'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow, snapnow;
 
             if save_figures_glm
@@ -869,7 +963,9 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                 r = region(BFj);
                 
+                if ~isempty(r)
                 r(cat(1, r.numVox) < k_threshold_glm) = [];
+            end
                 
                 if ~isempty(r)
                 
@@ -905,7 +1001,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_Bayes_regions_%s_%s_%s', analysisname, results_suffix, p_threshold_glm, names{j}, mask_string, scaling_string);
-                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                     drawnow, snapnow;
                         if save_figures_glm
                             plugin_save_figure;
@@ -925,14 +1021,39 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     
     if doTFCE
         
-        % BETWEEN-SUBJECT REGRESSORS or INTERCEPT: TFCE FDR
-        % -------------------------------------------------
-            
-        fprintf('\n\n');
-        printhdr('TFCE FDR-CORRECTED GLM RESULTS');
-        fprintf('\n\n');
+        % BETWEEN-SUBJECT REGRESSORS or INTERCEPT: TFCE, CORRECTED
+        % --------------------------------------------------------
+        % Both corrections are thresholded and saved; only the one named by
+        % tfce_correction gets montages and region tables below.
         
         tfce_stat_img_thr_fdr = threshold(tfce_stat_img, q_threshold_glm, 'fdr', 'k', k_threshold_glm);
+        
+        if ~isempty(tfce_stat_img_fwe)
+            tfce_stat_img_thr_fwe = threshold(tfce_stat_img_fwe, p_threshold_fwe, 'unc', 'k', k_threshold_glm);
+        else
+            tfce_stat_img_thr_fwe = [];
+        end
+        
+        switch lower(tfce_correction)
+            
+            case 'fwe'
+                tfce_stat_img_thr_corr = tfce_stat_img_thr_fwe;
+                tfce_corr_label        = 'FWE';
+                tfce_corr_thresh       = p_threshold_fwe;
+                
+            case 'fdr'
+                tfce_stat_img_thr_corr = tfce_stat_img_thr_fdr;
+                tfce_corr_label        = 'FDR';
+                tfce_corr_thresh       = q_threshold_glm;
+                
+            otherwise
+                error('unrecognized tfce_correction ''%s'', use ''fwe'' or ''fdr''', tfce_correction);
+                
+        end
+        
+        fprintf('\n\n');
+        printhdr(sprintf('TFCE %s-CORRECTED GLM RESULTS', tfce_corr_label));
+        fprintf('\n\n');
         
         % Lukas' original code
         
@@ -944,24 +1065,24 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
         % Lixin's fix (thanks!)
         
-        if any(tfce_stat_img_thr_fdr.sig(:))
+        if any(tfce_stat_img_thr_corr.sig(:))
             
             % keep both inputs as CANLab objects so voxel-space and removed
             % voxels information are preserved
-            tfce_dat_thr_fdr = apply_mask(tfce_dat, tfce_stat_img_thr_fdr);
+            tfce_dat_thr_corr = apply_mask(tfce_dat, tfce_stat_img_thr_corr);
             
-            if isempty(tfce_dat_thr_fdr.dat)
-                tfce_dat_thr_fdr = [];
+            if isempty(tfce_dat_thr_corr.dat)
+                tfce_dat_thr_corr = [];
             end
             
         else
             
-            tfce_dat_thr_fdr = [];
+            tfce_dat_thr_corr = [];
             
         end
 
 
-        if ~isempty(tfce_dat_thr_fdr)
+        if ~isempty(tfce_dat_thr_corr)
         
             % WHOLE-BRAIN MONTAGE
 
@@ -969,33 +1090,33 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     case 'onesample'
 
-                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT FDR q < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, regression_stats_results{c}.analysis_name, groupnames_string, mask_string, scaling_string);
-                        figtitle = sprintf('%s_TFCE_%1.4f_FDR_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, q_threshold_glm, groupnames_string, mask_string, scaling_string);
+                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_glm, regression_stats_results{c}.analysis_name, groupnames_string, mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_%1.4f_%s_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, groupnames_string, mask_string, scaling_string);
 
                     case 'group'
 
-                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT FDR q < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                        figtitle = sprintf('%s_TFCE_%1.4f_FDR_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, q_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_%1.4f_%s_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
 
                     case 'custom'
 
                         if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
 
-                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT FDR q < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_FDR_montage_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, q_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_%s_montage_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
 
                         else
 
-                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT FDR q < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_FDR_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, q_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_%s_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
 
                         end
 
                 end
 
-            o2 = montage(tfce_dat_thr_fdr,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
-            o2 = title_montage(o2, 5, ['tfce q < ' q_threshold_glm ' ' regression_stats_results{c}.analysis_name ' ' char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)) ' ' mask_string ' ' scaling_string]);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            o2 = montage(tfce_dat_thr_corr,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
+            o2 = title_montage(o2, 5, sprintf('tfce %s p < %s %s %s %s %s', tfce_corr_label, num2str(tfce_corr_thresh), regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string));
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
                     plugin_save_figure;
@@ -1008,70 +1129,78 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     case 'onesample'
 
-                        fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT FDR q < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, regression_stats_results{c}.analysis_name, groupnames_string, mask_string, scaling_string);
-                        figtitle = sprintf('%s_TFCE_%1.4f_FDR_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, q_threshold_glm, groupnames_string, mask_string, scaling_string);
+                        fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_glm, regression_stats_results{c}.analysis_name, groupnames_string, mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_%1.4f_%s_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, groupnames_string, mask_string, scaling_string);
 
                     case 'group'
 
-                        fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT FDR q < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                        figtitle = sprintf('%s_TFCE_%1.4f_FDR_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, q_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                        fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_%1.4f_%s_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
 
                     case 'custom'
 
                         if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
 
-                            fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT FDR q < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_FDR_regions_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, q_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
+                            fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_%s_regions_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
 
                         else
 
-                            fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT FDR q < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_FDR_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, q_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                            fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_glm, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_%s_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
 
                         end
 
                 end
 
-            region_tfce_fdr = cell(1);
-            table_tfce_fdr = cell(1);
-            table_cov_tfce_fdr = cell(1);
+            region_tfce_corr = cell(1);
+            table_tfce_corr = cell(1);
+            table_cov_tfce_corr = cell(1);
 
-            r = region(tfce_dat_thr_fdr);
-            r(cat(1, r.numVox) < k_threshold_glm) = [];
-            r.Z_descrip = 'TFCE';
-
+            r = region(tfce_dat_thr_corr);
+            if ~isempty(r)
+                r(cat(1, r.numVox) < k_threshold_glm) = [];
+            end
+            % r is a region ARRAY; a scalar assignment to a property of every element
+            % is not allowed ('Assigning to N elements using a simple assignment
+            % statement is not supported'). deal distributes it over the
+            % comma-separated list. Guarded because the extent filter above can
+            % empty r, and indexing a property of an empty region array also errors.
+            if ~isempty(r)
+                [r.Z_descrip] = deal('TFCE');
+            end
                 if ~isempty(r)
 
                     if exist('combined_atlas','var')
 
-                        [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);                                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+                        [rpos, rneg, r_table] = LaBGAScore_region_table(r,'atlas_obj',combined_atlas);                                            % print results summary table, label using atlasname_glm, and split positive and negative regions
 
                         r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
 
                         [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
-                            r_table_cov] = table_of_atlas_regions_covered(tfce_dat_thr_fdr,'atlas',combined_atlas);             % print results details table with regions covered and label using atlasname_glm
+                            r_table_cov] = table_of_atlas_regions_covered(tfce_dat_thr_corr,'atlas',combined_atlas);             % print results details table with regions covered and label using atlasname_glm
 
                     else
 
-                        [rpos, rneg, r_table] = table(r);                                                                       % print results summary table, label using default atlas, and split positive and negative regions
+                        [rpos, rneg, r_table] = LaBGAScore_region_table(r);                                                                       % print results summary table, label using default atlas, and split positive and negative regions
 
                         r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
 
                         [r_table_cov_pos, r_table_cov_neg, r_cov, r_table_cov_excl, ~, ~, ...
-                            r_table_cov] = table_of_atlas_regions_covered(tfce_dat_thr_fdr,'atlas',combined_atlas);             % print results details table with regions covered and label using default atlas
+                            r_table_cov] = table_of_atlas_regions_covered(tfce_dat_thr_corr,'atlas',combined_atlas);             % print results details table with regions covered and label using default atlas
 
                     end     
 
-                    region_tfce_fdr{1} = r;
-                    table_tfce_fdr{1} = r_table;
-                    table_cov_tfce_fdr{1} = r_table_cov;
+                    region_tfce_corr{1} = r;
+                    table_tfce_corr{1} = r_table;
+                    table_cov_tfce_corr{1} = r_table_cov;
 
                     % Montage of regions in table (plot and save)
 
                     o3 = montage(r, 'regioncenters', 'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
 
                     % Activate, name, and save figure
-                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                     drawnow, snapnow;
                         if save_figures_glm
                             plugin_save_figure;
@@ -1080,17 +1209,19 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                 end % conditional montage plot if there are regions to show
 
-            region_objs_tfce_fdr{c} = region_tfce_fdr;
-            region_tables_tfce_fdr{c} = table_tfce_fdr;
-            region_tables_cov_tfce_fdr{c} = table_cov_tfce_fdr;
+            region_objs_tfce_corr{c} = region_tfce_corr;
+            region_tables_tfce_corr{c} = table_tfce_corr;
+            region_tables_cov_tfce_corr{c} = table_cov_tfce_corr;
             
         else
             
-            fprintf('No suprathreshold voxels for this contrast AT FDR q < %1.4f, k = %d',q_threshold_glm, k_threshold_glm);
+            fprintf('No suprathreshold voxels for this contrast AT %s p < %1.4f, k = %d',tfce_corr_label, tfce_corr_thresh, k_threshold_glm);
             
         end
 
-        
+        tfce_stat_imgs_thr_fdr{c} = tfce_stat_img_thr_fdr;
+        tfce_stat_imgs_thr_fwe{c} = tfce_stat_img_thr_fwe;
+
         % BETWEEN-SUBJECT REGRESSORS or INTERCEPT: TFCE uncorrected
         % ---------------------------------------------------------
             
@@ -1161,7 +1292,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             o2 = montage(tfce_dat_thr_unc,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
             o2 = title_montage(o2, 5, ['tfce q < ' p_threshold_glm ' ' regression_stats_results{c}.analysis_name ' ' char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)) ' ' mask_string ' ' scaling_string]);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
                     plugin_save_figure;
@@ -1203,14 +1334,22 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             table_cov_tfce_unc = cell(1);
 
             r = region(tfce_dat_thr_unc, 'noverbose');
-            r(cat(1, r.numVox) < k_threshold_glm) = [];
-            r.Z_descrip = 'TFCE';
-
+            if ~isempty(r)
+                r(cat(1, r.numVox) < k_threshold_glm) = [];
+            end
+            % r is a region ARRAY; a scalar assignment to a property of every element
+            % is not allowed ('Assigning to N elements using a simple assignment
+            % statement is not supported'). deal distributes it over the
+            % comma-separated list. Guarded because the extent filter above can
+            % empty r, and indexing a property of an empty region array also errors.
+            if ~isempty(r)
+                [r.Z_descrip] = deal('TFCE');
+            end
                 if ~isempty(r)
 
                     if exist('combined_atlas','var')
 
-                        [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);                                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+                        [rpos, rneg, r_table] = LaBGAScore_region_table(r,'atlas_obj',combined_atlas);                                            % print results summary table, label using atlasname_glm, and split positive and negative regions
 
                         r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
 
@@ -1219,7 +1358,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     else
 
-                        [rpos, rneg, r_table] = table(r);                                                                       % print results summary table, label using default atlas, and split positive and negative regions
+                        [rpos, rneg, r_table] = LaBGAScore_region_table(r);                                                                       % print results summary table, label using default atlas, and split positive and negative regions
 
                         r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
 
@@ -1237,7 +1376,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     o3 = montage(r, 'regioncenters', 'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
 
                     % Activate, name, and save figure
-                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                     drawnow, snapnow;
                         if save_figures_glm
                             plugin_save_figure;
@@ -1365,7 +1504,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 end % for loop over regressors
 
             figtitle = sprintf('%s_%s_%s_%1.4f_FDR_montage_%s_%s_%s', analysisname, results_suffix, algorithm_mvpa_reg_cov, q_threshold_mvpa_reg_cov, names_string, mask_string, scaling_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
 
                 if save_figures_glm
@@ -1402,8 +1541,9 @@ fprintf('\n\n');
         end
         
         if doTFCE
-            save(savefilenamedata_region, 'region_objs_tfce_unc', 'region_objs_tfce_fdr', 'region_tables_tfce_unc', 'region_tables_tfce_fdr', ...
-                'region_tables_cov_tfce_unc','region_tables_cov_tfce_fdr', '-append'); 
+            save(savefilenamedata_region, 'region_objs_tfce_unc', 'region_objs_tfce_corr', 'region_tables_tfce_unc', 'region_tables_tfce_corr', ...
+                'region_tables_cov_tfce_unc','region_tables_cov_tfce_corr', ...
+                'tfce_stat_imgs_thr_fdr', 'tfce_stat_imgs_thr_fwe', 'tfce_correction', '-append'); 
         end
         
     else
