@@ -109,6 +109,12 @@
 %         permutation null. Height and extent exponents and connectivity are
 %         left at their defaults (H = 2, E = 0.5, conn = 26); pass them through
 %         group_tfce_from_subject_maps directly if you need to change them.
+%     cons2tfce:
+%         vector of contrast indices to run TFCE on, if you only want it for a
+%         subset. Empty (default) runs TFCE on every contrast. TFCE is by far
+%         the most expensive step in this script - perm_n_tfce permutations per
+%         contrast - so restricting it to the contrast(s) of interest is often
+%         the difference between an overnight job and a coffee break.
 %
 %         NOTE: results produced before the 2026 TFCE overhaul of LaBGAScore
 %         are not comparable. That work replaced a mis-parameterised pTFCE call
@@ -1278,7 +1284,13 @@ for c = 1:kc
         
         LaBGAScore_smart_parallel_pool_setup;      
         
-        if doTFCE
+        % TFCE can be restricted to a subset of contrasts: it is the dominant cost
+        % of this script, and most designs have one contrast of interest.
+        if ~exist('cons2tfce','var')
+            cons2tfce = [];
+        end
+        
+        if doTFCE && (isempty(cons2tfce) || ismember(c,cons2tfce))
             
             % CALCULATE TFCE STATS FROM DATA OBJECT
             
@@ -1502,7 +1514,7 @@ for c = 1:kc
             
         end
         
-        if doTFCE
+        if doTFCE && (isempty(cons2tfce) || ismember(c,cons2tfce))
             
             fprintf('\n\n');
             printhdr('Plotting voxel-wise TFCE GLM results');
@@ -1565,7 +1577,7 @@ for c = 1:kc
             bayesian_regression_stats_results{c} = bayesian_regression_stats;
         end
         
-        if doTFCE
+        if doTFCE && (isempty(cons2tfce) || ismember(c,cons2tfce))
             tfce_regression_stats_results{c} = tfce_regression_stats;
         end
 

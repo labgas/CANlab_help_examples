@@ -543,7 +543,19 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
         end
         
-        if doTFCE
+        % TFCE may have been restricted to a subset of contrasts via cons2tfce in
+        % prep_3a, in which case the cells for the other contrasts are empty.
+        % Report TFCE only where it was actually computed - dereferencing an empty
+        % cell here would error out the whole script on the first such contrast.
+        
+        has_tfce_c = doTFCE && numel(tfce_results) >= c && ~isempty(tfce_results{c});
+        
+        if doTFCE && ~has_tfce_c
+            fprintf('\nno TFCE results for contrast %d (%s) - not in cons2tfce; skipping TFCE for it\n\n', ...
+                c, analysisname);
+        end
+        
+        if has_tfce_c
             
             tfce_stat_img = tfce_results{c}.tfce_stat_img;  % NOTE: unthresholded and unmasked
             tfce_dat = tfce_results{c}.tfce_dat;
@@ -1055,7 +1067,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     end % if loop doBayes
     
     
-    if doTFCE
+    if has_tfce_c
         
         % BETWEEN-SUBJECT REGRESSORS or INTERCEPT: TFCE, CORRECTED
         % --------------------------------------------------------

@@ -111,6 +111,11 @@ doTFCE = false;                                                         % calcul
     perm_n_tfce = 1000;                                                     % number of permutations for TFCE-based stats
     tfce_sidedness = 'two';                                                 % 'one' versus 'two'-tailed test for TFCE-based stats
     tfce_tail = 'pos';                                                      % 'pos' or 'neg' if tfce_sidedness = 'one'
+    cons2tfce = [];                                                     % vector of contrast indices to run TFCE on, e.g. [5], if you only want it for a
+                                                                            % subset. Empty runs TFCE on every contrast. TFCE is the dominant cost of
+                                                                            % prep_3a - perm_n_tfce permutations per contrast - so restricting it to the
+                                                                            % contrast(s) of interest is often the difference between an overnight job and
+                                                                            % a coffee break. c2a skips TFCE reporting for contrasts not in this list.
 doroi_analysis = false;                                                 % extract roi averages from condition (beta) or contrast (con) images using an atlas object created by LaBGAScore_atlas_binary_mask_from_atlas.m as input
     % roi_analysis options
     roi_names = {'amINS_L','amINS_R','ventral_striatum_L','ventral_striatum_R','caudate_L','caudate_R','putamen_L','putamen_R','vmPFC_L','vmPFC_R','hypothalamus','VTA','lOFC_L','lOFC_R','mOFC_L','mOFC_R'}; 
