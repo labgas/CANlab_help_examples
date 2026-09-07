@@ -643,7 +643,7 @@ for c = 1:kc
     o2 = title_montage(o2, whmontage, [analysisname ' unthresholded ' mask_string ' ' scaling_string]);
 
     figtitle = sprintf('%s_unthresholded_montage_%s_%s', analysisname, mask_string, scaling_string);
-    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
     drawnow, snapnow;
         if save_figures_svm_unthresh
             plugin_save_figure;
@@ -677,7 +677,7 @@ for c = 1:kc
             o3 = title_montage(o3, whmontage, [analysisname ' TFCE where searchlight AUC > 0.50 ' mask_string ' ' scaling_string]);
 
             figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, mask_string, scaling_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_svm_unthresh
                     plugin_save_figure;

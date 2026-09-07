@@ -150,6 +150,12 @@ q_threshold_glm = .05;                                          % threshold for 
                                                                 % NOTE: only .05 implemented for parcelwise analysis, will be checked in script, warning about switching to default will be shown
 p_threshold_glm = .005;                                         % threshold for uncorrected display items
 k_threshold_glm = 50;                                           % extent threshold for both corrected and uncorrected display items
+max_regioncenters_montage = 21;                                 % show 'regioncenters' montages only when a result has FEWER than this many regions.
+                                                                    % These montages put one titled panel per region on a single figure, so they stop
+                                                                    % being readable - and stop being quick to render - once there are many. Shared by
+                                                                    % c2a_second_level_regression, c2_SVM_contrasts_masked and
+                                                                    % c2g_run_multivariate_mediation_single_trial, each of which also defaults it to 21
+                                                                    % if it is not set here.
 BF_threshold_glm = 10;                                          % threshold for Bayes Factor maps, |BF| > 10 indicates strong evidence in favour of H1 (positive value) or H0 (negative value) - see help.statistic_image.estimateBayesFactor for details
 
 % MVPA OPTIONS

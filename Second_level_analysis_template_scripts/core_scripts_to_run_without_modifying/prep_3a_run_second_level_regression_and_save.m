@@ -361,7 +361,7 @@ if ~dorobfit_parcelwise
         o2 = canlab_results_fmridisplay([], 'compact');
         o2 = addblobs(o2, glmmask,'onecolor','color',[0.4 0.2 0.6],'trans','transvalue',0.50);
         o2 = title_montage(o2, 5, ['voxel-wise analysis masked with: ' maskname_short]);
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -410,7 +410,7 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
         else
             o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_short ' at granularity level labels_' num2str(atlas_granularity)]);
         end
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -450,7 +450,7 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
         else
             o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_glm ' at granularity level labels_' num2str(atlas_granularity)]);
         end
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -556,7 +556,7 @@ if doroi_analysis
         o2 = canlab_results_fmridisplay([], 'compact');
         o2 = addblobs(o2, atlas2region(roi_atlas),'indexmap',cmap2,'interp','nearest');
         o2 = title_montage(o2, 5, 'atlas used for extraction of roi averages');
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -826,7 +826,7 @@ for c = 1:kc
                     o2 = canlab_results_fmridisplay([], 'compact');
                     o2 = addblobs(o2, glmmask);
                     o2 = title_montage(o2, 5, ['resampled ' maskname_short]);
-                    set(gcf,'WindowState','maximized');
+                    plugin_set_figure_size;
                     drawnow,snapnow;
 
                     clear o2
@@ -857,7 +857,7 @@ for c = 1:kc
                     else
                         o2 = title_montage(o2, 5, ['resampled ' atlasname_glm]);
                     end
-                    set(gcf,'WindowState','maximized');
+                    plugin_set_figure_size;
                     drawnow,snapnow;
 
                     clear o2
@@ -1008,19 +1008,19 @@ for c = 1:kc
                     case 'custom'
                         roi_means_table{c} = [roi_means_table{c} table_obj];
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(table_obj,2)),'covs',table2array(table_obj),'title',['ROI means, EFFECT: ' DAT.contrastnames{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                     case 'group'
                         group_table = array2table(group,'VariableNames',groupnames);
                         roi_means_table{c} = [roi_means_table{c} group_table];
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(group_table,2)),'covs',table2array(group_table),'title',['ROI means, EFFECT: ' DAT.contrastnames{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                     case 'onesample'
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c},'title',['ROI means, EFFECT: ' DAT.contrastnames{c}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                 end
@@ -1036,19 +1036,19 @@ for c = 1:kc
                     case 'custom'
                         roi_means_table{c} = [roi_means_table{c} table_obj];
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(table_obj,2)),'covs',table2array(table_obj),'title',['ROI means, EFFECT: ' DAT.conditions{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                     case 'group'
                         group_table = array2table(group,'VariableNames',groupnames);
                         roi_means_table{c} = [roi_means_table{c} group_table];
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(group_table,2)),'covs',table2array(group_table),'title',['ROI means, EFFECT: ' DAT.conditions{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                     case 'onesample'
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c},'title',['ROI means, EFFECT: ' DAT.conditions{c}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                 end
@@ -1082,7 +1082,7 @@ for c = 1:kc
                         end
                             
                         title(DAT.contrastnames{c},'Interpreter','none');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
@@ -1094,7 +1094,7 @@ for c = 1:kc
                             end
                             
                             title(DAT.contrastnames{c},'Interpreter','none');
-                            set(gcf,'WindowState','maximized');
+                            plugin_set_figure_size;
                             drawnow,snapnow;
 
                         end
@@ -1108,7 +1108,7 @@ for c = 1:kc
                         end
                         
                         title(DAT.contrastnames{c},'Interpreter','none');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
@@ -1120,7 +1120,7 @@ for c = 1:kc
                             end
                             
                             title(DAT.contrastnames{c} ,'Interpreter','none');
-                            set(gcf,'WindowState','maximized');
+                            plugin_set_figure_size;
                             drawnow,snapnow;
 
                         end
@@ -1144,7 +1144,7 @@ for c = 1:kc
                         end
 
                         title(DAT.conditions{c},'Interpreter','none');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
@@ -1156,7 +1156,7 @@ for c = 1:kc
                             end
                             
                             title(DAT.conditions{c} ,'Interpreter','none');
-                            set(gcf,'WindowState','maximized');
+                            plugin_set_figure_size;
                             drawnow,snapnow;
 
                         end
@@ -1170,7 +1170,7 @@ for c = 1:kc
                         end
                         
                         title(DAT.conditions{c},'Interpreter','none');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
@@ -1182,7 +1182,7 @@ for c = 1:kc
                             end
                             
                             title(DAT.conditions{c} ,'Interpreter','none');
-                            set(gcf,'WindowState','maximized');
+                            plugin_set_figure_size;
                             drawnow,snapnow;
 
                         end
@@ -1437,7 +1437,7 @@ for c = 1:kc
         end
 
         figtitle = sprintf('%s_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow, snapnow;
             if save_figures_glm
                 plugin_save_figure;
@@ -1493,7 +1493,7 @@ for c = 1:kc
             end
 
             figtitle = sprintf('%s_BF_3_montage_%s_%s_%s', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
                     plugin_save_figure;
@@ -1548,7 +1548,7 @@ for c = 1:kc
             
             o2 = montage(tfce_dat_thr_unc_05,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
             o2 = title_montage(o2, 5, ['tfce ' regression_stats.analysis_name ' ' char(regression_stats.variable_names(regression_stats.wh_interest)) ' ' mask_string ' ' scaling_string]);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
                     plugin_save_figure;
@@ -1655,7 +1655,7 @@ for c = 1:kc
         fprintf('\n\n');
         
         create_figure('parcelwise weights and metrics', 2, 2);
-        set(gcf, 'WindowState','maximized');
+        plugin_set_figure_size;
         xlabel('Image'); ylabel('Weights');
         errorbar(mean(parcelwise_stats.weights), std(parcelwise_stats.weights), 'bo', 'MarkerFaceColor', [0 0 .5])
         title('Mean weights across parcels (s.d. error bars) per image');
@@ -1739,7 +1739,7 @@ for c = 1:kc
         end
 
         figtitle = sprintf('%s_05_unc_montage_%s_%s_%s', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow, snapnow;
             if save_figures_glm
                 plugin_save_figure;
@@ -1787,7 +1787,7 @@ for c = 1:kc
             end
 
             figtitle = sprintf('%s_BF_3_montage_%s_%s_%s', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
                     plugin_save_figure;
@@ -1867,7 +1867,7 @@ for c = 1:kc
                 hold off
 
                 p = get(gcf,'Position');
-                set(gcf,'Position',[p(1:2),1024,2048],'WindowState','Maximized');
+                plugin_set_figure_size('width', 6, 'height', 12);   % portrait, was 1024x2048 px
                 drawnow, snapnow;
 
                 clear subj
@@ -1882,7 +1882,7 @@ for c = 1:kc
                 title(['Histogram of ' groupnames{covar}]);
                 xlabel(groupnames{covar});
                 ylabel('n(observations)');
-                set(gcf,'WindowState','Maximized');
+                plugin_set_figure_size;
                 drawnow, snapnow;
             
             % RUN MODEL
@@ -1985,7 +1985,7 @@ for c = 1:kc
                 plot(mdl);
                 xlabel({['Observed ' groupnames{covar}]}); ylabel({['Estimated ' groupnames{covar}],'(cross validated)'})
 
-                set(gcf,'WindowState','Maximized');
+                plugin_set_figure_size;
                 drawnow, snapnow;
 
                 % PLOT MONTAGE OF UNTHRESHOLDED WEIGHTS
@@ -2014,7 +2014,7 @@ for c = 1:kc
                 o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_cov ' unthresholded ' mvpa_stats.Y_names ' ' mask_string ' ' myscaling_glm]);
 
                 figtitle = sprintf('%s_unthresholded_montage_%s_%s', algorithm_mvpa_reg_cov, myscaling_glm, mask_string);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                 drawnow, snapnow;
 
                 clear w, clear o2, clear figtitle

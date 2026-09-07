@@ -274,7 +274,7 @@ for i = 1:size(DAT.conditions,2)
         if ~omit_histograms
             
             create_figure('histogram');
-            set(gcf,'WindowState','maximized');
+            plugin_set_figure_size;
             hist_han = histogram(DATA_OBJ{i}, 'byimage', 'by_tissue_type');
             
             drawnow; snapnow
@@ -348,7 +348,7 @@ for i=1:size(DAT.conditions,2)
         if ~omit_histograms
             
             create_figure('histogram');
-            set(gcf,'WindowState','maximized');
+            plugin_set_figure_size;
             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'by_tissue_type');
             drawnow; snapnow
             

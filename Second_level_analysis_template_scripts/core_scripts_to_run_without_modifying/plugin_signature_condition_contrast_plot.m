@@ -88,7 +88,7 @@ for sig = 1:size(keyword_sigs,2)
         end
         xlabel('');
 
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow;
 
     end
@@ -164,7 +164,7 @@ for sig = 1:size(keyword_sigs,2)
         end
         xlabel('');
 
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow;
 
     end

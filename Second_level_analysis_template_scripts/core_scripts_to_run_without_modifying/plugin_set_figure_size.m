@@ -107,17 +107,23 @@ addParameter(p, 'nrows', [], @(x) isempty(x) || (isnumeric(x) && isscalar(x) && 
 addParameter(p, 'margin', [0.02 0.06], @(x) isnumeric(x) && numel(x) == 2 && all(x >= 0 & x < 0.5));
 addParameter(p, 'minsize', 7, @(x) isnumeric(x) && isscalar(x) && x > 0);
 addParameter(p, 'verbose', true, @(x) islogical(x) || isnumeric(x));
+addParameter(p, 'fig', [], @(x) isempty(x) || isgraphics(x));
+addParameter(p, 'titlescale', 2/3, @(x) isnumeric(x) && isscalar(x) && x > 0);
 parse(p, varargin{:});
 
 width = p.Results.width;
 height = p.Results.height;
 margin = p.Results.margin;
+titlescale = p.Results.titlescale;
 
 if isempty(height)
     height = 7.5;                      % keeps the 16:10 aspect of the old 16x10 default
 end
 
-fh = gcf;
+fh = p.Results.fig;
+if isempty(fh)
+    fh = gcf;                          % default: the current figure
+end
 
 % WindowState 'maximized' silently overrides any Position set while it is
 % active, so it must be cleared first.
@@ -179,5 +185,37 @@ left = margin(1) * screen_px(3) / dpi / 2;
 bottom = margin(2) * screen_px(4) / dpi / 2;
 
 set(fh, 'Position', [left, bottom, actual_size(1), actual_size(2)]);
+
+
+%% SCALE MONTAGE TITLE FONTS
+% -------------------------------------------------------------------------
+% CanlabCore's title_montage hardcodes FontSize 18
+% (@fmridisplay/title_montage), a size tuned for a maximized window. On the
+% 12 x 7.5 in canvas this function produces, 18 pt titles are too heavy - and
+% on 'regioncenters' montages they are worse still, because @region/montage
+% calls title_montage once per region, putting an 18 pt title over each small
+% per-region axis. Scale them here rather than in CanlabCore, which is shared
+% and deliberately left untouched.
+%
+% Scaled once per figure: a second call on the same figure would compound the
+% reduction, and some scripts size a figure more than once.
+
+if titlescale ~= 1 && ~isappdata(fh, 'plugin_titles_scaled')
+
+    ax = findobj(fh, 'Type', 'axes');
+
+    for i = 1:numel(ax)
+
+        th = get(ax(i), 'Title');
+
+        if ~isempty(th) && all(isgraphics(th)) && ~isempty(get(th, 'String'))
+            set(th, 'FontSize', get(th, 'FontSize') * titlescale);
+        end
+
+    end
+
+    setappdata(fh, 'plugin_titles_scaled', true);
+
+end
 
 end % function

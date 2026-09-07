@@ -751,6 +751,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 
                 fprintf ('\nMONTAGE REGIONCENTERS GLM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', q_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
                 
+                % regioncenters puts one titled panel per region on a single figure, which
+                % stops being readable - and stops being quick - once there are many.
+                if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                if numel(r) < max_regioncenters_montage
+
                 o3 = montage(r, 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
 
                 % Activate, name, and save figure
@@ -761,6 +767,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         plugin_save_figure;
                     end
                 clear o3, clear figtitle, clear j, clear tj, clear r, clear rpos rneg r_cov, clear r_table*
+
+                else
+
+                    fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(r), max_regioncenters_montage);
+
+                end
 
             end % conditional montage plot if there are regions to show
             
@@ -873,6 +885,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 
                 fprintf ('\nMONTAGE REGIONCENTERS GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
                 
+                % regioncenters puts one titled panel per region on a single figure, which
+                % stops being readable - and stops being quick - once there are many.
+                if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                if numel(r) < max_regioncenters_montage
+
                 o3 = montage(r, 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
 
                 % Activate, name, and save figure
@@ -883,6 +901,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         plugin_save_figure;
                     end
                 clear o3, clear figtitle, clear j, clear tj, clear r, clear rpos rneg r_cov, clear r_table*
+
+                else
+
+                    fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(r), max_regioncenters_montage);
+
+                end
 
             end % conditional montage plot if there are regions to show
         
@@ -997,6 +1021,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     fprintf ('\nMONTAGE REGIONCENTERS BAYESIAN GLM RESULTS AT |BF| > %1.2f, k = %d, CONTRAST: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', BF_threshold_glm, k_threshold_glm, analysisname, names{j}, mask_string, scaling_string);
 
+                    % regioncenters puts one titled panel per region on a single figure, which
+                    % stops being readable - and stops being quick - once there are many.
+                    if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                    if numel(r) < max_regioncenters_montage
+
                     o3 = montage(r, 'regioncenters', 'splitcolor',{[.25 0 0] [1 0 0] [0 0.25 0] [0 1 0]});
 
                     % Activate, name, and save figure
@@ -1007,6 +1037,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                             plugin_save_figure;
                         end
                     clear o3, clear figtitle, clear j, clear BFj, clear r, clear rpos rneg r_cov, clear r_table*
+
+                    else
+
+                        fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(r), max_regioncenters_montage);
+
+                    end
 
                 end % conditional montage plot if there are regions to show
 
@@ -1197,6 +1233,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     % Montage of regions in table (plot and save)
 
+                    % regioncenters puts one titled panel per region on a single figure, which
+                    % stops being readable - and stops being quick - once there are many.
+                    if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                    if numel(r) < max_regioncenters_montage
+
                     o3 = montage(r, 'regioncenters', 'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
 
                     % Activate, name, and save figure
@@ -1206,6 +1248,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                             plugin_save_figure;
                         end
                     clear o3, clear figtitle, clear j, clear r, clear rpos rneg r_cov, clear r_table*
+
+                    else
+
+                        fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(r), max_regioncenters_montage);
+
+                    end
 
                 end % conditional montage plot if there are regions to show
 
@@ -1373,6 +1421,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     % Montage of regions in table (plot and save)
 
+                    % regioncenters puts one titled panel per region on a single figure, which
+                    % stops being readable - and stops being quick - once there are many.
+                    if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                    if numel(r) < max_regioncenters_montage
+
                     o3 = montage(r, 'regioncenters', 'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
 
                     % Activate, name, and save figure
@@ -1382,6 +1436,12 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                             plugin_save_figure;
                         end
                     clear o3, clear figtitle, clear j, clear tj, clear r, clear rpos rneg r_cov, clear r_table*
+
+                    else
+
+                        fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(r), max_regioncenters_montage);
+
+                    end
 
                 end % conditional montage plot if there are regions to show
 

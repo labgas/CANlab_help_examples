@@ -250,7 +250,7 @@ for c = 1:size(DAT.contrasts, 1)
         if ~omit_histograms
             
             create_figure('histogram');
-            set(gcf,'WindowState','maximized');
+            plugin_set_figure_size;
             hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'by_tissue_type');
             drawnow; snapnow
             
@@ -283,7 +283,7 @@ for c = 1:size(DAT.contrasts, 1)
         if ~omit_histograms
             
             create_figure('histogram_l2norm');
-            set(gcf,'WindowState','maximized');
+            plugin_set_figure_size;
             hist_han_l2norm = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'by_tissue_type');
             drawnow; snapnow
             
@@ -391,7 +391,7 @@ for c = 1:size(DAT.contrasts, 1)
         if ~omit_histograms
             
             create_figure('histogram_zscore');
-            set(gcf,'WindowState','maximized');
+            plugin_set_figure_size;
             hist_han_zscore = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'by_tissue_type');
             drawnow; snapnow
             

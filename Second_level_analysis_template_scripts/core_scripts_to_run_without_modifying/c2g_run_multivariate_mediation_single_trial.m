@@ -321,7 +321,7 @@ ylabel('Subject');
 hold off
 
 p = get(gcf,'Position');
-set(gcf,'Position',[p(1:2),1024,2048],'WindowState','Maximized');
+plugin_set_figure_size('width', 6, 'height', 12);   % portrait, was 1024x2048 px
 drawnow, snapnow;
 
 clear sub
@@ -338,7 +338,7 @@ box off
 title(['Histogram of single trial ' behav_outcome_dat_st]);
 xlabel(behav_outcome_dat_st);
 ylabel('n(observations)');
-set(gcf,'WindowState','Maximized');
+plugin_set_figure_size;
 drawnow, snapnow;
 
 % PER SUBJECT
@@ -358,7 +358,7 @@ b2=figure;
         ylabel('n(obs)');
     end
 
-set(gcf,'WindowState','Maximized');
+plugin_set_figure_size;
 drawnow, snapnow;
 
 clear sub
@@ -457,7 +457,7 @@ for cont = 1:size(contrastnames2include,2)
         fprintf('\n\n');
 
         pdm = multivariateMediation(X,Y,M,'nPDM',nPDM,'plots'); 
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         pdmfull = pdm;
@@ -579,7 +579,7 @@ for cont = 1:size(contrastnames2include,2)
         o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' unthresholded PDM #' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
 
         figtitle = sprintf('%s_unthresholded_montage_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow, snapnow;
             if save_figures_pdm
                 plugin_save_figure;
@@ -685,7 +685,7 @@ for cont = 1:size(contrastnames2include,2)
             o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' source reconstruction unthresholded PDM #' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
 
             figtitle = sprintf('%s_unthresholded_montage_source_reconstruction_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_pdm
                     plugin_save_figure;
@@ -745,7 +745,7 @@ for cont = 1:size(contrastnames2include,2)
             o2 = title_montage(o2, whmontage, [contrastnames2include{cont} ' FDR-corrected PDM # ' num2str(comp), ' ', mask_string, ' ', myscaling_pdm]);
 
             figtitle = sprintf('%s_FDR_montage_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_pdm
                     plugin_save_figure;
@@ -759,27 +759,51 @@ for cont = 1:size(contrastnames2include,2)
 
                 % Positive weights
 
+                % regioncenters puts one titled panel per region on a single figure, which
+                % stops being readable - and stops being quick - once there are many.
+                if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                if numel(reg_pos_fdr{comp}) < max_regioncenters_montage
+
                 o2 = montage(reg_pos_fdr{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]},'regioncenters');
 
                 figtitle = sprintf('%s_FDR_montage_positive_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                 drawnow, snapnow;
                     if save_figures_pdm
                         plugin_save_figure;
                     end
                 clear o2, clear figtitle
 
+                else
+
+                    fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(reg_pos_fdr{comp}), max_regioncenters_montage);
+
+                end
+
                 % Negative weights
+
+                % regioncenters puts one titled panel per region on a single figure, which
+                % stops being readable - and stops being quick - once there are many.
+                if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                if numel(reg_neg_fdr{comp}) < max_regioncenters_montage
 
                 o2 = montage(reg_neg_fdr{comp}, 'colormap', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]},'regioncenters');
 
                 figtitle = sprintf('%s_FDR_montage_negative_PDM#%s_%s_%s', contrastnames2include{cont}, num2str(comp), mask_string, myscaling_pdm);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                 drawnow, snapnow;
                     if save_figures_pdm
                         plugin_save_figure;
                     end
                 clear o2, clear figtitle
+
+                else
+
+                    fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(reg_neg_fdr{comp}), max_regioncenters_montage);
+
+                end
 
         end % for loop components visualization FDR thresholded results
         

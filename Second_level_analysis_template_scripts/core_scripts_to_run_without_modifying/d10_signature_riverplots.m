@@ -133,7 +133,7 @@ printhdr('Cosine Similarity : All conditions');
         riverplot(DATA_OBJ, 'layer2', signatures_obj{sig}, 'pos', 'significant_only', 'layer1colors', DAT.colors, 'layer2colors', seaborn_colors(size(signatures_obj{sig}.image_names,2)));
         hh=figure(sig);
         figtitle = 'CANlab signatures riverplot of conditions';
-        set(hh, 'Tag', figtitle, 'WindowState','maximized');
+        set(hh, 'Tag', figtitle); plugin_set_figure_size('fig', hh);
         
     end
 
@@ -180,7 +180,7 @@ printhdr('Cosine Similarity : All contrasts');
         riverplot(DATA_OBJ_CON, 'layer2', signatures_obj{sig}, 'pos', 'significant_only', 'layer1colors', DAT.contrastcolors, 'layer2colors', seaborn_colors(size(signatures_obj{sig}.image_names,2)));
         hh=figure(sig+size(signatures_obj,2));
         figtitle = 'CANlab signatures riverplot of conditions';
-        set(hh, 'Tag', figtitle, 'WindowState','maximized');
+        set(hh, 'Tag', figtitle); plugin_set_figure_size('fig', hh);
         
     end
 
