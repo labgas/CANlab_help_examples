@@ -244,14 +244,16 @@ for c = 1:size(DAT.contrasts, 1)
         disp(DATA_OBJ_CON{c}.fullpath)
         
         plot(DATA_OBJ_CON{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
+        plugin_set_figure_size;   % plot() leaves the figure at MATLAB's default size
         
         drawnow; snapnow
         
         if ~omit_histograms
             
             create_figure('histogram');
-            plugin_set_figure_size;
             hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'by_tissue_type');
+            plugin_set_figure_size;   % size AFTER drawing - histogram() sets its own Position
+
             drawnow; snapnow
             
         end
@@ -277,14 +279,16 @@ for c = 1:size(DAT.contrasts, 1)
         disp(DATA_OBJ_CONscc{c}.fullpath)
         
         plot(DATA_OBJ_CONscc{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
+        plugin_set_figure_size;   % plot() leaves the figure at MATLAB's default size
         
         drawnow; snapnow
         
         if ~omit_histograms
             
             create_figure('histogram_l2norm');
-            plugin_set_figure_size;
             hist_han_l2norm = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'by_tissue_type');
+            plugin_set_figure_size;   % size AFTER drawing - histogram() sets its own Position
+
             drawnow; snapnow
             
         end
@@ -385,14 +389,16 @@ for c = 1:size(DAT.contrasts, 1)
         disp(DATA_OBJ_CONsc{c}.fullpath)
         
         plot(DATA_OBJ_CONsc{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
+        plugin_set_figure_size;   % plot() leaves the figure at MATLAB's default size
         
         drawnow; snapnow
         
         if ~omit_histograms
             
             create_figure('histogram_zscore');
-            plugin_set_figure_size;
             hist_han_zscore = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'by_tissue_type');
+            plugin_set_figure_size;   % size AFTER drawing - histogram() sets its own Position
+
             drawnow; snapnow
             
         end

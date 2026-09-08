@@ -1567,6 +1567,14 @@ for c = 1:kc
                         
                 end
             
+            % montage() on a DATA object routes through canlab_results_fmridisplay WITHOUT
+            % create_figure, so it draws into whatever figure is current - which is the
+            % previous block's montage. Verified: after canlab_results_fmridisplay the
+            % figure count stays 1 and the axes accumulate, so the TFCE blobs landed on top
+            % of the Bayes montage and both were captured in one snapnow. Open a fresh
+            % figure first. (region montages are fine - they go through create_figure.)
+            figure;
+
             o2 = montage(tfce_dat_thr_unc_05,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
             o2 = title_montage(o2, 5, ['tfce ' regression_stats.analysis_name ' ' char(regression_stats.variable_names(regression_stats.wh_interest)) ' ' mask_string ' ' scaling_string]);
             set(gcf, 'Tag', figtitle); plugin_set_figure_size;
@@ -1818,6 +1826,17 @@ for c = 1:kc
         end
 
         % KEEP RESULTS OBJECTS IN CELL ARRAY FOR SAVING
+
+        % robfit_parcelwise takes no analysis_name, so it leaves the CANlab default
+        % 'Regression analysis' on every contrast - which is what the parcelwise c2a
+        % report then prints as its heading for all of them. The voxelwise branch
+        % passes DAT.contrastnames{c} to regress(); do the same here.
+        switch mygroupnamefield
+            case 'contrasts'
+                parcelwise_stats.analysis_name = DAT.contrastnames{c};
+            case 'conditions'
+                parcelwise_stats.analysis_name = DAT.conditions{c};
+        end
 
         parcelwise_stats_results{c} = parcelwise_stats;
 

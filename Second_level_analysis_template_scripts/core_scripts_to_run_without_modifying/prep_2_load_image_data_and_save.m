@@ -268,14 +268,18 @@ for i = 1:size(DAT.conditions,2)
         disp(DATA_OBJ{i}.fullpath)
 
         plot(DATA_OBJ{i},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
+        plugin_set_figure_size;   % plot() leaves the figure at MATLAB's 560x420 default
         
         drawnow; snapnow
         
         if ~omit_histograms
             
             create_figure('histogram');
-            plugin_set_figure_size;
             hist_han = histogram(DATA_OBJ{i}, 'byimage', 'by_tissue_type');
+            % size AFTER drawing: histogram() sets its own figure Position, so a
+            % plugin call placed before it sized an empty figure and left the real
+            % one at its default (819 x 292 px in the published reports)
+            plugin_set_figure_size;
             
             drawnow; snapnow
             
@@ -342,14 +346,18 @@ for i=1:size(DAT.conditions,2)
         disp(DATA_OBJsc{i}.fullpath)
         
         plot(DATA_OBJsc{i},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run; 
+        plugin_set_figure_size;   % plot() leaves the figure at MATLAB's 560x420 default
         
         drawnow; snapnow
         
         if ~omit_histograms
             
             create_figure('histogram');
-            plugin_set_figure_size;
             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'by_tissue_type');
+            % size AFTER drawing: histogram() sets its own figure Position, so a
+            % plugin call placed before it sized an empty figure and left the real
+            % one at its default (819 x 292 px in the published reports)
+            plugin_set_figure_size;
             drawnow; snapnow
             
         end

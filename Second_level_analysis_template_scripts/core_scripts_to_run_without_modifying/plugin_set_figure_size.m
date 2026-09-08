@@ -200,7 +200,7 @@ set(fh, 'Position', [left, bottom, actual_size(1), actual_size(2)]);
 % Scaled once per figure: a second call on the same figure would compound the
 % reduction, and some scripts size a figure more than once.
 
-if titlescale ~= 1 && ~isappdata(fh, 'plugin_titles_scaled')
+if titlescale ~= 1
 
     ax = findobj(fh, 'Type', 'axes');
 
@@ -209,12 +209,20 @@ if titlescale ~= 1 && ~isappdata(fh, 'plugin_titles_scaled')
         th = get(ax(i), 'Title');
 
         if ~isempty(th) && all(isgraphics(th)) && ~isempty(get(th, 'String'))
-            set(th, 'FontSize', get(th, 'FontSize') * titlescale);
+
+            % Mark each TITLE, not the figure. A figure-level flag stops titles
+            % that are added AFTER the first sizing call from ever being scaled -
+            % which is what happened when one montage block drew into another's
+            % figure: the figure was already flagged, so the new 18 pt title was
+            % skipped. Per-title marking still prevents double-shrinking.
+            if ~isappdata(th, 'plugin_title_scaled')
+                set(th, 'FontSize', get(th, 'FontSize') * titlescale);
+                setappdata(th, 'plugin_title_scaled', true);
+            end
+
         end
 
     end
-
-    setappdata(fh, 'plugin_titles_scaled', true);
 
 end
 

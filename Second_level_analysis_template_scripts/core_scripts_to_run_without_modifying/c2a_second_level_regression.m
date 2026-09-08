@@ -1196,6 +1196,14 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                 end
 
+            % montage() on a DATA object routes through canlab_results_fmridisplay WITHOUT
+            % create_figure, so it draws into whatever figure is current - which is the
+            % previous block's montage. Verified: after canlab_results_fmridisplay the
+            % figure count stays 1 and the axes accumulate, so the TFCE blobs landed on top
+            % of the Bayes montage and both were captured in one snapnow. Open a fresh
+            % figure first. (region montages are fine - they go through create_figure.)
+            figure;
+
             o2 = montage(tfce_dat_thr_corr,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
             o2 = title_montage(o2, 5, sprintf('tfce %s p < %s %s %s %s %s', tfce_corr_label, num2str(tfce_corr_thresh), regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string));
             set(gcf, 'Tag', figtitle); plugin_set_figure_size;
@@ -1383,6 +1391,14 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                         end
 
                 end
+
+            % montage() on a DATA object routes through canlab_results_fmridisplay WITHOUT
+            % create_figure, so it draws into whatever figure is current - which is the
+            % previous block's montage. Verified: after canlab_results_fmridisplay the
+            % figure count stays 1 and the axes accumulate, so the TFCE blobs landed on top
+            % of the Bayes montage and both were captured in one snapnow. Open a fresh
+            % figure first. (region montages are fine - they go through create_figure.)
+            figure;
 
             o2 = montage(tfce_dat_thr_unc,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
             o2 = title_montage(o2, 5, ['tfce q < ' p_threshold_glm ' ' regression_stats_results{c}.analysis_name ' ' char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)) ' ' mask_string ' ' scaling_string]);
