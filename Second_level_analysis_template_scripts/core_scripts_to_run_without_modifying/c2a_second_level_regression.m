@@ -414,6 +414,13 @@ else
 
 end
 
+% Bayes factors come from prep_3a's VOXELWISE branch only - the parcelwise
+% results file contains just parcelwise_stats_results - so doBayes on its own
+% does not tell us whether they are available here. Without this, a parcelwise
+% run with doBayes = true dies on an undefined bayesian_results.
+has_bayes = doBayes && exist('bayesian_results','var') && ~isempty(bayesian_results);
+
+
 %
 % *MVPA*
 
@@ -459,7 +466,7 @@ region_objs_unc = cell(1,size(results,2));
 region_tables_unc = cell(1,size(results,2));
 region_tables_cov_unc = cell(1,size(results,2));
 
-    if doBayes
+    if has_bayes
         region_objs_Bayes = cell(1,size(bayesian_results,2));
         region_tables_Bayes = cell(1,size(bayesian_results,2));
         region_tables_cov_Bayes = cell(1,size(bayesian_results,2));
@@ -524,7 +531,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
         end
 
-        if doBayes
+        if has_bayes
 
             BF = bayesian_results{c}.BF;    % NOTE: unthresholded in both cases, masked in case of parcelwise only
 
@@ -932,7 +939,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     % BETWEEN-SUBJECT REGRESSORS & INTERCEPT: Bayesian
     % ------------------------------------------------
     
-    if doBayes
+    if has_bayes
     
         fprintf('\n\n');
         printhdr('BAYESIAN GLM RESULTS');
@@ -1608,7 +1615,7 @@ fprintf('\n\n');
         savefilenamedata_region = fullfile(resultsdir, ['regression_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
         save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr', 'region_tables_unc', 'region_tables_fdr', 'region_tables_cov_unc', 'region_tables_cov_fdr', '-append');
         
-        if doBayes
+        if has_bayes
             save(savefilenamedata_region, 'region_objs_Bayes', 'region_tables_Bayes', 'region_tables_cov_Bayes', '-append');
         end
         
@@ -1627,7 +1634,7 @@ fprintf('\n\n');
         savefilenamedata_region = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
         save(savefilenamedata_region, 'region_objs_unc', 'region_objs_fdr', 'region_tables_unc', 'region_tables_fdr', 'region_tables_cov_unc', 'region_tables_cov_fdr', '-append');
             
-        if doBayes
+        if has_bayes
             save(savefilenamedata_region, 'region_objs_Bayes', 'region_tables_Bayes', 'region_tables_cov_Bayes', '-append');
         end
         
