@@ -1254,6 +1254,15 @@ for c = 1:kc
         
         % RUN DIAGNOSTICS ON FITTED MODEL AND SUMMARIZE
         
+        % idx_nuisance is only created inside "if exist('nuisance_covs','var')"
+        % further up, so a design with no nuisance covariates - the common case
+        % for a plain group comparison - reaches here with it undefined and the
+        % whole script dies AFTER the regression has been computed but BEFORE
+        % anything is saved. Default it to "no nuisance columns" instead.
+        if ~exist('idx_nuisance','var')
+            idx_nuisance = false(size(groupnames));
+        end
+        
         regression_stats.nuisance_columns = find(idx_nuisance);
         
         regression_stats = validate_object(regression_stats);
