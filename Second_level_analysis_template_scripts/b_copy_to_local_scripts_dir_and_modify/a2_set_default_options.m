@@ -155,6 +155,11 @@ q_threshold_glm = .05;                                          % threshold for 
                                                                 % NOTE: only .05 implemented for parcelwise analysis, will be checked in script, warning about switching to default will be shown
 p_threshold_glm = .005;                                         % threshold for uncorrected display items
 k_threshold_glm = 50;                                           % extent threshold for both corrected and uncorrected display items
+k_threshold_tfce = 0;                                           % extent threshold for the TFCE display items. Deliberately NOT k_threshold_glm:
+                                                                    % TFCE already integrates cluster extent into the statistic, so a further extent
+                                                                    % filter counts extent twice, and max-statistic FWE already controls familywise
+                                                                    % error across the whole volume - which is what an extent threshold is usually
+                                                                    % brought in to approximate. 0 = no extent filter.
 max_regioncenters_montage = 21;                                 % show 'regioncenters' montages only when a result has FEWER than this many regions.
                                                                     % These montages put one titled panel per region on a single figure, so they stop
                                                                     % being readable - and stop being quick to render - once there are many. Shared by

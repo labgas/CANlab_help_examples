@@ -425,6 +425,19 @@ has_bayes = doBayes && exist('bayesian_results','var') && ~isempty(bayesian_resu
 % would send us into an undefined tfce_results.
 has_tfce = doTFCE && exist('tfce_results','var') && ~isempty(tfce_results);
 
+% Extent threshold for TFCE. Defaults to 0, i.e. none, and deliberately NOT to
+% k_threshold_glm: TFCE already integrates cluster extent into the statistic
+% itself - that is what the enhancement does - so a further extent filter counts
+% extent twice. And when the map is thresholded on max-statistic FWE p-values,
+% familywise error is already controlled across the whole search volume, which is
+% the job an extent threshold is usually brought in to approximate. Applying
+% k >= 50 on top discards valid FWE-significant voxels: on proj_moodbugs_wp2
+% contrast 5 it removed all 42 of them and reported an empty map.
+if ~exist('k_threshold_tfce','var') || isempty(k_threshold_tfce)
+    k_threshold_tfce = 0;
+end
+
+
 
 %
 % *MVPA*
@@ -660,7 +673,16 @@ for c = 1:size(results, 2) % number of contrasts or conditions
     fprintf('\n\n');
     
     fprintf('\nREGRESSORS: %s\n\n', names_string);
-    summary(results{c})
+    
+    % summary() is a METHOD of the glm_map object that prep_3a's voxelwise branch
+    % returns. The parcelwise branch returns a plain struct, for which MATLAB
+    % resolves summary() to the first one on the path - here
+    % CanlabCore/OptimizeDesign11/other_functions/summary.m, which immediately
+    % fails on its own missing 'defaults_optimize'. Call it only when it really
+    % is a method of this object.
+    if ismethod(results{c}, 'summary')
+        summary(results{c})
+    end
     fprintf('\n\n');
     
     num_effects = size(t.dat, 2);   % number of regressors
@@ -1086,10 +1108,10 @@ for c = 1:size(results, 2) % number of contrasts or conditions
         % Both corrections are thresholded and saved; only the one named by
         % tfce_correction gets montages and region tables below.
         
-        tfce_stat_img_thr_fdr = threshold(tfce_stat_img, q_threshold_glm, 'fdr', 'k', k_threshold_glm);
+        tfce_stat_img_thr_fdr = threshold(tfce_stat_img, q_threshold_glm, 'fdr', 'k', k_threshold_tfce);
         
         if ~isempty(tfce_stat_img_fwe)
-            tfce_stat_img_thr_fwe = threshold(tfce_stat_img_fwe, p_threshold_fwe, 'unc', 'k', k_threshold_glm);
+            tfce_stat_img_thr_fwe = threshold(tfce_stat_img_fwe, p_threshold_fwe, 'unc', 'k', k_threshold_tfce);
         else
             tfce_stat_img_thr_fwe = [];
         end
@@ -1219,7 +1241,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             r = region(tfce_dat_thr_corr);
             if ~isempty(r)
-                r(cat(1, r.numVox) < k_threshold_glm) = [];
+                r(cat(1, r.numVox) < k_threshold_tfce) = [];
             end
             % r is a region ARRAY; a scalar assignment to a property of every element
             % is not allowed ('Assigning to N elements using a simple assignment
@@ -1301,7 +1323,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
         printhdr('TFCE UNCORRECTED GLM RESULTS');
         fprintf('\n\n');
         
-        tfce_stat_img_thr_unc = threshold(tfce_stat_img, p_threshold_glm, 'unc', 'k', k_threshold_glm);
+        tfce_stat_img_thr_unc = threshold(tfce_stat_img, p_threshold_glm, 'unc', 'k', k_threshold_tfce);
         
         % Lukas' code
         
@@ -1407,7 +1429,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             r = region(tfce_dat_thr_unc, 'noverbose');
             if ~isempty(r)
-                r(cat(1, r.numVox) < k_threshold_glm) = [];
+                r(cat(1, r.numVox) < k_threshold_tfce) = [];
             end
             % r is a region ARRAY; a scalar assignment to a property of every element
             % is not allowed ('Assigning to N elements using a simple assignment
