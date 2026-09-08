@@ -420,6 +420,11 @@ end
 % run with doBayes = true dies on an undefined bayesian_results.
 has_bayes = doBayes && exist('bayesian_results','var') && ~isempty(bayesian_results);
 
+% Same for TFCE: it is computed in prep_3a's voxelwise branch only, so a
+% parcelwise results file has no tfce_regression_stats_results and doTFCE alone
+% would send us into an undefined tfce_results.
+has_tfce = doTFCE && exist('tfce_results','var') && ~isempty(tfce_results);
+
 
 %
 % *MVPA*
@@ -472,7 +477,7 @@ region_tables_cov_unc = cell(1,size(results,2));
         region_tables_cov_Bayes = cell(1,size(bayesian_results,2));
     end
     
-    if doTFCE
+    if has_tfce
         % region output is produced for the REPORTED correction only (see
         % tfce_correction) - labelling regions against an atlas is the slowest
         % step in this script, and the maps below are saved either way.
@@ -555,9 +560,9 @@ for c = 1:size(results, 2) % number of contrasts or conditions
         % Report TFCE only where it was actually computed - dereferencing an empty
         % cell here would error out the whole script on the first such contrast.
         
-        has_tfce_c = doTFCE && numel(tfce_results) >= c && ~isempty(tfce_results{c});
+        has_tfce_c = has_tfce && numel(tfce_results) >= c && ~isempty(tfce_results{c});
         
-        if doTFCE && ~has_tfce_c
+        if has_tfce && ~has_tfce_c
             fprintf('\nno TFCE results for contrast %d (%s) - not in cons2tfce; skipping TFCE for it\n\n', ...
                 c, analysisname);
         end
@@ -1619,7 +1624,7 @@ fprintf('\n\n');
             save(savefilenamedata_region, 'region_objs_Bayes', 'region_tables_Bayes', 'region_tables_cov_Bayes', '-append');
         end
         
-        if doTFCE
+        if has_tfce
             save(savefilenamedata_region, 'region_objs_tfce_unc', 'region_objs_tfce_corr', 'region_tables_tfce_unc', 'region_tables_tfce_corr', ...
                 'region_tables_cov_tfce_unc','region_tables_cov_tfce_corr', ...
                 'tfce_stat_imgs_thr_fdr', 'tfce_stat_imgs_thr_fwe', 'tfce_correction', '-append'); 
