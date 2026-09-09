@@ -364,6 +364,13 @@ if ~dorobfit_parcelwise
         
         % MONTAGE OF MASK
         
+        % canlab_results_fmridisplay's 'compact' layout only calls axes('Position',...);
+        % unlike 'multirow' it never opens a figure of its own, so it draws into whatever
+        % figure is current - the previous block's montage, or the last figure left open by
+        % the previous script in the same session. Open a fresh one. ('multirow' does
+        % create its own figure, so those call sites are deliberately left alone: adding
+        % figure; there would leave an empty figure behind for every montage.)
+        figure;
         o2 = canlab_results_fmridisplay([], 'compact');
         o2 = addblobs(o2, glmmask,'onecolor','color',[0.4 0.2 0.6],'trans','transvalue',0.50);
         o2 = title_montage(o2, 5, ['voxel-wise analysis masked with: ' maskname_short]);
@@ -2038,6 +2045,13 @@ for c = 1:kc
 
                 figure
 
+                % canlab_results_fmridisplay's 'compact' layout only calls axes('Position',...);
+                % unlike 'multirow' it never opens a figure of its own, so it draws into whatever
+                % figure is current - the previous block's montage, or the last figure left open by
+                % the previous script in the same session. Open a fresh one. ('multirow' does
+                % create its own figure, so those call sites are deliberately left alone: adding
+                % figure; there would leave an empty figure behind for every montage.)
+                figure;
                 o2 = canlab_results_fmridisplay([], 'compact');
                 w = mvpa_stats.weight_obj;
                 
@@ -2092,6 +2106,16 @@ if ~dorobfit_parcelwise
 else
         savefilenamedata = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
         save(savefilenamedata, 'parcelwise_stats_results', '-v7.3');
+
+        % The parcelwise branch computes Bayes Factors too (see the doBayes block
+        % above, which assigns bayesian_regression_stats_results), but this save
+        % used to write only parcelwise_stats_results - so the Bayes maps were
+        % computed and then silently discarded, and c2a's parcelwise report had no
+        % Bayesian section at all. Append them, as the voxelwise save does.
+        if doBayes && exist('bayesian_regression_stats_results','var')
+            save(savefilenamedata, 'bayesian_regression_stats_results', '-append');
+        end
+
         fprintf('\nSaved parcelwise_stats_results for %s\n', mygroupnamefield);
 end
 
