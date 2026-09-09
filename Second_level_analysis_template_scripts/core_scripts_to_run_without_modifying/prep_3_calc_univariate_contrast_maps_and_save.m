@@ -249,20 +249,29 @@ for c = 1:size(DAT.contrasts, 1)
         % orthviews panel being stretched to the default 16:10.
         fh_before = findobj('Type','figure');
         plot(DATA_OBJ_CON{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true, ...
+            'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
         
         drawnow; snapnow
         
         if ~omit_histograms
             
-            % capture existing figures first: these CANlab calls open more than one
-            % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), so
-            % sizing only gcf leaves the others as created. keepaspect stops the wide
-            % orthviews panel being stretched to the default 16:10.
+            % The density-plot figure is a grid of ONE panel per subject, so at a fixed
+            % canvas each panel becomes unreadable as n grows. minpanel grows the canvas
+            % until every panel is at least 1.2 x 1.0 inches, reading the actual layout
+            % rather than assuming one. Sibling figures ('relationships', 45 panels) keep
+            % the normal sizing - matching their per-panel size would make them absurd.
             fh_before = findobj('Type','figure');
             create_figure('histogram');
             hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'by_tissue_type');
-            plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
+            fh_new  = setdiff(findobj('Type','figure'), fh_before);
+            fh_dens = fh_new(startsWith(string(get(fh_new,'Tag')), 'histogram'));
+            if ~isempty(fh_dens)
+                plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
+            end
+            if ~isempty(setdiff(fh_new, fh_dens))
+                plugin_set_figure_size('fig', setdiff(fh_new, fh_dens), 'keepaspect', true);
+            end
 
             drawnow; snapnow
             
@@ -294,20 +303,29 @@ for c = 1:size(DAT.contrasts, 1)
         % orthviews panel being stretched to the default 16:10.
         fh_before = findobj('Type','figure');
         plot(DATA_OBJ_CONscc{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true, ...
+            'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
         
         drawnow; snapnow
         
         if ~omit_histograms
             
-            % capture existing figures first: these CANlab calls open more than one
-            % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), so
-            % sizing only gcf leaves the others as created. keepaspect stops the wide
-            % orthviews panel being stretched to the default 16:10.
+            % The density-plot figure is a grid of ONE panel per subject, so at a fixed
+            % canvas each panel becomes unreadable as n grows. minpanel grows the canvas
+            % until every panel is at least 1.2 x 1.0 inches, reading the actual layout
+            % rather than assuming one. Sibling figures ('relationships', 45 panels) keep
+            % the normal sizing - matching their per-panel size would make them absurd.
             fh_before = findobj('Type','figure');
             create_figure('histogram_l2norm');
             hist_han_l2norm = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'by_tissue_type');
-            plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
+            fh_new  = setdiff(findobj('Type','figure'), fh_before);
+            fh_dens = fh_new(startsWith(string(get(fh_new,'Tag')), 'histogram'));
+            if ~isempty(fh_dens)
+                plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
+            end
+            if ~isempty(setdiff(fh_new, fh_dens))
+                plugin_set_figure_size('fig', setdiff(fh_new, fh_dens), 'keepaspect', true);
+            end
 
             drawnow; snapnow
             
@@ -414,20 +432,29 @@ for c = 1:size(DAT.contrasts, 1)
         % orthviews panel being stretched to the default 16:10.
         fh_before = findobj('Type','figure');
         plot(DATA_OBJ_CONsc{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true, ...
+            'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
         
         drawnow; snapnow
         
         if ~omit_histograms
             
-            % capture existing figures first: these CANlab calls open more than one
-            % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), so
-            % sizing only gcf leaves the others as created. keepaspect stops the wide
-            % orthviews panel being stretched to the default 16:10.
+            % The density-plot figure is a grid of ONE panel per subject, so at a fixed
+            % canvas each panel becomes unreadable as n grows. minpanel grows the canvas
+            % until every panel is at least 1.2 x 1.0 inches, reading the actual layout
+            % rather than assuming one. Sibling figures ('relationships', 45 panels) keep
+            % the normal sizing - matching their per-panel size would make them absurd.
             fh_before = findobj('Type','figure');
             create_figure('histogram_zscore');
             hist_han_zscore = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'by_tissue_type');
-            plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
+            fh_new  = setdiff(findobj('Type','figure'), fh_before);
+            fh_dens = fh_new(startsWith(string(get(fh_new,'Tag')), 'histogram'));
+            if ~isempty(fh_dens)
+                plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
+            end
+            if ~isempty(setdiff(fh_new, fh_dens))
+                plugin_set_figure_size('fig', setdiff(fh_new, fh_dens), 'keepaspect', true);
+            end
 
             drawnow; snapnow
             

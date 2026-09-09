@@ -110,6 +110,7 @@ addParameter(p, 'verbose', true, @(x) islogical(x) || isnumeric(x));
 addParameter(p, 'fig', [], @(x) isempty(x) || all(isgraphics(x)));
 addParameter(p, 'keepaspect', false, @(x) islogical(x) || isnumeric(x));
 addParameter(p, 'titlescale', 2/3, @(x) isnumeric(x) && isscalar(x) && x > 0);
+addParameter(p, 'minpanel', [], @(x) isempty(x) || (isnumeric(x) && numel(x)==2 && all(x>0)));
 parse(p, varargin{:});
 
 width = p.Results.width;
@@ -152,8 +153,29 @@ set(fh, 'WindowState', 'normal');
 screen_px = get(0, 'ScreenSize');           % [1 1 width height], pixels
 dpi = get(0, 'ScreenPixelsPerInch');
 
-usable_w_in = screen_px(3) * (1 - margin(1)) / dpi;
-usable_h_in = screen_px(4) * (1 - margin(2)) / dpi;
+% HEADLESS: no clamping. The fitting below exists because publish() run from a
+% DESKTOP session captures what is on screen, so a figure bigger than the display
+% is silently captured at display size and at the wrong aspect. Under -nodisplay
+% there is no screen capture: publish() prints the figure, and the PNG comes out
+% at exactly the requested inches x 72 dpi. Measured: 12x7.5 in -> 864x540,
+% 20x15 -> 1440x1080, 26x20 -> 1872x1440, all well beyond the 1024x768 virtual
+% screen. Clamping headless therefore throws away resolution for no reason - and
+% it is precisely the multi-panel figures (one density plot per subject) that
+% need to grow past it.
+% Deliberately narrow: only figures that ASK to grow (minpanel) are un-clamped.
+% Every other figure keeps the exact screen-fitted size it had before, so this
+% change cannot move anything that is already correct in the published reports.
+is_headless = ~feature('ShowFigureWindows');
+
+if is_headless && ~isempty(p.Results.minpanel)
+    % A generous but FINITE bound. Infinity would make 'keepaspect' - which grows
+    % a figure by min(usable/current) - grow it without limit.
+    usable_w_in = 40;
+    usable_h_in = 40;
+else
+    usable_w_in = screen_px(3) * (1 - margin(1)) / dpi;
+    usable_h_in = screen_px(4) * (1 - margin(2)) / dpi;
+end
 
 % 'keepaspect': enlarge the figure at ITS OWN aspect ratio rather than forcing the
 % default 16:10. Wide, short figures such as canlab_orthviews (819 x 292 px, aspect
@@ -164,12 +186,37 @@ if p.Results.keepaspect
     if cur(3) > 0 && cur(4) > 0
         width  = cur(3);
         height = cur(4);
-        grow   = min(usable_w_in / width, usable_h_in / height);
+        grow = min(usable_w_in / width, usable_h_in / height);
+
         if grow > 1
             width  = width  * grow;
             height = height * grow;
         end
     end
+end
+
+% 'minpanel': grow the canvas so that every panel of a multi-panel figure gets at
+% least [w h] inches. Read from the axes actually present rather than from any
+% assumption about the layout, so it adapts to however many subjects the caller
+% happened to plot - a per-subject density plot grid with 158 subjects needs a
+% far taller canvas than one with 20, and nobody should have to hand-tune that.
+if ~isempty(p.Results.minpanel)
+
+    ax_mp = findobj(fh, 'Type', 'axes');
+
+    if ~isempty(ax_mp)
+
+        pos_mp = get(ax_mp, 'Position');
+        if iscell(pos_mp), pos_mp = cell2mat(pos_mp); end
+
+        med_w = median(pos_mp(:,3));    % panel width  as a fraction of the figure
+        med_h = median(pos_mp(:,4));    % panel height as a fraction of the figure
+
+        if med_w > 0, width  = max(width,  p.Results.minpanel(1) / med_w); end
+        if med_h > 0, height = max(height, p.Results.minpanel(2) / med_h); end
+
+    end
+
 end
 
 % one scale factor for both dimensions, so the aspect ratio survives

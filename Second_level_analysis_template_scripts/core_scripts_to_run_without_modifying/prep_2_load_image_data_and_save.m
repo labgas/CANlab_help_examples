@@ -273,7 +273,8 @@ for i = 1:size(DAT.conditions,2)
         % the wide orthviews panel being stretched to the default 16:10.
         fh_before = findobj('Type','figure');
         plot(DATA_OBJ{i},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true, ...
+            'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
         
         drawnow; snapnow
         
@@ -282,7 +283,20 @@ for i = 1:size(DAT.conditions,2)
             create_figure('histogram');
             fh_before = findobj('Type','figure');
             hist_han = histogram(DATA_OBJ{i}, 'byimage', 'by_tissue_type');
-            plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
+            fh_new = setdiff(findobj('Type','figure'), fh_before);
+            % The 'histogram' figure is a grid of ONE density plot per subject, so with
+            % 64 or 158 subjects each panel becomes unreadable at a fixed canvas size.
+            % minpanel grows the canvas until every panel is at least 1.2 x 1.0 inches,
+            % reading the actual layout rather than assuming one. Its sibling figures
+            % ('relationships', 45 panels) are left on the normal sizing - blowing those
+            % up to the same per-panel size would make them absurdly wide.
+            fh_dens = fh_new(startsWith(string(get(fh_new,'Tag')), 'histogram'));
+            if ~isempty(fh_dens)
+                plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
+            end
+            if ~isempty(setdiff(fh_new, fh_dens))
+                plugin_set_figure_size('fig', setdiff(fh_new, fh_dens), 'keepaspect', true);
+            end
             
             drawnow; snapnow
             
@@ -354,7 +368,8 @@ for i=1:size(DAT.conditions,2)
         % the wide orthviews panel being stretched to the default 16:10.
         fh_before = findobj('Type','figure');
         plot(DATA_OBJsc{i},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run; 
-        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true, ...
+            'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
         
         drawnow; snapnow
         
@@ -363,7 +378,20 @@ for i=1:size(DAT.conditions,2)
             create_figure('histogram');
             fh_before = findobj('Type','figure');
             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'by_tissue_type');
-            plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
+            fh_new = setdiff(findobj('Type','figure'), fh_before);
+            % The 'histogram' figure is a grid of ONE density plot per subject, so with
+            % 64 or 158 subjects each panel becomes unreadable at a fixed canvas size.
+            % minpanel grows the canvas until every panel is at least 1.2 x 1.0 inches,
+            % reading the actual layout rather than assuming one. Its sibling figures
+            % ('relationships', 45 panels) are left on the normal sizing - blowing those
+            % up to the same per-panel size would make them absurdly wide.
+            fh_dens = fh_new(startsWith(string(get(fh_new,'Tag')), 'histogram'));
+            if ~isempty(fh_dens)
+                plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
+            end
+            if ~isempty(setdiff(fh_new, fh_dens))
+                plugin_set_figure_size('fig', setdiff(fh_new, fh_dens), 'keepaspect', true);
+            end
             drawnow; snapnow
             
         end
