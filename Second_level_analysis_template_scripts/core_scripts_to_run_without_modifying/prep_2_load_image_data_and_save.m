@@ -267,19 +267,22 @@ for i = 1:size(DAT.conditions,2)
         
         disp(DATA_OBJ{i}.fullpath)
 
+        % capture existing figures first: these CANlab calls open more than one
+        % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), and
+        % sizing only gcf leaves the others at their created size. keepaspect stops
+        % the wide orthviews panel being stretched to the default 16:10.
+        fh_before = findobj('Type','figure');
         plot(DATA_OBJ{i},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size;   % plot() leaves the figure at MATLAB's 560x420 default
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
         
         drawnow; snapnow
         
         if ~omit_histograms
             
             create_figure('histogram');
+            fh_before = findobj('Type','figure');
             hist_han = histogram(DATA_OBJ{i}, 'byimage', 'by_tissue_type');
-            % size AFTER drawing: histogram() sets its own figure Position, so a
-            % plugin call placed before it sized an empty figure and left the real
-            % one at its default (819 x 292 px in the published reports)
-            plugin_set_figure_size;
+            plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
             
             drawnow; snapnow
             
@@ -345,19 +348,22 @@ for i=1:size(DAT.conditions,2)
 
         disp(DATA_OBJsc{i}.fullpath)
         
+        % capture existing figures first: these CANlab calls open more than one
+        % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), and
+        % sizing only gcf leaves the others at their created size. keepaspect stops
+        % the wide orthviews panel being stretched to the default 16:10.
+        fh_before = findobj('Type','figure');
         plot(DATA_OBJsc{i},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run; 
-        plugin_set_figure_size;   % plot() leaves the figure at MATLAB's 560x420 default
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
         
         drawnow; snapnow
         
         if ~omit_histograms
             
             create_figure('histogram');
+            fh_before = findobj('Type','figure');
             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'by_tissue_type');
-            % size AFTER drawing: histogram() sets its own figure Position, so a
-            % plugin call placed before it sized an empty figure and left the real
-            % one at its default (819 x 292 px in the published reports)
-            plugin_set_figure_size;
+            plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
             drawnow; snapnow
             
         end

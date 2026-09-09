@@ -107,7 +107,8 @@ addParameter(p, 'nrows', [], @(x) isempty(x) || (isnumeric(x) && isscalar(x) && 
 addParameter(p, 'margin', [0.02 0.06], @(x) isnumeric(x) && numel(x) == 2 && all(x >= 0 & x < 0.5));
 addParameter(p, 'minsize', 7, @(x) isnumeric(x) && isscalar(x) && x > 0);
 addParameter(p, 'verbose', true, @(x) islogical(x) || isnumeric(x));
-addParameter(p, 'fig', [], @(x) isempty(x) || isgraphics(x));
+addParameter(p, 'fig', [], @(x) isempty(x) || all(isgraphics(x)));
+addParameter(p, 'keepaspect', false, @(x) islogical(x) || isnumeric(x));
 addParameter(p, 'titlescale', 2/3, @(x) isnumeric(x) && isscalar(x) && x > 0);
 parse(p, varargin{:});
 
@@ -125,6 +126,21 @@ if isempty(fh)
     fh = gcf;                          % default: the current figure
 end
 
+% Several CANlab drawing calls open MORE THAN ONE figure - plot(fmri_data), for
+% instance, opens both 'canlab_orthviews' and 'fmri data matrix'. Sizing only gcf
+% leaves the others at whatever size they were created with. Accept a vector and
+% handle each in turn.
+if numel(fh) > 1
+    args = varargin;
+    for i_fh = 1:numel(fh)
+        a = args;
+        k = find(strcmpi(a, 'fig'));
+        if isempty(k), a = [a, {'fig', fh(i_fh)}]; else, a{k+1} = fh(i_fh); end %#ok<AGROW>
+        plugin_set_figure_size(a{:});
+    end
+    return
+end
+
 % WindowState 'maximized' silently overrides any Position set while it is
 % active, so it must be cleared first.
 set(fh, 'WindowState', 'normal');
@@ -138,6 +154,23 @@ dpi = get(0, 'ScreenPixelsPerInch');
 
 usable_w_in = screen_px(3) * (1 - margin(1)) / dpi;
 usable_h_in = screen_px(4) * (1 - margin(2)) / dpi;
+
+% 'keepaspect': enlarge the figure at ITS OWN aspect ratio rather than forcing the
+% default 16:10. Wide, short figures such as canlab_orthviews (819 x 292 px, aspect
+% 2.8) are distorted by a 12 x 7.5 in canvas; they want the same shape, bigger.
+if p.Results.keepaspect
+    set(fh, 'Units', 'inches');
+    cur = get(fh, 'Position');
+    if cur(3) > 0 && cur(4) > 0
+        width  = cur(3);
+        height = cur(4);
+        grow   = min(usable_w_in / width, usable_h_in / height);
+        if grow > 1
+            width  = width  * grow;
+            height = height * grow;
+        end
+    end
+end
 
 % one scale factor for both dimensions, so the aspect ratio survives
 scale = min([1, usable_w_in / width, usable_h_in / height]);

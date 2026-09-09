@@ -243,16 +243,26 @@ for c = 1:size(DAT.contrasts, 1)
         
         disp(DATA_OBJ_CON{c}.fullpath)
         
+        % capture existing figures first: these CANlab calls open more than one
+        % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), so
+        % sizing only gcf leaves the others as created. keepaspect stops the wide
+        % orthviews panel being stretched to the default 16:10.
+        fh_before = findobj('Type','figure');
         plot(DATA_OBJ_CON{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size;   % plot() leaves the figure at MATLAB's default size
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
         
         drawnow; snapnow
         
         if ~omit_histograms
             
+            % capture existing figures first: these CANlab calls open more than one
+            % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), so
+            % sizing only gcf leaves the others as created. keepaspect stops the wide
+            % orthviews panel being stretched to the default 16:10.
+            fh_before = findobj('Type','figure');
             create_figure('histogram');
             hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'by_tissue_type');
-            plugin_set_figure_size;   % size AFTER drawing - histogram() sets its own Position
+            plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
 
             drawnow; snapnow
             
@@ -278,16 +288,26 @@ for c = 1:size(DAT.contrasts, 1)
         
         disp(DATA_OBJ_CONscc{c}.fullpath)
         
+        % capture existing figures first: these CANlab calls open more than one
+        % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), so
+        % sizing only gcf leaves the others as created. keepaspect stops the wide
+        % orthviews panel being stretched to the default 16:10.
+        fh_before = findobj('Type','figure');
         plot(DATA_OBJ_CONscc{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size;   % plot() leaves the figure at MATLAB's default size
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
         
         drawnow; snapnow
         
         if ~omit_histograms
             
+            % capture existing figures first: these CANlab calls open more than one
+            % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), so
+            % sizing only gcf leaves the others as created. keepaspect stops the wide
+            % orthviews panel being stretched to the default 16:10.
+            fh_before = findobj('Type','figure');
             create_figure('histogram_l2norm');
             hist_han_l2norm = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'by_tissue_type');
-            plugin_set_figure_size;   % size AFTER drawing - histogram() sets its own Position
+            plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
 
             drawnow; snapnow
             
@@ -388,16 +408,26 @@ for c = 1:size(DAT.contrasts, 1)
         fprintf('%s\nPlot of contrast (from z-scored condition images): %s\n%s\n', dashes, DAT.contrastnames{c}, dashes);
         disp(DATA_OBJ_CONsc{c}.fullpath)
         
+        % capture existing figures first: these CANlab calls open more than one
+        % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), so
+        % sizing only gcf leaves the others as created. keepaspect stops the wide
+        % orthviews panel being stretched to the default 16:10.
+        fh_before = findobj('Type','figure');
         plot(DATA_OBJ_CONsc{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size;   % plot() leaves the figure at MATLAB's default size
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
         
         drawnow; snapnow
         
         if ~omit_histograms
             
+            % capture existing figures first: these CANlab calls open more than one
+            % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), so
+            % sizing only gcf leaves the others as created. keepaspect stops the wide
+            % orthviews panel being stretched to the default 16:10.
+            fh_before = findobj('Type','figure');
             create_figure('histogram_zscore');
             hist_han_zscore = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'by_tissue_type');
-            plugin_set_figure_size;   % size AFTER drawing - histogram() sets its own Position
+            plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true);
 
             drawnow; snapnow
             
