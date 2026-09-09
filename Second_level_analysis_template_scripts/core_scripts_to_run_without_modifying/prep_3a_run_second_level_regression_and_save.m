@@ -1561,20 +1561,20 @@ for c = 1:kc
                         
                     case 'group'
                         
-                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
-                        figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
+                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), ', '), mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), '_'), mask_string, scaling_string);
                         
                     case 'custom'
                         
                         if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
                             
-                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), char(regression_stats.variable_names(regression_stats.wh_nuisance)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_05_unc_montage_%s_nuisance_%s_%s_%s', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), char(regression_stats.variable_names(regression_stats.wh_nuisance)), mask_string, scaling_string);
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), ', '), strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_nuisance)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_05_unc_montage_%s_nuisance_%s_%s_%s', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), '_'), strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_nuisance)), '_'), mask_string, scaling_string);
                             
                         else
                         
-                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), '_'), mask_string, scaling_string);
                             
                         end
                         
@@ -1589,7 +1589,7 @@ for c = 1:kc
             figure;
 
             o2 = montage(tfce_dat_thr_unc_05,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
-            o2 = title_montage(o2, 5, ['tfce ' regression_stats.analysis_name ' ' char(regression_stats.variable_names(regression_stats.wh_interest)) ' ' mask_string ' ' scaling_string]);
+            o2 = title_montage(o2, 5, ['tfce ' regression_stats.analysis_name ' ' strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), ', ') ' ' mask_string ' ' scaling_string]);
             set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
