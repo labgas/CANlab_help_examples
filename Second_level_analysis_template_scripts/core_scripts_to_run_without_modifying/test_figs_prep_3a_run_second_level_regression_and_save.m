@@ -195,6 +195,23 @@
 
 % SET MANDATORY OPTIONS
 
+% NOTE: if DAT.BETWEENPERSON.group contains group identifier, you can comment this option out
+
+
+% GET MODEL-SPECIFIC PATHS AND OPTIONS
+
+a_set_up_paths_always_run_first;
+
+% NOTES 
+%   1. CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
+%   2. THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
+
+
+% GET DEFAULT OPTIONS IF NOT SET IN A2_SET_DEFAULT_OPTIONS
+
+% s0 MUST RUN BEFORE THE OPTION BLOCK BELOW - it calls a2_set_default_options,
+% so anything set above this line is silently reassigned from a2.
+
 mygroupnamefield = 'contrasts'; 
 results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
 
@@ -215,19 +232,6 @@ results_suffix = ''; % adds a suffix of your choice to .mat file with results th
 
 % group_id = {'group'};             % needs to correspond to variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} AND THE ORDER IN WHICH THEY APPEAR THERE
 
-% NOTE: if DAT.BETWEENPERSON.group contains group identifier, you can comment this option out
-
-
-% GET MODEL-SPECIFIC PATHS AND OPTIONS
-
-a_set_up_paths_always_run_first;
-
-% NOTES 
-%   1. CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
-%   2. THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
-
-
-% GET DEFAULT OPTIONS IF NOT SET IN A2_SET_DEFAULT_OPTIONS
 
 options_needed = {'dorobust', 'dorobfit_parcelwise', 'myscaling_glm', 'design_matrix_type', 'maskname_glm'};
 options_exist = cellfun(@exist, options_needed); 
