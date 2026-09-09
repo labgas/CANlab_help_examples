@@ -1192,20 +1192,20 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     case 'group'
 
-                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                        figtitle = sprintf('%s_TFCE_%1.4f_%s_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_%1.4f_%s_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), mask_string, scaling_string);
 
                     case 'custom'
 
                         if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
 
-                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_%s_montage_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_%s_montage_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), '_'), mask_string, scaling_string);
 
                         else
 
-                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_%s_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_%s_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), mask_string, scaling_string);
 
                         end
 
@@ -1220,7 +1220,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             figure;
 
             o2 = montage(tfce_dat_thr_corr,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
-            o2 = title_montage(o2, 5, sprintf('tfce %s p < %s %s %s %s %s', tfce_corr_label, num2str(tfce_corr_thresh), regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string));
+            o2 = title_montage(o2, 5, sprintf('tfce %s p < %s %s %s %s %s', tfce_corr_label, num2str(tfce_corr_thresh), regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), mask_string, scaling_string));
             set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
@@ -1239,20 +1239,20 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     case 'group'
 
-                        fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                        figtitle = sprintf('%s_TFCE_%1.4f_%s_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                        fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_%1.4f_%s_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), mask_string, scaling_string);
 
                     case 'custom'
 
                         if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
 
-                            fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_%s_regions_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
+                            fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_%s_regions_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), '_'), mask_string, scaling_string);
 
                         else
 
-                            fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_%s_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                            fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT %s p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', tfce_corr_label, tfce_corr_thresh, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_%s_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, tfce_corr_thresh, tfce_corr_label, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), mask_string, scaling_string);
 
                         end
 
@@ -1332,7 +1332,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             
         else
             
-            fprintf('No suprathreshold voxels for this contrast AT %s p < %1.4f, k = %d',tfce_corr_label, tfce_corr_thresh, k_threshold_glm);
+            fprintf('No suprathreshold voxels for this contrast AT %s p < %1.4f, k = %d',tfce_corr_label, tfce_corr_thresh, k_threshold_tfce);   % k_threshold_tfce, not k_threshold_glm: the map was thresholded with k_threshold_tfce above, so reporting k_threshold_glm here mislabels the run
             
         end
 
@@ -1388,20 +1388,20 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     case 'group'
 
-                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                        figtitle = sprintf('%s_TFCE_%1.4f_UNC_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_%1.4f_UNC_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), mask_string, scaling_string);
 
                     case 'custom'
 
                         if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
 
-                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_UNC_montage_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_UNC_montage_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), '_'), mask_string, scaling_string);
 
                         else
 
-                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_UNC_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_UNC_montage_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), mask_string, scaling_string);
 
                         end
 
@@ -1420,7 +1420,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             % p_threshold_glm is a NUMBER, so ['tfce q < ' 0.005 ...] concatenated
             % char(0.005), a control character, not the text "0.005". Also this map is
             % thresholded UNCORRECTED, so it is a p, not a q.
-            o2 = title_montage(o2, 5, sprintf('tfce uncorrected p < %s %s %s %s %s', num2str(p_threshold_glm), regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string));
+            o2 = title_montage(o2, 5, sprintf('tfce uncorrected p < %s %s %s %s %s', num2str(p_threshold_glm), regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), mask_string, scaling_string));
             set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
@@ -1444,20 +1444,20 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                         case 'group'
 
-                            fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_%1.4f_UNC_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                            fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_%1.4f_UNC_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), mask_string, scaling_string);
 
                         case 'custom'
 
                             if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
 
-                                fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
-                                figtitle = sprintf('%s_TFCE_%1.4f_UNC_regions_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), mask_string, scaling_string);
+                                fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), ', '), mask_string, scaling_string);
+                                figtitle = sprintf('%s_TFCE_%1.4f_UNC_regions_%s_nuisance_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_nuisance)), '_'), mask_string, scaling_string);
 
                             else
 
-                                fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
-                                figtitle = sprintf('%s_TFCE_%1.4f_UNC_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, char(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), mask_string, scaling_string);
+                                fprintf ('\nTABLES AND MONTAGE REGIONCENTERS VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < %1.4f, k = %d, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', p_threshold_glm, k_threshold_tfce, regression_stats_results{c}.analysis_name, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), ', '), mask_string, scaling_string);
+                                figtitle = sprintf('%s_TFCE_%1.4f_UNC_regions_%s_%s_%s', regression_stats_results{c}.analysis_name, p_threshold_glm, strjoin(cellstr(regression_stats_results{c}.variable_names(regression_stats_results{c}.wh_interest)), '_'), mask_string, scaling_string);
 
                             end
 
