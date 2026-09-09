@@ -786,7 +786,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             
                 if exist('combined_atlas','var')
                     
-                    [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+                    [rpos, rneg, r_table] = LaBGAScore_region_table_safe(@table, r,'atlas_obj',combined_atlas);                            % print results summary table, label using atlasname_glm, and split positive and negative regions
                     
                     r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
                     
@@ -795,7 +795,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     
                 else
                     
-                    [rpos, rneg, r_table] = table(r);                                                       % print results summary table, label using default atlas, and split positive and negative regions
+                    [rpos, rneg, r_table] = LaBGAScore_region_table_safe(@table, r);                                                       % print results summary table, label using default atlas, and split positive and negative regions
                     
                     r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
                     
@@ -920,7 +920,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             
                 if exist('combined_atlas','var')
                     
-                    [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+                    [rpos, rneg, r_table] = LaBGAScore_region_table_safe(@table, r,'atlas_obj',combined_atlas);                            % print results summary table, label using atlasname_glm, and split positive and negative regions
                     
                     r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
                     
@@ -929,7 +929,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     
                 else
                     
-                    [rpos, rneg, r_table] = table(r);                                                       % print results summary table, label using default atlas, and split positive and negative regions
+                    [rpos, rneg, r_table] = LaBGAScore_region_table_safe(@table, r);                                                       % print results summary table, label using default atlas, and split positive and negative regions
                     
                     r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
                     
@@ -1056,7 +1056,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 
                     if exist('combined_atlas','var')
 
-                        [rpos, rneg, r_table] = table(r,'atlas_obj',combined_atlas);                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+                        [rpos, rneg, r_table] = LaBGAScore_region_table_safe(@table, r,'atlas_obj',combined_atlas);                            % print results summary table, label using atlasname_glm, and split positive and negative regions
 
                         r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
 
@@ -1065,7 +1065,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     else
 
-                        [rpos, rneg, r_table] = table(r);                                                       % print results summary table, label using default atlas, and split positive and negative regions
+                        [rpos, rneg, r_table] = LaBGAScore_region_table_safe(@table, r);                                                       % print results summary table, label using default atlas, and split positive and negative regions
 
                         r = [rpos rneg];                                                                        % re-concatenate positive and negative regions into one region object
 
@@ -1278,7 +1278,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     if exist('combined_atlas','var')
 
-                        [rpos, rneg, r_table] = LaBGAScore_region_table(r,'atlas_obj',combined_atlas);                                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+                        [rpos, rneg, r_table] = LaBGAScore_region_table_safe(@LaBGAScore_region_table, r,'atlas_obj',combined_atlas);                                            % print results summary table, label using atlasname_glm, and split positive and negative regions
 
                         r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
 
@@ -1287,7 +1287,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                     else
 
-                        [rpos, rneg, r_table] = LaBGAScore_region_table(r);                                                                       % print results summary table, label using default atlas, and split positive and negative regions
+                        [rpos, rneg, r_table] = LaBGAScore_region_table_safe(@LaBGAScore_region_table, r);                                                                       % print results summary table, label using default atlas, and split positive and negative regions
 
                         r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
 
@@ -1483,7 +1483,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                         if exist('combined_atlas','var')
 
-                            [rpos, rneg, r_table] = LaBGAScore_region_table(r,'atlas_obj',combined_atlas);                                            % print results summary table, label using atlasname_glm, and split positive and negative regions
+                            [rpos, rneg, r_table] = LaBGAScore_region_table_safe(@LaBGAScore_region_table, r,'atlas_obj',combined_atlas);                                            % print results summary table, label using atlasname_glm, and split positive and negative regions
 
                             r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
 
@@ -1492,7 +1492,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                         else
 
-                            [rpos, rneg, r_table] = LaBGAScore_region_table(r);                                                                       % print results summary table, label using default atlas, and split positive and negative regions
+                            [rpos, rneg, r_table] = LaBGAScore_region_table_safe(@LaBGAScore_region_table, r);                                                                       % print results summary table, label using default atlas, and split positive and negative regions
 
                             r = [rpos rneg];                                                                                        % re-concatenate positive and negative regions into one region object
 
