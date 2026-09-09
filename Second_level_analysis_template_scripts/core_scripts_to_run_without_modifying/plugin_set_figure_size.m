@@ -212,8 +212,31 @@ if ~isempty(p.Results.minpanel)
         med_w = median(pos_mp(:,3));    % panel width  as a fraction of the figure
         med_h = median(pos_mp(:,4));    % panel height as a fraction of the figure
 
-        if med_w > 0, width  = max(width,  p.Results.minpanel(1) / med_w); end
-        if med_h > 0, height = max(height, p.Results.minpanel(2) / med_h); end
+        want_w = width;  if med_w > 0, want_w = max(width,  p.Results.minpanel(1) / med_w); end
+        want_h = height; if med_h > 0, want_h = max(height, p.Results.minpanel(2) / med_h); end
+
+        % SANITY BOUNDS. A layout that is one long row (many columns, one row)
+        % asks for a canvas hundreds of inches wide, which just pins the figure
+        % to the headless bound and produces an unreadable ribbon - a real
+        % 2880 x 205 px figure came out of prep_3 this way. Cap each dimension,
+        % and refuse a wildly non-rectangular canvas outright rather than emit
+        % something unusable.
+        max_w = 20; max_h = 30; max_aspect = 3;
+
+        want_w = min(want_w, max_w);
+        want_h = min(want_h, max_h);
+
+        if want_w / want_h > max_aspect || want_h / want_w > max_aspect
+            if p.Results.verbose
+                fprintf(['plugin_set_figure_size: minpanel would need a %.0f x %.0f in canvas ' ...
+                         '(aspect %.1f) for this layout, which is not usable; leaving the ' ...
+                         'default size. The panels are too many for one figure - consider ' ...
+                         'plotting fewer images per figure.\n'], want_w, want_h, max(want_w/want_h, want_h/want_w));
+            end
+        else
+            width  = want_w;
+            height = want_h;
+        end
 
     end
 

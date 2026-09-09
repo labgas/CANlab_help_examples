@@ -290,7 +290,16 @@ for i = 1:size(DAT.conditions,2)
             % reading the actual layout rather than assuming one. Its sibling figures
             % ('relationships', 45 panels) are left on the normal sizing - blowing those
             % up to the same per-panel size would make them absurdly wide.
-            fh_dens = fh_new(startsWith(string(get(fh_new,'Tag')), 'histogram'));
+            % pick the new figure with the MOST axes: that is the per-subject density grid
+            % by construction. Matching on the 'histogram' tag was fragile - it silently
+            % found nothing in one of the three scaling variants, so minpanel never ran.
+            if isempty(fh_new)
+                fh_dens = [];
+            else
+                n_ax = arrayfun(@(f) numel(findobj(f,'Type','axes')), fh_new);
+                [~, i_dens] = max(n_ax);
+                fh_dens = fh_new(i_dens);
+            end
             if ~isempty(fh_dens)
                 plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
             end
@@ -385,7 +394,16 @@ for i=1:size(DAT.conditions,2)
             % reading the actual layout rather than assuming one. Its sibling figures
             % ('relationships', 45 panels) are left on the normal sizing - blowing those
             % up to the same per-panel size would make them absurdly wide.
-            fh_dens = fh_new(startsWith(string(get(fh_new,'Tag')), 'histogram'));
+            % pick the new figure with the MOST axes: that is the per-subject density grid
+            % by construction. Matching on the 'histogram' tag was fragile - it silently
+            % found nothing in one of the three scaling variants, so minpanel never ran.
+            if isempty(fh_new)
+                fh_dens = [];
+            else
+                n_ax = arrayfun(@(f) numel(findobj(f,'Type','axes')), fh_new);
+                [~, i_dens] = max(n_ax);
+                fh_dens = fh_new(i_dens);
+            end
             if ~isempty(fh_dens)
                 plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
             end

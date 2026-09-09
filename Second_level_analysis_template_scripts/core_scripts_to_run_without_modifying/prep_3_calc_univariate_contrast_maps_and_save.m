@@ -265,7 +265,16 @@ for c = 1:size(DAT.contrasts, 1)
             create_figure('histogram');
             hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'by_tissue_type');
             fh_new  = setdiff(findobj('Type','figure'), fh_before);
-            fh_dens = fh_new(startsWith(string(get(fh_new,'Tag')), 'histogram'));
+            % pick the new figure with the MOST axes: that is the per-subject density grid
+            % by construction. Matching on the 'histogram' tag was fragile - it silently
+            % found nothing in one of the three scaling variants, so minpanel never ran.
+            if isempty(fh_new)
+                fh_dens = [];
+            else
+                n_ax = arrayfun(@(f) numel(findobj(f,'Type','axes')), fh_new);
+                [~, i_dens] = max(n_ax);
+                fh_dens = fh_new(i_dens);
+            end
             if ~isempty(fh_dens)
                 plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
             end
@@ -319,7 +328,16 @@ for c = 1:size(DAT.contrasts, 1)
             create_figure('histogram_l2norm');
             hist_han_l2norm = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'by_tissue_type');
             fh_new  = setdiff(findobj('Type','figure'), fh_before);
-            fh_dens = fh_new(startsWith(string(get(fh_new,'Tag')), 'histogram'));
+            % pick the new figure with the MOST axes: that is the per-subject density grid
+            % by construction. Matching on the 'histogram' tag was fragile - it silently
+            % found nothing in one of the three scaling variants, so minpanel never ran.
+            if isempty(fh_new)
+                fh_dens = [];
+            else
+                n_ax = arrayfun(@(f) numel(findobj(f,'Type','axes')), fh_new);
+                [~, i_dens] = max(n_ax);
+                fh_dens = fh_new(i_dens);
+            end
             if ~isempty(fh_dens)
                 plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
             end
@@ -448,7 +466,16 @@ for c = 1:size(DAT.contrasts, 1)
             create_figure('histogram_zscore');
             hist_han_zscore = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'by_tissue_type');
             fh_new  = setdiff(findobj('Type','figure'), fh_before);
-            fh_dens = fh_new(startsWith(string(get(fh_new,'Tag')), 'histogram'));
+            % pick the new figure with the MOST axes: that is the per-subject density grid
+            % by construction. Matching on the 'histogram' tag was fragile - it silently
+            % found nothing in one of the three scaling variants, so minpanel never ran.
+            if isempty(fh_new)
+                fh_dens = [];
+            else
+                n_ax = arrayfun(@(f) numel(findobj(f,'Type','axes')), fh_new);
+                [~, i_dens] = max(n_ax);
+                fh_dens = fh_new(i_dens);
+            end
             if ~isempty(fh_dens)
                 plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
             end
