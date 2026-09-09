@@ -68,7 +68,6 @@
 
 % SET MANDATORY OPTIONS
 
-results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
 % NOTE: do NOT delete, leave empty if not needed
 % NOTE: do NOT use to add a suffix specifying the behavioral outcome nor included conditions, this will be added automatically
 
@@ -82,6 +81,13 @@ a_set_up_paths_always_run_first;
 
 % NOTE: only specify if you want to run multiple versions of your model with different options
 % than the defaults you set in your model-specific version of a2_set_default_options.m
+
+% s0 MUST RUN BEFORE THE OPTION BLOCK BELOW. It calls a2_set_default_options,
+% so every option a2 defines is (re)assigned at this point - anything set above
+% this line is silently discarded, which is how a parcelwise variant could
+% quietly revert to voxelwise. Script-specific options belong AFTER it.
+
+results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
 
 % phenofile_dat_rw = 'phenotype.tsv';                   % name of phenotype file in BIDS subdataset
 % cons2include_dat_rw = {'condname1','condname2'};      % cell array of (maximum 2) condition names to include (as they appear in DSGN/DAT.conditions as well as SPM.Vbeta.descrip), separated by commas (or blanks)

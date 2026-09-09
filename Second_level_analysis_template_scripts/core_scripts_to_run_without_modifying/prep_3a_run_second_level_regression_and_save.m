@@ -203,6 +203,21 @@
 %% GET AND SET OPTIONS
 % -------------------------------------------------------------------------
 
+% GET MODEL-SPECIFIC PATHS AND OPTIONS
+
+a_set_up_paths_always_run_first;
+
+% NOTES 
+%   1. CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
+%   2. THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
+
+% s0 MUST RUN BEFORE THE OPTION BLOCK BELOW. It calls a2_set_default_options,
+% so every option a2 defines is (re)assigned at this point - anything set above
+% this line is silently discarded. Placing it first means the script-specific
+% options below reliably override the a2 defaults. c2a already orders it this
+% way; prep_3a did not, which silently reverted dorobfit_parcelwise in the
+% parcelwise variants and made them run voxelwise.
+
 % SET MANDATORY OPTIONS
 
 mygroupnamefield = 'contrasts'; 
@@ -226,15 +241,6 @@ results_suffix = ''; % adds a suffix of your choice to .mat file with results th
 % group_id = {'group'};             % needs to correspond to variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} AND THE ORDER IN WHICH THEY APPEAR THERE
 
 % NOTE: if DAT.BETWEENPERSON.group contains group identifier, you can comment this option out
-
-
-% GET MODEL-SPECIFIC PATHS AND OPTIONS
-
-a_set_up_paths_always_run_first;
-
-% NOTES 
-%   1. CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
-%   2. THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
 
 
 % GET DEFAULT OPTIONS IF NOT SET IN A2_SET_DEFAULT_OPTIONS
