@@ -280,31 +280,30 @@ for i = 1:size(DAT.conditions,2)
         
         if ~omit_histograms
             
-            fh_before = findobj('Type','figure');
             create_figure('histogram');
             hist_han = histogram(DATA_OBJ{i}, 'byimage', 'by_tissue_type');
-            fh_new = setdiff(findobj('Type','figure'), fh_before);
+            fh_dens = findobj('Type','figure','Tag','histogram');
+            fh_rel  = findobj('Type','figure','Tag','relationships');
             % The 'histogram' figure is a grid of ONE density plot per subject, so with
             % 64 or 158 subjects each panel becomes unreadable at a fixed canvas size.
             % minpanel grows the canvas until every panel is at least 1.2 x 1.0 inches,
-            % reading the actual layout rather than assuming one. Its sibling figures
-            % ('relationships', 45 panels) are left on the normal sizing - blowing those
-            % up to the same per-panel size would make them absurdly wide.
-            % pick the new figure with the MOST axes: that is the per-subject density grid
-            % by construction. Matching on the 'histogram' tag was fragile - it silently
-            % found nothing in one of the three scaling variants, so minpanel never ran.
-            if isempty(fh_new)
-                fh_dens = [];
-            else
-                n_ax = arrayfun(@(f) numel(findobj(f,'Type','axes')), fh_new);
-                [~, i_dens] = max(n_ax);
-                fh_dens = fh_new(i_dens);
-            end
+            % reading the actual layout rather than assuming one. The sibling
+            % 'relationships' figure (mean/SD by tissue type) keeps the normal sizing -
+            % it is a 1x3 layout, and minpanel on three panels asks for a canvas
+            % hundreds of inches wide.
+            %
+            % Both figures are found by TAG across all open figures, deliberately, not
+            % by diffing against a snapshot taken before the call. create_figure REUSES
+            % an existing figure with the same tag rather than opening a new one, so on
+            % every loop iteration after the first the density grid is not a NEW figure.
+            % A snapshot-based test therefore skipped it silently, and in one variant
+            % sized the 1x3 'relationships' figure instead - which is what produced the
+            % 480x420 grids and the 2880x205 ribbon in the first proj_cfs reports.
             if ~isempty(fh_dens)
-                plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
+                plugin_set_figure_size('fig', fh_dens(1), 'minpanel', [1.2 1.0]);
             end
-            if ~isempty(setdiff(fh_new, fh_dens))
-                plugin_set_figure_size('fig', setdiff(fh_new, fh_dens), 'keepaspect', true);
+            if ~isempty(fh_rel)
+                plugin_set_figure_size('fig', fh_rel(1), 'keepaspect', true);
             end
             
             drawnow; snapnow
@@ -384,31 +383,30 @@ for i=1:size(DAT.conditions,2)
         
         if ~omit_histograms
             
-            fh_before = findobj('Type','figure');
             create_figure('histogram');
             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'by_tissue_type');
-            fh_new = setdiff(findobj('Type','figure'), fh_before);
+            fh_dens = findobj('Type','figure','Tag','histogram');
+            fh_rel  = findobj('Type','figure','Tag','relationships');
             % The 'histogram' figure is a grid of ONE density plot per subject, so with
             % 64 or 158 subjects each panel becomes unreadable at a fixed canvas size.
             % minpanel grows the canvas until every panel is at least 1.2 x 1.0 inches,
-            % reading the actual layout rather than assuming one. Its sibling figures
-            % ('relationships', 45 panels) are left on the normal sizing - blowing those
-            % up to the same per-panel size would make them absurdly wide.
-            % pick the new figure with the MOST axes: that is the per-subject density grid
-            % by construction. Matching on the 'histogram' tag was fragile - it silently
-            % found nothing in one of the three scaling variants, so minpanel never ran.
-            if isempty(fh_new)
-                fh_dens = [];
-            else
-                n_ax = arrayfun(@(f) numel(findobj(f,'Type','axes')), fh_new);
-                [~, i_dens] = max(n_ax);
-                fh_dens = fh_new(i_dens);
-            end
+            % reading the actual layout rather than assuming one. The sibling
+            % 'relationships' figure (mean/SD by tissue type) keeps the normal sizing -
+            % it is a 1x3 layout, and minpanel on three panels asks for a canvas
+            % hundreds of inches wide.
+            %
+            % Both figures are found by TAG across all open figures, deliberately, not
+            % by diffing against a snapshot taken before the call. create_figure REUSES
+            % an existing figure with the same tag rather than opening a new one, so on
+            % every loop iteration after the first the density grid is not a NEW figure.
+            % A snapshot-based test therefore skipped it silently, and in one variant
+            % sized the 1x3 'relationships' figure instead - which is what produced the
+            % 480x420 grids and the 2880x205 ribbon in the first proj_cfs reports.
             if ~isempty(fh_dens)
-                plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
+                plugin_set_figure_size('fig', fh_dens(1), 'minpanel', [1.2 1.0]);
             end
-            if ~isempty(setdiff(fh_new, fh_dens))
-                plugin_set_figure_size('fig', setdiff(fh_new, fh_dens), 'keepaspect', true);
+            if ~isempty(fh_rel)
+                plugin_set_figure_size('fig', fh_rel(1), 'keepaspect', true);
             end
             drawnow; snapnow
             

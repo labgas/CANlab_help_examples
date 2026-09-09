@@ -261,25 +261,30 @@ for c = 1:size(DAT.contrasts, 1)
             % until every panel is at least 1.2 x 1.0 inches, reading the actual layout
             % rather than assuming one. Sibling figures ('relationships', 45 panels) keep
             % the normal sizing - matching their per-panel size would make them absurd.
-            fh_before = findobj('Type','figure');
             create_figure('histogram');
             hist_han = histogram(DATA_OBJ_CON{c}, 'byimage', 'by_tissue_type');
-            fh_new  = setdiff(findobj('Type','figure'), fh_before);
-            % pick the new figure with the MOST axes: that is the per-subject density grid
-            % by construction. Matching on the 'histogram' tag was fragile - it silently
-            % found nothing in one of the three scaling variants, so minpanel never ran.
-            if isempty(fh_new)
-                fh_dens = [];
-            else
-                n_ax = arrayfun(@(f) numel(findobj(f,'Type','axes')), fh_new);
-                [~, i_dens] = max(n_ax);
-                fh_dens = fh_new(i_dens);
-            end
+            fh_dens = findobj('Type','figure','Tag','histogram');
+            fh_rel  = findobj('Type','figure','Tag','relationships');
+            % The 'histogram' figure is a grid of ONE density plot per subject, so with
+            % 64 or 158 subjects each panel becomes unreadable at a fixed canvas size.
+            % minpanel grows the canvas until every panel is at least 1.2 x 1.0 inches,
+            % reading the actual layout rather than assuming one. The sibling
+            % 'relationships' figure (mean/SD by tissue type) keeps the normal sizing -
+            % it is a 1x3 layout, and minpanel on three panels asks for a canvas
+            % hundreds of inches wide.
+            %
+            % Both figures are found by TAG across all open figures, deliberately, not
+            % by diffing against a snapshot taken before the call. create_figure REUSES
+            % an existing figure with the same tag rather than opening a new one, so on
+            % every loop iteration after the first the density grid is not a NEW figure.
+            % A snapshot-based test therefore skipped it silently, and in one variant
+            % sized the 1x3 'relationships' figure instead - which is what produced the
+            % 480x420 grids and the 2880x205 ribbon in the first proj_cfs reports.
             if ~isempty(fh_dens)
-                plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
+                plugin_set_figure_size('fig', fh_dens(1), 'minpanel', [1.2 1.0]);
             end
-            if ~isempty(setdiff(fh_new, fh_dens))
-                plugin_set_figure_size('fig', setdiff(fh_new, fh_dens), 'keepaspect', true);
+            if ~isempty(fh_rel)
+                plugin_set_figure_size('fig', fh_rel(1), 'keepaspect', true);
             end
 
             drawnow; snapnow
@@ -324,25 +329,28 @@ for c = 1:size(DAT.contrasts, 1)
             % until every panel is at least 1.2 x 1.0 inches, reading the actual layout
             % rather than assuming one. Sibling figures ('relationships', 45 panels) keep
             % the normal sizing - matching their per-panel size would make them absurd.
-            fh_before = findobj('Type','figure');
             create_figure('histogram_l2norm');
             hist_han_l2norm = histogram(DATA_OBJ_CONscc{c}, 'byimage', 'by_tissue_type');
-            fh_new  = setdiff(findobj('Type','figure'), fh_before);
-            % pick the new figure with the MOST axes: that is the per-subject density grid
-            % by construction. Matching on the 'histogram' tag was fragile - it silently
-            % found nothing in one of the three scaling variants, so minpanel never ran.
-            if isempty(fh_new)
-                fh_dens = [];
-            else
-                n_ax = arrayfun(@(f) numel(findobj(f,'Type','axes')), fh_new);
-                [~, i_dens] = max(n_ax);
-                fh_dens = fh_new(i_dens);
-            end
+            fh_dens = findobj('Type','figure','Tag','histogram_l2norm');
+            fh_rel  = findobj('Type','figure','Tag','relationships');
+            % minpanel grows the canvas until every panel of the per-subject density grid
+            % is at least 1.2 x 1.0 inches, reading the actual layout rather than assuming
+            % one. The sibling 'relationships' figure (mean/SD by tissue type) keeps the
+            % normal sizing - it is a 1x3 layout, and minpanel on three panels asks for a
+            % canvas hundreds of inches wide.
+            %
+            % Both are found by TAG across all open figures, deliberately, not by diffing
+            % against a snapshot taken before the call. create_figure REUSES an existing
+            % figure with the same tag rather than opening a new one, so on every loop
+            % iteration after the first the density grid is not a NEW figure. A snapshot
+            % test therefore skipped it silently, and in one variant sized the 1x3
+            % 'relationships' figure instead - which is what produced the 480x420 grids
+            % and the 2880x205 ribbon in the first proj_cfs reports.
             if ~isempty(fh_dens)
-                plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
+                plugin_set_figure_size('fig', fh_dens(1), 'minpanel', [1.2 1.0]);
             end
-            if ~isempty(setdiff(fh_new, fh_dens))
-                plugin_set_figure_size('fig', setdiff(fh_new, fh_dens), 'keepaspect', true);
+            if ~isempty(fh_rel)
+                plugin_set_figure_size('fig', fh_rel(1), 'keepaspect', true);
             end
 
             drawnow; snapnow
@@ -462,25 +470,28 @@ for c = 1:size(DAT.contrasts, 1)
             % until every panel is at least 1.2 x 1.0 inches, reading the actual layout
             % rather than assuming one. Sibling figures ('relationships', 45 panels) keep
             % the normal sizing - matching their per-panel size would make them absurd.
-            fh_before = findobj('Type','figure');
             create_figure('histogram_zscore');
             hist_han_zscore = histogram(DATA_OBJ_CONsc{c}, 'byimage', 'by_tissue_type');
-            fh_new  = setdiff(findobj('Type','figure'), fh_before);
-            % pick the new figure with the MOST axes: that is the per-subject density grid
-            % by construction. Matching on the 'histogram' tag was fragile - it silently
-            % found nothing in one of the three scaling variants, so minpanel never ran.
-            if isempty(fh_new)
-                fh_dens = [];
-            else
-                n_ax = arrayfun(@(f) numel(findobj(f,'Type','axes')), fh_new);
-                [~, i_dens] = max(n_ax);
-                fh_dens = fh_new(i_dens);
-            end
+            fh_dens = findobj('Type','figure','Tag','histogram_zscore');
+            fh_rel  = findobj('Type','figure','Tag','relationships');
+            % minpanel grows the canvas until every panel of the per-subject density grid
+            % is at least 1.2 x 1.0 inches, reading the actual layout rather than assuming
+            % one. The sibling 'relationships' figure (mean/SD by tissue type) keeps the
+            % normal sizing - it is a 1x3 layout, and minpanel on three panels asks for a
+            % canvas hundreds of inches wide.
+            %
+            % Both are found by TAG across all open figures, deliberately, not by diffing
+            % against a snapshot taken before the call. create_figure REUSES an existing
+            % figure with the same tag rather than opening a new one, so on every loop
+            % iteration after the first the density grid is not a NEW figure. A snapshot
+            % test therefore skipped it silently, and in one variant sized the 1x3
+            % 'relationships' figure instead - which is what produced the 480x420 grids
+            % and the 2880x205 ribbon in the first proj_cfs reports.
             if ~isempty(fh_dens)
-                plugin_set_figure_size('fig', fh_dens, 'minpanel', [1.2 1.0]);
+                plugin_set_figure_size('fig', fh_dens(1), 'minpanel', [1.2 1.0]);
             end
-            if ~isempty(setdiff(fh_new, fh_dens))
-                plugin_set_figure_size('fig', setdiff(fh_new, fh_dens), 'keepaspect', true);
+            if ~isempty(fh_rel)
+                plugin_set_figure_size('fig', fh_rel(1), 'keepaspect', true);
             end
 
             drawnow; snapnow
