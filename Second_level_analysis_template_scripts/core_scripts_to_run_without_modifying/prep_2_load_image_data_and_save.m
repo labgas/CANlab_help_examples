@@ -280,8 +280,8 @@ for i = 1:size(DAT.conditions,2)
         
         if ~omit_histograms
             
-            create_figure('histogram');
             fh_before = findobj('Type','figure');
+            create_figure('histogram');
             hist_han = histogram(DATA_OBJ{i}, 'byimage', 'by_tissue_type');
             fh_new = setdiff(findobj('Type','figure'), fh_before);
             % The 'histogram' figure is a grid of ONE density plot per subject, so with
@@ -375,8 +375,8 @@ for i=1:size(DAT.conditions,2)
         
         if ~omit_histograms
             
-            create_figure('histogram');
             fh_before = findobj('Type','figure');
+            create_figure('histogram');
             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'by_tissue_type');
             fh_new = setdiff(findobj('Type','figure'), fh_before);
             % The 'histogram' figure is a grid of ONE density plot per subject, so with
