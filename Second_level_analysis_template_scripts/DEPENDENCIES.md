@@ -1,16 +1,9 @@
 # CANlab_help_examples (LaBGAS fork) — dependency overview
 
-Dependency overview for `Second_level_analysis_template_scripts/`.
-
-Covers the **19 scripts LaBGAS actively uses and maintains** — the 4 Group 1
-and 15 Group 2 scripts listed in [README.md](README.md#script-reference).
-The other ~94 scripts in this folder are generic CANlab machinery that
-LaBGAS does not use or document.
-
 > **Generated file — do not edit.** Regenerate with
-> `LaBGAScore_dep_report('<repo>', 'files', <the 19 scripts in README.md's Script reference>, 'outdir', 'Second_level_analysis_template_scripts')`
+> `LaBGAScore_dep_report('/data/master_github_repos/CANlab_help_examples', 'files', <the 19 files documented here>, 'outdir', '/data/master_github_repos/CANlab_help_examples/Second_level_analysis_template_scripts')`
 > (see `clean/LaBGAScore_dep_report.m` in LaBGAScore).
-> Generated 2026-09-01 by MATLAB 2021a.
+> Generated 2026-09-10 by MATLAB 2021a.
 
 This document records which **external** functions each file calls and which
 repository those live in. Calls that resolve back into this repository, and
@@ -41,9 +34,9 @@ than guessed:
 | `a2_set_default_options` | Second_level_analysis_template_scripts | — | 0 | 0 |
 | `a_set_up_paths_always_run_first` | Second_level_analysis_template_scripts | LaBGAScore | 2 | 0 |
 | `c2_SVM_contrasts_masked` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 11 | 1 |
-| `c2a_second_level_regression` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 15 | 2 |
+| `c2a_second_level_regression` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 17 | 2 |
 | `c2f_run_MVPA_regression_single_trial` | Second_level_analysis_template_scripts | CanlabCore, ooFmriDataObjML | 22 | 18 |
-| `c2g_run_multivariate_mediation_single_trial` | Second_level_analysis_template_scripts | CanlabCore, MediationToolbox | 12 | 4 |
+| `c2g_run_multivariate_mediation_single_trial` | Second_level_analysis_template_scripts | CanlabCore, MediationToolbox | 11 | 4 |
 | `d10_signature_riverplots` | Second_level_analysis_template_scripts | CanlabCore | 3 | 0 |
 | `d_signature_responses_generic` | Second_level_analysis_template_scripts | — | 0 | 0 |
 | `e1_corr_patterns` | Second_level_analysis_template_scripts | CanlabCore | 10 | 0 |
@@ -52,9 +45,9 @@ than guessed:
 | `prep_1b_prep_behavioral_data` | Second_level_analysis_template_scripts | — | 0 | 0 |
 | `prep_2_load_image_data_and_save` | Second_level_analysis_template_scripts | CanlabCore, canlab_single_trials, spm12 | 9 | 1 |
 | `prep_3_calc_univariate_contrast_maps_and_save` | Second_level_analysis_template_scripts | CanlabCore | 4 | 0 |
-| `prep_3a_run_second_level_regression_and_save` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 31 | 3 |
+| `prep_3a_run_second_level_regression_and_save` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 31 | 4 |
 | `prep_3c_run_SVMs_on_contrasts_masked` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, ooFmriDataObjML | 22 | 5 |
-| `prep_3f_create_fmri_data_single_trial_object` | Second_level_analysis_template_scripts | CanlabCore, canlab_single_trials | 3 | 2 |
+| `prep_3f_create_fmri_data_single_trial_object` | Second_level_analysis_template_scripts | CanlabCore, canlab_single_trials | 3 | 1 |
 | `prep_3g_create_fmri_data_runwise_contrast_object` | Second_level_analysis_template_scripts | CanlabCore, canlab_single_trials | 2 | 1 |
 | `prep_4_apply_signatures_and_save` | Second_level_analysis_template_scripts | CanlabCore, MasksPrivate, Neuroimaging_Pattern_Masks | 3 | 0 |
 
@@ -62,9 +55,9 @@ than guessed:
 
 | Repository | Call edges | Distinct functions |
 |---|---:|---:|
-| CanlabCore | 161 | 59 |
+| CanlabCore | 159 | 59 |
 | ooFmriDataObjML | 17 | 12 |
-| LaBGAScore | 8 | 5 |
+| LaBGAScore | 11 | 8 |
 | canlab_single_trials | 4 | 2 |
 | spm12 | 3 | 2 |
 | MasksPrivate | 1 | 1 |
@@ -121,7 +114,6 @@ No external dependencies.
 - `canlab_results_fmridisplay`
 - `downsample_parcellation` *(@atlas)* — `dotcall`
 - `fmri_mask_image` *(@fmri_mask_image)*
-- `get_wh_image` *(@image_vector)*
 - `load_atlas`
 - `montage` *(@region)* — `ambiguous`
 - `region` *(@region)*
@@ -132,7 +124,10 @@ No external dependencies.
 
 **LaBGAScore**
 
+- `LaBGAScore_region_table`
+- `LaBGAScore_region_table_safe`
 - `LaBGAScore_smart_parallel_pool_setup`
+- `tfce_fwe_from_null`
 
 ### `c2f_run_MVPA_regression_single_trial`
 
@@ -176,7 +171,6 @@ No external dependencies.
 - `apply_mask` *(@image_vector)* — `dotcall`
 - `autolabel_regions_using_atlas` *(@region)*
 - `fmri_mask_image` *(@fmri_mask_image)*
-- `get_wh_image` *(@image_vector)*
 - `history` *(@image_vector)* — `dotcall`
 - `load_atlas`
 - `montage` *(@region)* — `ambiguous`
@@ -298,7 +292,7 @@ No external dependencies.
 - `downsample_parcellation` *(@atlas)* — `dotcall`
 - `estimateBayesFactor` *(@statistic_image)*
 - `fmri_mask_image` *(@fmri_mask_image)*
-- `get_wh_image` *(@image_vector)*
+- `get_wh_image` *(@image_vector)* — `dotcall`
 - `getvif`
 - `hansen_neurotransmitter_maps` *(@image_vector)*
 - `load_atlas`
@@ -365,13 +359,13 @@ No external dependencies.
 
 **CanlabCore**
 
-- `get_wh_image` *(@image_vector)* — `ambiguous`
+- `get_wh_image` *(@image_vector)* — `dotcall`
 - `remove_empty` *(@image_vector)*
 
 **canlab_single_trials**
 
 - `fmri_data_st` *(@fmri_data_st)*
-- `get_wh_image` *(@fmri_data_st)* — `ambiguous`
+- `get_wh_image` *(@fmri_data_st)*
 
 ### `prep_3g_create_fmri_data_runwise_contrast_object`
 
