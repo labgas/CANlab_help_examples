@@ -121,6 +121,14 @@ doroi_analysis = false;                                                 % extrac
     roi_names = {'amINS_L','amINS_R','ventral_striatum_L','ventral_striatum_R','caudate_L','caudate_R','putamen_L','putamen_R','vmPFC_L','vmPFC_R','hypothalamus','VTA','lOFC_L','lOFC_R','mOFC_L','mOFC_R'}; 
                                                                             % names AND ORDER need to correspond to roiname variables (WITH L AND R ADDED FOR THE BILATERAL ONES) in LaBGAScore_atlas_rois_from_atlas.m which saves atlas objects for each roi in a cell array in secondlevel/modeldir/masks
                                                                             % comment out if you want to use all rois created by the roi script
+                                                                            % PREREQUISITE: the roi masks must already exist in THIS model's maskdir
+                                                                            % as <roi_modelname>_rois_<roi_set_name>.mat. prep_3a does not create
+                                                                            % them - generate them first with LaBGAScore_atlas_rois_from_atlas.m
+                                                                            % (LaBGAScore atlas_mask_tools/), run from the root of your
+                                                                            % superdataset, using the SAME two names below. roi_modelname is only a
+                                                                            % filename prefix: the file is loaded from the maskdir of the model you
+                                                                            % are running, so to reuse a set made for another model, copy its .mat
+                                                                            % into this model's maskdir.
     roi_modelname = 'bit_rew_m1';
     roi_set_name = 'reward_regions';
                                                                             % need to correspond to varnames in LaBGAScore_atlas_binary_mask_from_atlas.m, do not comment out
