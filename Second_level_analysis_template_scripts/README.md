@@ -137,6 +137,7 @@ table above until the dependency tooling found them:
 
 | Function                                        | Called from                                                                                          | Purpose                                                     |
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `plugin_set_figure_size.m`                    | 11 of the scripts above                                                                            | Sizes figures in inches for capture into a `publish()` report. Lived here until first level adopted it; a general-purpose figure helper belongs in the core repo, and the name was kept so none of its 144 call sites needed editing. |
 | `LaBGAScore_smart_parallel_pool_setup.m`      | `c2a_second_level_regression.m`, `prep_3a_...`, `prep_3c_run_SVMs_on_contrasts_masked.m`       | Sets up the parallel pool before bootstrapping/permutation. |
 | `group_tfce_from_subject_maps.m`              | `prep_3a_run_second_level_regression_and_save.m`                                                   | Group TFCE from subject-level maps.                         |
 | `thresholded_fmri_data_from_statistic_image.m` | `prep_3a_run_second_level_regression_and_save.m`, `c2_SVM_contrasts_masked.m`                    | Thresholded `fmri_data` object from a `statistic_image`.  |
@@ -182,7 +183,7 @@ Two things follow for anyone editing these scripts:
 - **Figure sizing depends on how you run the script.** Headless — now the default —
   `publish` *prints* figures, so size is not limited by any screen. Interactively it
   *captures* them from the screen, so a figure larger than the X2go session is captured at
-  display size; `plugin_set_figure_size` fits the request to the display, preserving aspect
+  display size; `plugin_set_figure_size` (LaBGAScore `figures/`) fits the request to the display, preserving aspect
   ratio. See the note in [`CLAUDE.md`](CLAUDE.md), and section 2 of
   [`LaBGAS_fMRI_analysis_workflow.md`](https://github.com/labgas/LaBGAScore/blob/main/LaBGAS_fMRI_analysis_workflow.md)
   for both routes and the X2go settings per screen.

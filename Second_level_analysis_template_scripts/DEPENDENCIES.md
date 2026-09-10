@@ -33,21 +33,21 @@ than guessed:
 |---|---|---|---:|---:|
 | `a2_set_default_options` | Second_level_analysis_template_scripts | — | 0 | 0 |
 | `a_set_up_paths_always_run_first` | Second_level_analysis_template_scripts | LaBGAScore | 2 | 0 |
-| `c2_SVM_contrasts_masked` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 11 | 1 |
-| `c2a_second_level_regression` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 17 | 2 |
-| `c2f_run_MVPA_regression_single_trial` | Second_level_analysis_template_scripts | CanlabCore, ooFmriDataObjML | 22 | 18 |
-| `c2g_run_multivariate_mediation_single_trial` | Second_level_analysis_template_scripts | CanlabCore, MediationToolbox | 11 | 4 |
-| `d10_signature_riverplots` | Second_level_analysis_template_scripts | CanlabCore | 3 | 0 |
+| `c2_SVM_contrasts_masked` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 12 | 1 |
+| `c2a_second_level_regression` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 18 | 2 |
+| `c2f_run_MVPA_regression_single_trial` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, ooFmriDataObjML | 23 | 18 |
+| `c2g_run_multivariate_mediation_single_trial` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, MediationToolbox | 12 | 4 |
+| `d10_signature_riverplots` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 4 | 0 |
 | `d_signature_responses_generic` | Second_level_analysis_template_scripts | — | 0 | 0 |
-| `e1_corr_patterns` | Second_level_analysis_template_scripts | CanlabCore | 10 | 0 |
+| `e1_corr_patterns` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 11 | 0 |
 | `h_signature_responses_group_diff` | Second_level_analysis_template_scripts | CanlabCore | 5 | 0 |
 | `prep_1_set_conditions_contrasts_colors` | Second_level_analysis_template_scripts | CanlabCore | 2 | 0 |
 | `prep_1b_prep_behavioral_data` | Second_level_analysis_template_scripts | — | 0 | 0 |
-| `prep_2_load_image_data_and_save` | Second_level_analysis_template_scripts | CanlabCore, canlab_single_trials, spm12 | 9 | 1 |
-| `prep_3_calc_univariate_contrast_maps_and_save` | Second_level_analysis_template_scripts | CanlabCore | 4 | 0 |
-| `prep_3a_run_second_level_regression_and_save` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 31 | 4 |
-| `prep_3c_run_SVMs_on_contrasts_masked` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, ooFmriDataObjML | 22 | 5 |
-| `prep_3f_create_fmri_data_single_trial_object` | Second_level_analysis_template_scripts | CanlabCore, canlab_single_trials | 3 | 1 |
+| `prep_2_load_image_data_and_save` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, canlab_single_trials, spm12 | 10 | 1 |
+| `prep_3_calc_univariate_contrast_maps_and_save` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 5 | 0 |
+| `prep_3a_run_second_level_regression_and_save` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 32 | 4 |
+| `prep_3c_run_SVMs_on_contrasts_masked` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, ooFmriDataObjML | 23 | 5 |
+| `prep_3f_create_fmri_data_single_trial_object` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, canlab_single_trials | 4 | 1 |
 | `prep_3g_create_fmri_data_runwise_contrast_object` | Second_level_analysis_template_scripts | CanlabCore, canlab_single_trials | 2 | 1 |
 | `prep_4_apply_signatures_and_save` | Second_level_analysis_template_scripts | CanlabCore, MasksPrivate, Neuroimaging_Pattern_Masks | 3 | 0 |
 
@@ -56,8 +56,8 @@ than guessed:
 | Repository | Call edges | Distinct functions |
 |---|---:|---:|
 | CanlabCore | 159 | 59 |
+| LaBGAScore | 22 | 9 |
 | ooFmriDataObjML | 17 | 12 |
-| LaBGAScore | 11 | 8 |
 | canlab_single_trials | 4 | 2 |
 | spm12 | 3 | 2 |
 | MasksPrivate | 1 | 1 |
@@ -100,6 +100,7 @@ No external dependencies.
 
 **LaBGAScore**
 
+- `plugin_set_figure_size`
 - `thresholded_fmri_data_from_statistic_image`
 
 ### `c2a_second_level_regression`
@@ -127,6 +128,7 @@ No external dependencies.
 - `LaBGAScore_region_table`
 - `LaBGAScore_region_table_safe`
 - `LaBGAScore_smart_parallel_pool_setup`
+- `plugin_set_figure_size`
 - `tfce_fwe_from_null`
 
 ### `c2f_run_MVPA_regression_single_trial`
@@ -149,6 +151,10 @@ No external dependencies.
 - `test` *(@algorithm)* — `dotcall`
 - `threshold` *(@atlas)* — `ambiguous_within_repo`, 4 candidates
 - `title_montage` *(@fmridisplay)*
+
+**LaBGAScore**
+
+- `plugin_set_figure_size`
 
 **ooFmriDataObjML**
 
@@ -179,6 +185,10 @@ No external dependencies.
 - `rescale` *(@fmri_data)* — `dotcall`
 - `title_montage` *(@fmridisplay)*
 
+**LaBGAScore**
+
+- `plugin_set_figure_size`
+
 **MediationToolbox**
 
 - `multivariateMediation`
@@ -192,6 +202,10 @@ No external dependencies.
 - `load_image_set`
 - `riverplot` *(@fmri_data)* — `ambiguous_within_repo`, 2 candidates
 - `seaborn_colors`
+
+**LaBGAScore**
+
+- `plugin_set_figure_size`
 
 ### `d_signature_responses_generic`
 
@@ -215,6 +229,10 @@ No external dependencies.
 - `searchlight_correlation`
 - `threshold` *(@atlas)* — `ambiguous_within_repo`, 4 candidates
 - `title_montage` *(@fmridisplay)*
+
+**LaBGAScore**
+
+- `plugin_set_figure_size`
 
 ### `h_signature_responses_group_diff`
 
@@ -256,6 +274,10 @@ No external dependencies.
 - `fmri_mask_image` *(@fmri_mask_image)*
 - `qc_metrics_second_level` *(@image_vector)*
 
+**LaBGAScore**
+
+- `plugin_set_figure_size`
+
 **canlab_single_trials**
 
 - `fmri_data_st` *(@fmri_data_st)*
@@ -275,6 +297,10 @@ No external dependencies.
 - `enforce_variable_types` *(@image_vector)*
 - `qc_metrics_second_level` *(@image_vector)*
 - `replace_empty` *(@image_vector)*
+
+**LaBGAScore**
+
+- `plugin_set_figure_size`
 
 ### `prep_3a_run_second_level_regression_and_save`
 
@@ -315,6 +341,7 @@ No external dependencies.
 
 - `LaBGAScore_smart_parallel_pool_setup`
 - `group_tfce_from_subject_maps`
+- `plugin_set_figure_size`
 - `thresholded_fmri_data_from_statistic_image`
 
 ### `prep_3c_run_SVMs_on_contrasts_masked`
@@ -341,6 +368,7 @@ No external dependencies.
 **LaBGAScore**
 
 - `LaBGAScore_smart_parallel_pool_setup`
+- `plugin_set_figure_size`
 
 **ooFmriDataObjML**
 
@@ -361,6 +389,10 @@ No external dependencies.
 
 - `get_wh_image` *(@image_vector)* — `dotcall`
 - `remove_empty` *(@image_vector)*
+
+**LaBGAScore**
+
+- `plugin_set_figure_size`
 
 **canlab_single_trials**
 

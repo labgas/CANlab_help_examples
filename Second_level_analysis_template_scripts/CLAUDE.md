@@ -19,7 +19,7 @@ document it in the header of the script that consumes it, in the same `% * name`
 'maximized')` tied a figure's pixel dimensions to whichever X2go client happened to be
 connected, and since these scripts use exclusively default, point-based font sizes, that
 made published text inconsistently large or small per person. It is replaced by
-`plugin_set_figure_size.m`, which sizes in INCHES (not pixels: MATLAB font sizes are in
+`plugin_set_figure_size.m` (which now lives in **LaBGAScore** `figures/`, since first level uses it too), which sizes in INCHES (not pixels: MATLAB font sizes are in
 points, a physical unit, so an inch-anchored canvas keeps the font-to-canvas ratio constant
 across sessions of differing DPI). Points worth not relitigating:
 
