@@ -99,7 +99,7 @@ for s = 1:length(mysignature)
             printhdr(sprintf('%s responses: Scale = %s Metric = %s', signature, scalenames{1}, simnames{1}));
 
             figtitle = sprintf('%s group diffs %s %s', signature, scalenames{1}, simnames{1});
-            create_figure(figtitle, 1, kc);
+            fh_sig = create_figure(figtitle, 1, kc);
 
             for i = 1:kc
 
@@ -145,6 +145,17 @@ for s = 1:length(mysignature)
 
             end % panels
 
+            % Size the panel figure before it is captured. The template never did,
+            % so these barplots came out at MATLAB's 480x420 default while every other
+            % figure in the reports is sized - most visibly next to a covariate-adjusted
+            % companion plot, which is sized and so looked like a different report.
+            % Sized by HANDLE, not gcf: barplot_columns can leave another figure
+            % current, and create_figure reuses a figure carrying the same tag rather
+            % than opening a new one, so neither gcf nor a new-figure test is reliable.
+            if exist('fh_sig','var') && all(isgraphics(fh_sig))
+                plugin_set_figure_size('fig', fh_sig);
+            end
+
             drawnow, snapnow
             
             clear signature contrastdata
@@ -162,7 +173,7 @@ for s = 1:length(mysignature)
         printhdr(sprintf('%s responses: Scale = %s Metric = %s', mysignature{s}, scalenames{1}, simnames{1}));
 
         figtitle = sprintf('%s group diffs %s %s', mysignature{s}, scalenames{1}, simnames{1});
-        create_figure(figtitle, 1, kc);
+        fh_sig = create_figure(figtitle, 1, kc);
 
         for i = 1:kc
 
@@ -207,6 +218,17 @@ for s = 1:length(mysignature)
             printstr(dashes)
 
         end % panels
+
+        % Size the panel figure before it is captured. The template never did,
+        % so these barplots came out at MATLAB's 480x420 default while every other
+        % figure in the reports is sized - most visibly next to a covariate-adjusted
+        % companion plot, which is sized and so looked like a different report.
+        % Sized by HANDLE, not gcf: barplot_columns can leave another figure
+        % current, and create_figure reuses a figure carrying the same tag rather
+        % than opening a new one, so neither gcf nor a new-figure test is reliable.
+        if exist('fh_sig','var') && all(isgraphics(fh_sig))
+            plugin_set_figure_size('fig', fh_sig);
+        end
 
         drawnow, snapnow
     
