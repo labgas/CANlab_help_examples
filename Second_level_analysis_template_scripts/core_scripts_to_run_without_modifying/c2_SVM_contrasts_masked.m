@@ -341,7 +341,7 @@ for c = 1:kc
     
     figtitle = sprintf('SVM ROC %s', upper(analysisname));
     create_figure(figtitle);
-    set(gcf,'WindowState','maximized');
+    plugin_set_figure_size;
     
     fprintf('\n\n');
     printhdr(['CONTRAST #', num2str(c), ': ', upper(analysisname)]);
@@ -393,7 +393,7 @@ for c = 1:kc
                 o2 = title_montage(o2, whmontage, [analysisname ' FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                 figtitle = sprintf('%s_%s_%1.4f_FDR_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                 
                 disableDefaultInteractivity(gca);
                 
@@ -428,11 +428,17 @@ for c = 1:kc
 
                     fprintf ('\nMONTAGE REGIONCENTERS SVM RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
+                    % regioncenters puts one titled panel per region on a single figure, which
+                    % stops being readable - and stops being quick - once there are many.
+                    if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                    if numel(r) < max_regioncenters_montage
+
                     o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_FDR_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
-                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                     
                     disableDefaultInteractivity(gca);
                     
@@ -442,6 +448,12 @@ for c = 1:kc
                         end
 
                     clear o3, clear figtitle, clear t, clear r, clear r_table
+
+                    else
+
+                        fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(r), max_regioncenters_montage);
+
+                    end
                     
                     drawnow nocallbacks;
 
@@ -466,7 +478,7 @@ for c = 1:kc
                 o2 = title_montage(o2, whmontage, [analysisname ' unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                 figtitle = sprintf('%s_%s_%1.4f_unc_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                 
                 disableDefaultInteractivity(gca);
                 
@@ -502,11 +514,17 @@ for c = 1:kc
 
                     fprintf ('\nMONTAGE REGIONCENTERS SVM RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
+                    % regioncenters puts one titled panel per region on a single figure, which
+                    % stops being readable - and stops being quick - once there are many.
+                    if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                    if numel(r) < max_regioncenters_montage
+
                     o3 = montage(r, 'colormap', 'regioncenters', 'splitcolor',{[.1 .8 .8] [.1 .1 .8] [.9 .4 0] [1 1 0]});
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_unc_regions_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
-                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                     
                     disableDefaultInteractivity(gca);
                     
@@ -517,6 +535,12 @@ for c = 1:kc
                     
 
                     clear o3, clear figtitle, clear t, clear r, clear r_table
+
+                    else
+
+                        fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(r), max_regioncenters_montage);
+
+                    end
                     
                     drawnow nocallbacks;
 
@@ -574,7 +598,7 @@ for c = 1:kc
                     o2 = title_montage(o2, whmontage, [analysisname ' searchlight TFCE FDR ' num2str(q_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                     figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_montage_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
-                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
 
                     disableDefaultInteractivity(gca);
 
@@ -601,11 +625,17 @@ for c = 1:kc
 
                     fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT TFCE RESULTS AT FDR q < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', q_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
+                    % regioncenters puts one titled panel per region on a single figure, which
+                    % stops being readable - and stops being quick - once there are many.
+                    if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                    if numel(r) < max_regioncenters_montage
+
                     o3 = montage(r, 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'regioncenters', 'cmaprange', [min(tfce_fmri_data_fdr.dat(tfce_fmri_data_fdr.dat ~= 0)) max(tfce_fmri_data_fdr.dat)]);
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_FDR_searchlight_regions_%s_%s', analysisname, results_suffix, q_threshold_svm, mask_string, scaling_string);
-                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
 
                     disableDefaultInteractivity(gca);
 
@@ -616,6 +646,12 @@ for c = 1:kc
 
 
                     clear o3, clear figtitle, clear p, clear r, clear r_table
+
+                    else
+
+                        fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(r), max_regioncenters_montage);
+
+                    end
 
                     drawnow nocallbacks;
 
@@ -651,7 +687,7 @@ for c = 1:kc
                     o2 = title_montage(o2, whmontage, [analysisname ' searchlight TFCE unc ' num2str(p_threshold_svm) ' ' mask_string ' ' scaling_string]);
 
                     figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_montage_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
-                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
 
                     disableDefaultInteractivity(gca);
 
@@ -678,11 +714,17 @@ for c = 1:kc
 
                     fprintf ('\nMONTAGE REGIONCENTERS SVM SEARCHLIGHT TFCE RESULTS AT UNCORRECTED p < %1.4f, k = %d, CONTRAST: %s, %s, SCALING: %s\n\n', p_threshold_svm, k_threshold_svm, analysisname, mask_string, scaling_string);
 
+                    % regioncenters puts one titled panel per region on a single figure, which
+                    % stops being readable - and stops being quick - once there are many.
+                    if ~exist('max_regioncenters_montage','var') || isempty(max_regioncenters_montage), max_regioncenters_montage = 21; end
+
+                    if numel(r) < max_regioncenters_montage
+
                     o3 = montage(r, 'regioncenters', 'colormap', 'maxcolor', [0.94 0.98 0.13], 'mincolor', [0.47 0.11 0.43], 'cmaprange', [min(tfce_fmri_data_unc.dat(tfce_fmri_data_unc.dat ~= 0)) max(tfce_fmri_data_unc.dat)]);
 
                     % Activate, name, and save figure
                     figtitle = sprintf('%s_%s_%1.4f_unc_searchlight_regions_%s_%s', analysisname, results_suffix, p_threshold_svm, mask_string, scaling_string);
-                    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
 
                     disableDefaultInteractivity(gca);
 
@@ -693,6 +735,12 @@ for c = 1:kc
 
 
                     clear o3, clear figtitle, clear p, clear r, clear r_table
+
+                    else
+
+                        fprintf('\nregioncenters montage skipped: %d regions, at or above the display limit of %d\n\n', numel(r), max_regioncenters_montage);
+
+                    end
 
                     drawnow nocallbacks;
 
@@ -771,7 +819,7 @@ accuracy = cell2mat(accuracy);
 
 figtitle = sprintf('SVM cross-classification');
 create_figure(figtitle);
-set(gcf,'WindowState','maximized');
+plugin_set_figure_size;
 
 % pos = get(gcf, 'Position');
 % pos(3) = pos(3) * 1.7;
@@ -830,7 +878,7 @@ end
 
 figtitle = sprintf('SVM cross-classification effect sizes');
 create_figure(figtitle);
-set(gcf,'WindowState','maximized');
+plugin_set_figure_size;
 
 % pos = get(gcf, 'Position');
 % pos(3) = pos(3) * 1.7;

@@ -126,10 +126,6 @@
 
 % SET MANDATORY OPTIONS
 
-results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
-
-% NOTES
-% 1. do NOT delete this option, leave empty if not needed
 % 2. do NOT use to add a suffix specifying the scaling or masking option, this will be added automatically
 
 
@@ -143,6 +139,16 @@ a_set_up_paths_always_run_first;
 
 
 % GET DEFAULT OPTIONS IF NOT SET IN A2_SET_DEFAULT_OPTIONS
+
+% s0 MUST RUN BEFORE THE OPTION BLOCK BELOW. It calls a2_set_default_options,
+% so every option a2 defines is (re)assigned at this point - anything set above
+% this line is silently discarded, which is how a parcelwise variant could
+% quietly revert to voxelwise. Script-specific options belong AFTER it.
+
+results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
+
+% NOTES
+% 1. do NOT delete this option, leave empty if not needed
 
 options_needed = {'dosavesvmstats', 'dobootstrap_svm', 'boot_n_svm', 'holdout_set_method_svm', 'holdout_set_type_svm', 'nfolds_svm', 'ml_method_svm'};  % Options we are looking for. Set in a2_set_default_options
 options_exist = cellfun(@exist, options_needed); 
@@ -643,7 +649,7 @@ for c = 1:kc
     o2 = title_montage(o2, whmontage, [analysisname ' unthresholded ' mask_string ' ' scaling_string]);
 
     figtitle = sprintf('%s_unthresholded_montage_%s_%s', analysisname, mask_string, scaling_string);
-    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
     drawnow, snapnow;
         if save_figures_svm_unthresh
             plugin_save_figure;
@@ -677,7 +683,7 @@ for c = 1:kc
             o3 = title_montage(o3, whmontage, [analysisname ' TFCE where searchlight AUC > 0.50 ' mask_string ' ' scaling_string]);
 
             figtitle = sprintf('%s_unthresholded_searchlight_montage_%s_%s', analysisname, mask_string, scaling_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_svm_unthresh
                     plugin_save_figure;

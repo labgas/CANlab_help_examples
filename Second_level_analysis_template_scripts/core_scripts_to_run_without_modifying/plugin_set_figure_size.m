@@ -107,17 +107,40 @@ addParameter(p, 'nrows', [], @(x) isempty(x) || (isnumeric(x) && isscalar(x) && 
 addParameter(p, 'margin', [0.02 0.06], @(x) isnumeric(x) && numel(x) == 2 && all(x >= 0 & x < 0.5));
 addParameter(p, 'minsize', 7, @(x) isnumeric(x) && isscalar(x) && x > 0);
 addParameter(p, 'verbose', true, @(x) islogical(x) || isnumeric(x));
+addParameter(p, 'fig', [], @(x) isempty(x) || all(isgraphics(x)));
+addParameter(p, 'keepaspect', false, @(x) islogical(x) || isnumeric(x));
+addParameter(p, 'titlescale', 2/3, @(x) isnumeric(x) && isscalar(x) && x > 0);
+addParameter(p, 'minpanel', [], @(x) isempty(x) || (isnumeric(x) && numel(x)==2 && all(x>0)));
 parse(p, varargin{:});
 
 width = p.Results.width;
 height = p.Results.height;
 margin = p.Results.margin;
+titlescale = p.Results.titlescale;
 
 if isempty(height)
     height = 7.5;                      % keeps the 16:10 aspect of the old 16x10 default
 end
 
-fh = gcf;
+fh = p.Results.fig;
+if isempty(fh)
+    fh = gcf;                          % default: the current figure
+end
+
+% Several CANlab drawing calls open MORE THAN ONE figure - plot(fmri_data), for
+% instance, opens both 'canlab_orthviews' and 'fmri data matrix'. Sizing only gcf
+% leaves the others at whatever size they were created with. Accept a vector and
+% handle each in turn.
+if numel(fh) > 1
+    args = varargin;
+    for i_fh = 1:numel(fh)
+        a = args;
+        k = find(strcmpi(a, 'fig'));
+        if isempty(k), a = [a, {'fig', fh(i_fh)}]; else, a{k+1} = fh(i_fh); end %#ok<AGROW>
+        plugin_set_figure_size(a{:});
+    end
+    return
+end
 
 % WindowState 'maximized' silently overrides any Position set while it is
 % active, so it must be cleared first.
@@ -130,8 +153,94 @@ set(fh, 'WindowState', 'normal');
 screen_px = get(0, 'ScreenSize');           % [1 1 width height], pixels
 dpi = get(0, 'ScreenPixelsPerInch');
 
-usable_w_in = screen_px(3) * (1 - margin(1)) / dpi;
-usable_h_in = screen_px(4) * (1 - margin(2)) / dpi;
+% HEADLESS: no clamping. The fitting below exists because publish() run from a
+% DESKTOP session captures what is on screen, so a figure bigger than the display
+% is silently captured at display size and at the wrong aspect. Under -nodisplay
+% there is no screen capture: publish() prints the figure, and the PNG comes out
+% at exactly the requested inches x 72 dpi. Measured: 12x7.5 in -> 864x540,
+% 20x15 -> 1440x1080, 26x20 -> 1872x1440, all well beyond the 1024x768 virtual
+% screen. Clamping headless therefore throws away resolution for no reason - and
+% it is precisely the multi-panel figures (one density plot per subject) that
+% need to grow past it.
+% Deliberately narrow: only figures that ASK to grow (minpanel) are un-clamped.
+% Every other figure keeps the exact screen-fitted size it had before, so this
+% change cannot move anything that is already correct in the published reports.
+is_headless = ~feature('ShowFigureWindows');
+
+if is_headless && ~isempty(p.Results.minpanel)
+    % A generous but FINITE bound. Infinity would make 'keepaspect' - which grows
+    % a figure by min(usable/current) - grow it without limit.
+    usable_w_in = 40;
+    usable_h_in = 40;
+else
+    usable_w_in = screen_px(3) * (1 - margin(1)) / dpi;
+    usable_h_in = screen_px(4) * (1 - margin(2)) / dpi;
+end
+
+% 'keepaspect': enlarge the figure at ITS OWN aspect ratio rather than forcing the
+% default 16:10. Wide, short figures such as canlab_orthviews (819 x 292 px, aspect
+% 2.8) are distorted by a 12 x 7.5 in canvas; they want the same shape, bigger.
+if p.Results.keepaspect
+    set(fh, 'Units', 'inches');
+    cur = get(fh, 'Position');
+    if cur(3) > 0 && cur(4) > 0
+        width  = cur(3);
+        height = cur(4);
+        grow = min(usable_w_in / width, usable_h_in / height);
+
+        if grow > 1
+            width  = width  * grow;
+            height = height * grow;
+        end
+    end
+end
+
+% 'minpanel': grow the canvas so that every panel of a multi-panel figure gets at
+% least [w h] inches. Read from the axes actually present rather than from any
+% assumption about the layout, so it adapts to however many subjects the caller
+% happened to plot - a per-subject density plot grid with 158 subjects needs a
+% far taller canvas than one with 20, and nobody should have to hand-tune that.
+if ~isempty(p.Results.minpanel)
+
+    ax_mp = findobj(fh, 'Type', 'axes');
+
+    if ~isempty(ax_mp)
+
+        pos_mp = get(ax_mp, 'Position');
+        if iscell(pos_mp), pos_mp = cell2mat(pos_mp); end
+
+        med_w = median(pos_mp(:,3));    % panel width  as a fraction of the figure
+        med_h = median(pos_mp(:,4));    % panel height as a fraction of the figure
+
+        want_w = width;  if med_w > 0, want_w = max(width,  p.Results.minpanel(1) / med_w); end
+        want_h = height; if med_h > 0, want_h = max(height, p.Results.minpanel(2) / med_h); end
+
+        % SANITY BOUNDS. A layout that is one long row (many columns, one row)
+        % asks for a canvas hundreds of inches wide, which just pins the figure
+        % to the headless bound and produces an unreadable ribbon - a real
+        % 2880 x 205 px figure came out of prep_3 this way. Cap each dimension,
+        % and refuse a wildly non-rectangular canvas outright rather than emit
+        % something unusable.
+        max_w = 20; max_h = 30; max_aspect = 3;
+
+        want_w = min(want_w, max_w);
+        want_h = min(want_h, max_h);
+
+        if want_w / want_h > max_aspect || want_h / want_w > max_aspect
+            if p.Results.verbose
+                fprintf(['plugin_set_figure_size: minpanel would need a %.0f x %.0f in canvas ' ...
+                         '(aspect %.1f) for this layout, which is not usable; leaving the ' ...
+                         'default size. The panels are too many for one figure - consider ' ...
+                         'plotting fewer images per figure.\n'], want_w, want_h, max(want_w/want_h, want_h/want_w));
+            end
+        else
+            width  = want_w;
+            height = want_h;
+        end
+
+    end
+
+end
 
 % one scale factor for both dimensions, so the aspect ratio survives
 scale = min([1, usable_w_in / width, usable_h_in / height]);
@@ -179,5 +288,45 @@ left = margin(1) * screen_px(3) / dpi / 2;
 bottom = margin(2) * screen_px(4) / dpi / 2;
 
 set(fh, 'Position', [left, bottom, actual_size(1), actual_size(2)]);
+
+
+%% SCALE MONTAGE TITLE FONTS
+% -------------------------------------------------------------------------
+% CanlabCore's title_montage hardcodes FontSize 18
+% (@fmridisplay/title_montage), a size tuned for a maximized window. On the
+% 12 x 7.5 in canvas this function produces, 18 pt titles are too heavy - and
+% on 'regioncenters' montages they are worse still, because @region/montage
+% calls title_montage once per region, putting an 18 pt title over each small
+% per-region axis. Scale them here rather than in CanlabCore, which is shared
+% and deliberately left untouched.
+%
+% Scaled once per figure: a second call on the same figure would compound the
+% reduction, and some scripts size a figure more than once.
+
+if titlescale ~= 1
+
+    ax = findobj(fh, 'Type', 'axes');
+
+    for i = 1:numel(ax)
+
+        th = get(ax(i), 'Title');
+
+        if ~isempty(th) && all(isgraphics(th)) && ~isempty(get(th, 'String'))
+
+            % Mark each TITLE, not the figure. A figure-level flag stops titles
+            % that are added AFTER the first sizing call from ever being scaled -
+            % which is what happened when one montage block drew into another's
+            % figure: the figure was already flagged, so the new 18 pt title was
+            % skipped. Per-title marking still prevents double-shrinking.
+            if ~isappdata(th, 'plugin_title_scaled')
+                set(th, 'FontSize', get(th, 'FontSize') * titlescale);
+                setappdata(th, 'plugin_title_scaled', true);
+            end
+
+        end
+
+    end
+
+end
 
 end % function

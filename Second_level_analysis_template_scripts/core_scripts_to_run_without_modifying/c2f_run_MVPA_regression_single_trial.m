@@ -314,7 +314,7 @@ ylabel('Subject');
 hold off
 
 p = get(gcf,'Position');
-set(gcf,'Position',[p(1:2),1024,2048],'WindowState','Maximized');
+plugin_set_figure_size('width', 6, 'height', 12);   % portrait, was 1024x2048 px
 drawnow, snapnow;
 
 clear sub
@@ -332,7 +332,7 @@ box off
 title(['Histogram of single trial ' behav_outcome_dat_st]);
 xlabel(behav_outcome_dat_st);
 ylabel('n(observations)');
-set(gcf,'WindowState','Maximized');
+plugin_set_figure_size;
 drawnow, snapnow;
 
 % PER SUBJECT
@@ -352,7 +352,7 @@ b2=figure;
         ylabel('n(obs)');
     end
 
-set(gcf,'WindowState','Maximized');
+plugin_set_figure_size;
 drawnow, snapnow;
 
 clear sub
@@ -568,7 +568,7 @@ fprintf('\n\n');
             ax = gca;
             ax.FontWeight = 'bold';
 
-            set(gcf,'WindowState','Maximized','Color','w');
+            set(gcf,'Color','w'); plugin_set_figure_size;
             drawnow, snapnow;
 
 
@@ -587,7 +587,7 @@ fprintf('\n\n');
 
             f1 = cvGS.plot; % plots predicted versus observed
 
-            set(gcf,'WindowState','Maximized');
+            plugin_set_figure_size;
             drawnow, snapnow;
 
     end
@@ -621,7 +621,7 @@ fprintf('\n\n');
     o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' unthresholded ' mask_string]);
 
     figtitle = sprintf('%s_unthresholded_montage_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
-    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
     drawnow, snapnow;
 
     clear w, clear o2, clear figtitle
@@ -800,7 +800,7 @@ fprintf('\n\n');
         o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' bootstrapped ' mask_string]);
 
         figtitle = sprintf('%s_%1.4f_bootstrap_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow, snapnow;
 
         clear w, clear o2, clear figtitle
@@ -823,7 +823,7 @@ fprintf('\n\n');
         o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' permutation ' mask_string]);
 
         figtitle = sprintf('%s_%1.4f_permutation_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow, snapnow;
 
         clear w, clear o2, clear figtitle
@@ -901,7 +901,7 @@ fprintf('\n\n');
         o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' unthresholded source reconstruction' mask_string]);
 
         figtitle = sprintf('%s_unthresholded_source_reconstruction_montage_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow, snapnow;
 
         clear w, clear o2, clear figtitle
@@ -959,7 +959,7 @@ fprintf('\n\n');
         o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_st ' permutation source reconstruction ' mask_string]);
 
         figtitle = sprintf('%s_%1.4f_permutation_source_reconstruction_FDR_montage_%s_%s', algorithm_mvpa_reg_st, q_threshold_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow, snapnow;
 
         clear w, clear o2, clear figtitle
@@ -1195,7 +1195,7 @@ if domultilevel_mvpa_reg_st
 
             f1 = cvGS.plot; % plots predicted versus observed
 
-            set(gcf,'WindowState','Maximized');
+            plugin_set_figure_size;
             drawnow, snapnow;
 
 %     end
@@ -1231,7 +1231,7 @@ if domultilevel_mvpa_reg_st
     o2 = title_montage(o2, whmontage, ['multilevel ' algorithm_mvpa_reg_st ' total effect, unthresholded ' mask_string]);
 
     figtitle = sprintf('%s_unthresholded_montage_multilevel_total_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
-    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
     drawnow, snapnow;
 
     clear w, clear o2, clear figtitle
@@ -1258,7 +1258,7 @@ if domultilevel_mvpa_reg_st
     o2 = title_montage(o2, whmontage, ['multilevel ' algorithm_mvpa_reg_st ' within-subject effect, unthresholded ' mask_string]);
 
     figtitle = sprintf('%s_unthresholded_montage_multilevel_within_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
-    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
     drawnow, snapnow;
 
     clear w, clear o2, clear figtitle
@@ -1285,7 +1285,7 @@ if domultilevel_mvpa_reg_st
     o2 = title_montage(o2, whmontage, ['multilevel ' algorithm_mvpa_reg_st ' between-subject effect, unthresholded ' mask_string]);
 
     figtitle = sprintf('%s_unthresholded_montage_multilevel_between_%s_%s', algorithm_mvpa_reg_st, myscaling_mvpa_reg_st, mask_string);
-    set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
     drawnow, snapnow;
 
     clear w, clear o2, clear figtitle

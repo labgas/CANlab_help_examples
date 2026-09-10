@@ -336,7 +336,7 @@ end
 h = findobj('Type','figure');
 
 for f = 1:size(h,1)
-    set(h(f),'WindowState','maximized');
+    plugin_set_figure_size('fig', h(f));
 end
 
 

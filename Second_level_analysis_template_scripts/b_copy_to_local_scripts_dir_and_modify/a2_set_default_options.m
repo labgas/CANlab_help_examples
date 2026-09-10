@@ -111,6 +111,11 @@ doTFCE = false;                                                         % calcul
     perm_n_tfce = 1000;                                                     % number of permutations for TFCE-based stats
     tfce_sidedness = 'two';                                                 % 'one' versus 'two'-tailed test for TFCE-based stats
     tfce_tail = 'pos';                                                      % 'pos' or 'neg' if tfce_sidedness = 'one'
+    cons2tfce = [];                                                     % vector of contrast indices to run TFCE on, e.g. [5], if you only want it for a
+                                                                            % subset. Empty runs TFCE on every contrast. TFCE is the dominant cost of
+                                                                            % prep_3a - perm_n_tfce permutations per contrast - so restricting it to the
+                                                                            % contrast(s) of interest is often the difference between an overnight job and
+                                                                            % a coffee break. c2a skips TFCE reporting for contrasts not in this list.
 doroi_analysis = false;                                                 % extract roi averages from condition (beta) or contrast (con) images using an atlas object created by LaBGAScore_atlas_binary_mask_from_atlas.m as input
     % roi_analysis options
     roi_names = {'amINS_L','amINS_R','ventral_striatum_L','ventral_striatum_R','caudate_L','caudate_R','putamen_L','putamen_R','vmPFC_L','vmPFC_R','hypothalamus','VTA','lOFC_L','lOFC_R','mOFC_L','mOFC_R'}; 
@@ -150,6 +155,17 @@ q_threshold_glm = .05;                                          % threshold for 
                                                                 % NOTE: only .05 implemented for parcelwise analysis, will be checked in script, warning about switching to default will be shown
 p_threshold_glm = .005;                                         % threshold for uncorrected display items
 k_threshold_glm = 50;                                           % extent threshold for both corrected and uncorrected display items
+k_threshold_tfce = 0;                                           % extent threshold for the TFCE display items. Deliberately NOT k_threshold_glm:
+                                                                    % TFCE already integrates cluster extent into the statistic, so a further extent
+                                                                    % filter counts extent twice, and max-statistic FWE already controls familywise
+                                                                    % error across the whole volume - which is what an extent threshold is usually
+                                                                    % brought in to approximate. 0 = no extent filter.
+max_regioncenters_montage = 21;                                 % show 'regioncenters' montages only when a result has FEWER than this many regions.
+                                                                    % These montages put one titled panel per region on a single figure, so they stop
+                                                                    % being readable - and stop being quick to render - once there are many. Shared by
+                                                                    % c2a_second_level_regression, c2_SVM_contrasts_masked and
+                                                                    % c2g_run_multivariate_mediation_single_trial, each of which also defaults it to 21
+                                                                    % if it is not set here.
 BF_threshold_glm = 10;                                          % threshold for Bayes Factor maps, |BF| > 10 indicates strong evidence in favour of H1 (positive value) or H0 (negative value) - see help.statistic_image.estimateBayesFactor for details
 
 % MVPA OPTIONS

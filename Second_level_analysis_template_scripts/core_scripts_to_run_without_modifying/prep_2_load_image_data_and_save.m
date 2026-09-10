@@ -267,15 +267,44 @@ for i = 1:size(DAT.conditions,2)
         
         disp(DATA_OBJ{i}.fullpath)
 
+        % capture existing figures first: these CANlab calls open more than one
+        % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), and
+        % sizing only gcf leaves the others at their created size. keepaspect stops
+        % the wide orthviews panel being stretched to the default 16:10.
+        fh_before = findobj('Type','figure');
         plot(DATA_OBJ{i},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true, ...
+            'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
         
         drawnow; snapnow
         
         if ~omit_histograms
             
             create_figure('histogram');
-            set(gcf,'WindowState','maximized');
             hist_han = histogram(DATA_OBJ{i}, 'byimage', 'by_tissue_type');
+            fh_dens = findobj('Type','figure','Tag','histogram');
+            fh_rel  = findobj('Type','figure','Tag','relationships');
+            % The 'histogram' figure is a grid of ONE density plot per subject, so with
+            % 64 or 158 subjects each panel becomes unreadable at a fixed canvas size.
+            % minpanel grows the canvas until every panel is at least 1.2 x 1.0 inches,
+            % reading the actual layout rather than assuming one. The sibling
+            % 'relationships' figure (mean/SD by tissue type) keeps the normal sizing -
+            % it is a 1x3 layout, and minpanel on three panels asks for a canvas
+            % hundreds of inches wide.
+            %
+            % Both figures are found by TAG across all open figures, deliberately, not
+            % by diffing against a snapshot taken before the call. create_figure REUSES
+            % an existing figure with the same tag rather than opening a new one, so on
+            % every loop iteration after the first the density grid is not a NEW figure.
+            % A snapshot-based test therefore skipped it silently, and in one variant
+            % sized the 1x3 'relationships' figure instead - which is what produced the
+            % 480x420 grids and the 2880x205 ribbon in the first proj_cfs reports.
+            if ~isempty(fh_dens)
+                plugin_set_figure_size('fig', fh_dens(1), 'minpanel', [1.2 1.0]);
+            end
+            if ~isempty(fh_rel)
+                plugin_set_figure_size('fig', fh_rel(1), 'keepaspect', true);
+            end
             
             drawnow; snapnow
             
@@ -341,15 +370,44 @@ for i=1:size(DAT.conditions,2)
 
         disp(DATA_OBJsc{i}.fullpath)
         
+        % capture existing figures first: these CANlab calls open more than one
+        % (plot(fmri_data) opens canlab_orthviews AND the data-matrix figure), and
+        % sizing only gcf leaves the others at their created size. keepaspect stops
+        % the wide orthviews panel being stretched to the default 16:10.
+        fh_before = findobj('Type','figure');
         plot(DATA_OBJsc{i},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run; 
+        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true, ...
+            'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
         
         drawnow; snapnow
         
         if ~omit_histograms
             
             create_figure('histogram');
-            set(gcf,'WindowState','maximized');
             hist_han = histogram(DATA_OBJsc{i}, 'byimage', 'by_tissue_type');
+            fh_dens = findobj('Type','figure','Tag','histogram');
+            fh_rel  = findobj('Type','figure','Tag','relationships');
+            % The 'histogram' figure is a grid of ONE density plot per subject, so with
+            % 64 or 158 subjects each panel becomes unreadable at a fixed canvas size.
+            % minpanel grows the canvas until every panel is at least 1.2 x 1.0 inches,
+            % reading the actual layout rather than assuming one. The sibling
+            % 'relationships' figure (mean/SD by tissue type) keeps the normal sizing -
+            % it is a 1x3 layout, and minpanel on three panels asks for a canvas
+            % hundreds of inches wide.
+            %
+            % Both figures are found by TAG across all open figures, deliberately, not
+            % by diffing against a snapshot taken before the call. create_figure REUSES
+            % an existing figure with the same tag rather than opening a new one, so on
+            % every loop iteration after the first the density grid is not a NEW figure.
+            % A snapshot-based test therefore skipped it silently, and in one variant
+            % sized the 1x3 'relationships' figure instead - which is what produced the
+            % 480x420 grids and the 2880x205 ribbon in the first proj_cfs reports.
+            if ~isempty(fh_dens)
+                plugin_set_figure_size('fig', fh_dens(1), 'minpanel', [1.2 1.0]);
+            end
+            if ~isempty(fh_rel)
+                plugin_set_figure_size('fig', fh_rel(1), 'keepaspect', true);
+            end
             drawnow; snapnow
             
         end

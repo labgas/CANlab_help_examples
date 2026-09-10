@@ -109,6 +109,12 @@
 %         permutation null. Height and extent exponents and connectivity are
 %         left at their defaults (H = 2, E = 0.5, conn = 26); pass them through
 %         group_tfce_from_subject_maps directly if you need to change them.
+%     cons2tfce:
+%         vector of contrast indices to run TFCE on, if you only want it for a
+%         subset. Empty (default) runs TFCE on every contrast. TFCE is by far
+%         the most expensive step in this script - perm_n_tfce permutations per
+%         contrast - so restricting it to the contrast(s) of interest is often
+%         the difference between an overnight job and a coffee break.
 %
 %         NOTE: results produced before the 2026 TFCE overhaul of LaBGAScore
 %         are not comparable. That work replaced a mis-parameterised pTFCE call
@@ -197,6 +203,21 @@
 %% GET AND SET OPTIONS
 % -------------------------------------------------------------------------
 
+% GET MODEL-SPECIFIC PATHS AND OPTIONS
+
+a_set_up_paths_always_run_first;
+
+% NOTES 
+%   1. CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
+%   2. THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
+
+% s0 MUST RUN BEFORE THE OPTION BLOCK BELOW. It calls a2_set_default_options,
+% so every option a2 defines is (re)assigned at this point - anything set above
+% this line is silently discarded. Placing it first means the script-specific
+% options below reliably override the a2 defaults. c2a already orders it this
+% way; prep_3a did not, which silently reverted dorobfit_parcelwise in the
+% parcelwise variants and made them run voxelwise.
+
 % SET MANDATORY OPTIONS
 
 mygroupnamefield = 'contrasts'; 
@@ -220,15 +241,6 @@ results_suffix = ''; % adds a suffix of your choice to .mat file with results th
 % group_id = {'group'};             % needs to correspond to variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} AND THE ORDER IN WHICH THEY APPEAR THERE
 
 % NOTE: if DAT.BETWEENPERSON.group contains group identifier, you can comment this option out
-
-
-% GET MODEL-SPECIFIC PATHS AND OPTIONS
-
-a_set_up_paths_always_run_first;
-
-% NOTES 
-%   1. CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
-%   2. THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
 
 
 % GET DEFAULT OPTIONS IF NOT SET IN A2_SET_DEFAULT_OPTIONS
@@ -358,10 +370,17 @@ if ~dorobfit_parcelwise
         
         % MONTAGE OF MASK
         
+        % canlab_results_fmridisplay's 'compact' layout only calls axes('Position',...);
+        % unlike 'multirow' it never opens a figure of its own, so it draws into whatever
+        % figure is current - the previous block's montage, or the last figure left open by
+        % the previous script in the same session. Open a fresh one. ('multirow' does
+        % create its own figure, so those call sites are deliberately left alone: adding
+        % figure; there would leave an empty figure behind for every montage.)
+        figure;
         o2 = canlab_results_fmridisplay([], 'compact');
         o2 = addblobs(o2, glmmask,'onecolor','color',[0.4 0.2 0.6],'trans','transvalue',0.50);
         o2 = title_montage(o2, 5, ['voxel-wise analysis masked with: ' maskname_short]);
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -410,7 +429,7 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
         else
             o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_short ' at granularity level labels_' num2str(atlas_granularity)]);
         end
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -450,7 +469,7 @@ if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
         else
             o2 = title_montage(o2, 5, ['voxel-wise analysis labeled with atlas: ' atlasname_glm ' at granularity level labels_' num2str(atlas_granularity)]);
         end
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -556,7 +575,7 @@ if doroi_analysis
         o2 = canlab_results_fmridisplay([], 'compact');
         o2 = addblobs(o2, atlas2region(roi_atlas),'indexmap',cmap2,'interp','nearest');
         o2 = title_montage(o2, 5, 'atlas used for extraction of roi averages');
-        set(gcf,'WindowState','maximized');
+        plugin_set_figure_size;
         drawnow,snapnow;
         
         clear o2
@@ -826,7 +845,7 @@ for c = 1:kc
                     o2 = canlab_results_fmridisplay([], 'compact');
                     o2 = addblobs(o2, glmmask);
                     o2 = title_montage(o2, 5, ['resampled ' maskname_short]);
-                    set(gcf,'WindowState','maximized');
+                    plugin_set_figure_size;
                     drawnow,snapnow;
 
                     clear o2
@@ -857,7 +876,7 @@ for c = 1:kc
                     else
                         o2 = title_montage(o2, 5, ['resampled ' atlasname_glm]);
                     end
-                    set(gcf,'WindowState','maximized');
+                    plugin_set_figure_size;
                     drawnow,snapnow;
 
                     clear o2
@@ -1008,19 +1027,19 @@ for c = 1:kc
                     case 'custom'
                         roi_means_table{c} = [roi_means_table{c} table_obj];
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(table_obj,2)),'covs',table2array(table_obj),'title',['ROI means, EFFECT: ' DAT.contrastnames{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                     case 'group'
                         group_table = array2table(group,'VariableNames',groupnames);
                         roi_means_table{c} = [roi_means_table{c} group_table];
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(group_table,2)),'covs',table2array(group_table),'title',['ROI means, EFFECT: ' DAT.contrastnames{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                     case 'onesample'
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c},'title',['ROI means, EFFECT: ' DAT.contrastnames{c}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                 end
@@ -1036,19 +1055,19 @@ for c = 1:kc
                     case 'custom'
                         roi_means_table{c} = [roi_means_table{c} table_obj];
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(table_obj,2)),'covs',table2array(table_obj),'title',['ROI means, EFFECT: ' DAT.conditions{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                     case 'group'
                         group_table = array2table(group,'VariableNames',groupnames);
                         roi_means_table{c} = [roi_means_table{c} group_table];
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c}(:,1:end-size(group_table,2)),'covs',table2array(group_table),'title',['ROI means, EFFECT: ' DAT.conditions{c} ', COVARIATE(S): ' groupnames{:}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                     case 'onesample'
                         [~, roi_adjusted_means{c}, ~] = barplot_columns(roi_means_table{c},'title',['ROI means, EFFECT: ' DAT.conditions{c}],'color',roi_colors');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                 end
@@ -1082,7 +1101,7 @@ for c = 1:kc
                         end
                             
                         title(DAT.contrastnames{c},'Interpreter','none');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
@@ -1094,7 +1113,7 @@ for c = 1:kc
                             end
                             
                             title(DAT.contrastnames{c},'Interpreter','none');
-                            set(gcf,'WindowState','maximized');
+                            plugin_set_figure_size;
                             drawnow,snapnow;
 
                         end
@@ -1108,7 +1127,7 @@ for c = 1:kc
                         end
                         
                         title(DAT.contrastnames{c},'Interpreter','none');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
@@ -1120,7 +1139,7 @@ for c = 1:kc
                             end
                             
                             title(DAT.contrastnames{c} ,'Interpreter','none');
-                            set(gcf,'WindowState','maximized');
+                            plugin_set_figure_size;
                             drawnow,snapnow;
 
                         end
@@ -1144,7 +1163,7 @@ for c = 1:kc
                         end
 
                         title(DAT.conditions{c},'Interpreter','none');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
@@ -1156,7 +1175,7 @@ for c = 1:kc
                             end
                             
                             title(DAT.conditions{c} ,'Interpreter','none');
-                            set(gcf,'WindowState','maximized');
+                            plugin_set_figure_size;
                             drawnow,snapnow;
 
                         end
@@ -1170,7 +1189,7 @@ for c = 1:kc
                         end
                         
                         title(DAT.conditions{c},'Interpreter','none');
-                        set(gcf,'WindowState','maximized');
+                        plugin_set_figure_size;
                         drawnow,snapnow;
 
                         if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
@@ -1182,7 +1201,7 @@ for c = 1:kc
                             end
                             
                             title(DAT.conditions{c} ,'Interpreter','none');
-                            set(gcf,'WindowState','maximized');
+                            plugin_set_figure_size;
                             drawnow,snapnow;
 
                         end
@@ -1248,6 +1267,15 @@ for c = 1:kc
         
         % RUN DIAGNOSTICS ON FITTED MODEL AND SUMMARIZE
         
+        % idx_nuisance is only created inside "if exist('nuisance_covs','var')"
+        % further up, so a design with no nuisance covariates - the common case
+        % for a plain group comparison - reaches here with it undefined and the
+        % whole script dies AFTER the regression has been computed but BEFORE
+        % anything is saved. Default it to "no nuisance columns" instead.
+        if ~exist('idx_nuisance','var')
+            idx_nuisance = false(size(groupnames));
+        end
+        
         regression_stats.nuisance_columns = find(idx_nuisance);
         
         regression_stats = validate_object(regression_stats);
@@ -1278,7 +1306,13 @@ for c = 1:kc
         
         LaBGAScore_smart_parallel_pool_setup;      
         
-        if doTFCE
+        % TFCE can be restricted to a subset of contrasts: it is the dominant cost
+        % of this script, and most designs have one contrast of interest.
+        if ~exist('cons2tfce','var')
+            cons2tfce = [];
+        end
+        
+        if doTFCE && (isempty(cons2tfce) || ismember(c,cons2tfce))
             
             % CALCULATE TFCE STATS FROM DATA OBJECT
             
@@ -1437,7 +1471,7 @@ for c = 1:kc
         end
 
         figtitle = sprintf('%s_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow, snapnow;
             if save_figures_glm
                 plugin_save_figure;
@@ -1493,7 +1527,7 @@ for c = 1:kc
             end
 
             figtitle = sprintf('%s_BF_3_montage_%s_%s_%s', regression_stats.analysis_name, groupnames_string, mask_string, scaling_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
                     plugin_save_figure;
@@ -1502,7 +1536,7 @@ for c = 1:kc
             
         end
         
-        if doTFCE
+        if doTFCE && (isempty(cons2tfce) || ismember(c,cons2tfce))
             
             fprintf('\n\n');
             printhdr('Plotting voxel-wise TFCE GLM results');
@@ -1527,28 +1561,36 @@ for c = 1:kc
                         
                     case 'group'
                         
-                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
-                        figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
+                        fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), ', '), mask_string, scaling_string);
+                        figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), '_'), mask_string, scaling_string);
                         
                     case 'custom'
                         
                         if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
                             
-                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), char(regression_stats.variable_names(regression_stats.wh_nuisance)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_05_unc_montage_%s_nuisance_%s_%s_%s', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), char(regression_stats.variable_names(regression_stats.wh_nuisance)), mask_string, scaling_string);
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, NUISANCE COVARIATE(S): %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), ', '), strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_nuisance)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_05_unc_montage_%s_nuisance_%s_%s_%s', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), '_'), strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_nuisance)), '_'), mask_string, scaling_string);
                             
                         else
                         
-                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
-                            figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, char(regression_stats.variable_names(regression_stats.wh_interest)), mask_string, scaling_string);
+                            fprintf ('\nMONTAGE VOXELWISE TFCE GLM RESULTS AT UNCORRECTED p < 0.05, EFFECT: %s, REGRESSOR: %s, MASK: %s, SCALING: %s\n\n', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), ', '), mask_string, scaling_string);
+                            figtitle = sprintf('%s_TFCE_05_unc_montage_%s_%s_%s', regression_stats.analysis_name, strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), '_'), mask_string, scaling_string);
                             
                         end
                         
                 end
             
+            % montage() on a DATA object routes through canlab_results_fmridisplay WITHOUT
+            % create_figure, so it draws into whatever figure is current - which is the
+            % previous block's montage. Verified: after canlab_results_fmridisplay the
+            % figure count stays 1 and the axes accumulate, so the TFCE blobs landed on top
+            % of the Bayes montage and both were captured in one snapnow. Open a fresh
+            % figure first. (region montages are fine - they go through create_figure.)
+            figure;
+
             o2 = montage(tfce_dat_thr_unc_05,'mincolor',[0.47 0.11 0.43], 'maxcolor', [0.94 0.98 0.13]);
-            o2 = title_montage(o2, 5, ['tfce ' regression_stats.analysis_name ' ' char(regression_stats.variable_names(regression_stats.wh_interest)) ' ' mask_string ' ' scaling_string]);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            o2 = title_montage(o2, 5, ['tfce ' regression_stats.analysis_name ' ' strjoin(cellstr(regression_stats.variable_names(regression_stats.wh_interest)), ', ') ' ' mask_string ' ' scaling_string]);
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
                     plugin_save_figure;
@@ -1565,7 +1607,7 @@ for c = 1:kc
             bayesian_regression_stats_results{c} = bayesian_regression_stats;
         end
         
-        if doTFCE
+        if doTFCE && (isempty(cons2tfce) || ismember(c,cons2tfce))
             tfce_regression_stats_results{c} = tfce_regression_stats;
         end
 
@@ -1655,7 +1697,7 @@ for c = 1:kc
         fprintf('\n\n');
         
         create_figure('parcelwise weights and metrics', 2, 2);
-        set(gcf, 'WindowState','maximized');
+        plugin_set_figure_size;
         xlabel('Image'); ylabel('Weights');
         errorbar(mean(parcelwise_stats.weights), std(parcelwise_stats.weights), 'bo', 'MarkerFaceColor', [0 0 .5])
         title('Mean weights across parcels (s.d. error bars) per image');
@@ -1739,7 +1781,7 @@ for c = 1:kc
         end
 
         figtitle = sprintf('%s_05_unc_montage_%s_%s_%s', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
-        set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+        set(gcf, 'Tag', figtitle); plugin_set_figure_size;
         drawnow, snapnow;
             if save_figures_glm
                 plugin_save_figure;
@@ -1787,7 +1829,7 @@ for c = 1:kc
             end
 
             figtitle = sprintf('%s_BF_3_montage_%s_%s_%s', parcelwise_stats.contrastname, groupnames_string, mask_string, scaling_string);
-            set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+            set(gcf, 'Tag', figtitle); plugin_set_figure_size;
             drawnow, snapnow;
                 if save_figures_glm
                     plugin_save_figure;
@@ -1797,6 +1839,17 @@ for c = 1:kc
         end
 
         % KEEP RESULTS OBJECTS IN CELL ARRAY FOR SAVING
+
+        % robfit_parcelwise takes no analysis_name, so it leaves the CANlab default
+        % 'Regression analysis' on every contrast - which is what the parcelwise c2a
+        % report then prints as its heading for all of them. The voxelwise branch
+        % passes DAT.contrastnames{c} to regress(); do the same here.
+        switch mygroupnamefield
+            case 'contrasts'
+                parcelwise_stats.analysis_name = DAT.contrastnames{c};
+            case 'conditions'
+                parcelwise_stats.analysis_name = DAT.conditions{c};
+        end
 
         parcelwise_stats_results{c} = parcelwise_stats;
 
@@ -1867,7 +1920,7 @@ for c = 1:kc
                 hold off
 
                 p = get(gcf,'Position');
-                set(gcf,'Position',[p(1:2),1024,2048],'WindowState','Maximized');
+                plugin_set_figure_size('width', 6, 'height', 12);   % portrait, was 1024x2048 px
                 drawnow, snapnow;
 
                 clear subj
@@ -1882,7 +1935,7 @@ for c = 1:kc
                 title(['Histogram of ' groupnames{covar}]);
                 xlabel(groupnames{covar});
                 ylabel('n(observations)');
-                set(gcf,'WindowState','Maximized');
+                plugin_set_figure_size;
                 drawnow, snapnow;
             
             % RUN MODEL
@@ -1985,7 +2038,7 @@ for c = 1:kc
                 plot(mdl);
                 xlabel({['Observed ' groupnames{covar}]}); ylabel({['Estimated ' groupnames{covar}],'(cross validated)'})
 
-                set(gcf,'WindowState','Maximized');
+                plugin_set_figure_size;
                 drawnow, snapnow;
 
                 % PLOT MONTAGE OF UNTHRESHOLDED WEIGHTS
@@ -1998,6 +2051,13 @@ for c = 1:kc
 
                 figure
 
+                % canlab_results_fmridisplay's 'compact' layout only calls axes('Position',...);
+                % unlike 'multirow' it never opens a figure of its own, so it draws into whatever
+                % figure is current - the previous block's montage, or the last figure left open by
+                % the previous script in the same session. Open a fresh one. ('multirow' does
+                % create its own figure, so those call sites are deliberately left alone: adding
+                % figure; there would leave an empty figure behind for every montage.)
+                figure;
                 o2 = canlab_results_fmridisplay([], 'compact');
                 w = mvpa_stats.weight_obj;
                 
@@ -2014,7 +2074,7 @@ for c = 1:kc
                 o2 = title_montage(o2, whmontage, [algorithm_mvpa_reg_cov ' unthresholded ' mvpa_stats.Y_names ' ' mask_string ' ' myscaling_glm]);
 
                 figtitle = sprintf('%s_unthresholded_montage_%s_%s', algorithm_mvpa_reg_cov, myscaling_glm, mask_string);
-                set(gcf, 'Tag', figtitle, 'WindowState','maximized');
+                set(gcf, 'Tag', figtitle); plugin_set_figure_size;
                 drawnow, snapnow;
 
                 clear w, clear o2, clear figtitle
@@ -2052,6 +2112,16 @@ if ~dorobfit_parcelwise
 else
         savefilenamedata = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
         save(savefilenamedata, 'parcelwise_stats_results', '-v7.3');
+
+        % The parcelwise branch computes Bayes Factors too (see the doBayes block
+        % above, which assigns bayesian_regression_stats_results), but this save
+        % used to write only parcelwise_stats_results - so the Bayes maps were
+        % computed and then silently discarded, and c2a's parcelwise report had no
+        % Bayesian section at all. Append them, as the voxelwise save does.
+        if doBayes && exist('bayesian_regression_stats_results','var')
+            save(savefilenamedata, 'bayesian_regression_stats_results', '-append');
+        end
+
         fprintf('\nSaved parcelwise_stats_results for %s\n', mygroupnamefield);
 end
 
