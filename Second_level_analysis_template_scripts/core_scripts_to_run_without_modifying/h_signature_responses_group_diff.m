@@ -153,7 +153,7 @@ for s = 1:length(mysignature)
             % current, and create_figure reuses a figure carrying the same tag rather
             % than opening a new one, so neither gcf nor a new-figure test is reliable.
             if exist('fh_sig','var') && all(isgraphics(fh_sig))
-                plugin_set_figure_size('fig', fh_sig);
+                            plugin_set_figure_size('fig', fh_sig);
             end
 
             drawnow, snapnow
@@ -227,7 +227,7 @@ for s = 1:length(mysignature)
         % current, and create_figure reuses a figure carrying the same tag rather
         % than opening a new one, so neither gcf nor a new-figure test is reliable.
         if exist('fh_sig','var') && all(isgraphics(fh_sig))
-            plugin_set_figure_size('fig', fh_sig);
+                    plugin_set_figure_size('fig', fh_sig);
         end
 
         drawnow, snapnow
