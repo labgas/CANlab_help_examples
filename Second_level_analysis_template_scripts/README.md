@@ -141,7 +141,9 @@ table above until the dependency tooling found them:
 | `group_tfce_from_subject_maps.m`              | `prep_3a_run_second_level_regression_and_save.m`                                                   | Group TFCE from subject-level maps.                         |
 | `thresholded_fmri_data_from_statistic_image.m` | `prep_3a_run_second_level_regression_and_save.m`, `c2_SVM_contrasts_masked.m`                    | Thresholded `fmri_data` object from a `statistic_image`.  |
 
-This is intentionally a high-level summary — LaBGAScore's own internals are out of scope here.
+This is intentionally a high-level summary — LaBGAScore's own internals are out of scope here. For them, see LaBGAScore's [`firstlevel/README.md`](https://github.com/labgas/LaBGAScore/blob/main/firstlevel/README.md), the reference guide for the first-level chain that produces the `DSGN` struct and the con images these scripts consume (and [`firstlevel/README_phMRI.md`](https://github.com/labgas/LaBGAScore/blob/main/firstlevel/README_phMRI.md) for the pharmacological-challenge variant, which does not feed this framework).
+
+One point from that guide matters directly here: the `con_000N` numbering that `DAT.functional_wildcard` hardcodes in `prep_1_set_conditions_contrasts_colors.m` is fixed by the **order of `DSGN.contrasts`** in the first-level script. Inserting or reordering a first-level contrast silently remaps every analysis in this repo onto different images — no error, just different results. If the first-level contrast list changes, re-check `DAT.functional_wildcard` and `DAT.conditions`.
 
 ## Dependency and provenance documentation
 
