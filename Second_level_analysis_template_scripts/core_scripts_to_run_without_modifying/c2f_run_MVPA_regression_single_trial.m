@@ -12,8 +12,22 @@
 % Many of the options below get passed into CANlab's predict function -
 % help fmri_data.predict in the Matlab command window for more info.
 %
-% Run this script with Matlab's publish function to generate html report of results:
-% publish('c2f_run_MVPA_regression_single_trial','outputDir',htmlsavedir)
+% Run this script headless from the Linux command line (the default), which
+% publishes the html report and fails loudly if the script errors:
+%
+%   labgascore_run_headless.sh -d /data/proj_xxx \
+%       -s <proj>_secondlevel_m<M>_s0_a_set_up_paths_always_run_first \
+%       <proj>_secondlevel_m<M>_s<N>_c2f_run_MVPA_regression_single_trial
+%
+% Or, interactively from the Matlab terminal (use this when you want
+% higher-resolution figures, or are debugging):
+%
+%   LaBGAScore_prov_publish('c2f_run_MVPA_regression_single_trial', htmlsavedir)
+%
+% NOTE: publish() catches a script error into the html and returns normally, so
+% a crashed run looks exactly like a successful one. Prefer the routes above,
+% which read the report back and check for a caught error, over a bare
+% publish('c2f_run_MVPA_regression_single_trial','outputDir',htmlsavedir).
 %
 %
 % *DOCUMENTATION*

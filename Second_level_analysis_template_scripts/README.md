@@ -157,7 +157,8 @@ Because these templates are copied and renamed per study, the version of CanlabC
 ran against is not recorded anywhere by default. LaBGAScore's `clean/LaBGAScore_prov_*`
 tooling closes that gap:
 
-- **Going forward** — publish with `LaBGAScore_prov_publish` instead of `publish`. The
+- **Going forward** — publish with `LaBGAScore_prov_publish` instead of `publish`, or with
+  `LaBGAScore_run_reports` / `labgascore_run_headless.sh`, which call it for you. The
   report gains a Provenance section naming the commit of every dependency the script
   reaches, plus the screen and figure dimensions it was produced at.
 - **Looking back** — `LaBGAScore_prov_resolve_retrospective` reconstructs the same record
@@ -167,11 +168,19 @@ tooling closes that gap:
 
 Two things follow for anyone editing these scripts:
 
-- **`publish()` captures figures from the screen**, so a figure larger than the X2go
-  session is captured at display size. `plugin_set_figure_size` fits the request to the
-  display, preserving aspect ratio — see the note in
-  [`CLAUDE.md`](CLAUDE.md) and the recommended X2go settings in
-  [`LaBGAS_fMRI_analysis_workflow.md`](https://github.com/labgas/LaBGAScore/blob/main/LaBGAS_fMRI_analysis_workflow.md).
+- **`publish()` catches a script's error into the report and returns normally**, so a
+  crashed run is indistinguishable from a successful one — no exception, exit status 0.
+  Run these scripts through `labgascore_run_headless.sh` or `LaBGAScore_run_reports`
+  (LaBGAScore `clean/`), which read the report back and fail on the error markup, and can
+  assert that the expected `.mat` was actually written. Several silent failures in these
+  templates were found only that way.
+- **Figure sizing depends on how you run the script.** Headless — now the default —
+  `publish` *prints* figures, so size is not limited by any screen. Interactively it
+  *captures* them from the screen, so a figure larger than the X2go session is captured at
+  display size; `plugin_set_figure_size` fits the request to the display, preserving aspect
+  ratio. See the note in [`CLAUDE.md`](CLAUDE.md), and section 2 of
+  [`LaBGAS_fMRI_analysis_workflow.md`](https://github.com/labgas/LaBGAScore/blob/main/LaBGAS_fMRI_analysis_workflow.md)
+  for both routes and the X2go settings per screen.
 - **Renaming a script per study is fine** — the tooling maps a study's renamed copy back
   onto the template it came from, by token overlap on the step designator.
 
@@ -195,6 +204,26 @@ when supplied, are handled by Freedman-Lane.
 The searchlight path (`prep_3c_run_SVMs_on_contrasts_masked.m` →
 `c2_SVM_contrasts_masked.m`) uses the same classic TFCE, via
 `searchlight_disti_Lukas` in CanlabCore. Both paths therefore run one algorithm.
+
+**Reporting.** `prep_3a` computes TFCE and saves both an FDR- and an FWE-thresholded
+object; `c2a` reports one of them, chosen with `tfce_correction` (`'fwe'` by default,
+thresholded at `p_threshold_fwe`), and only the reported one gets montages and region
+tables. `cons2tfce` restricts the computation to a subset of contrasts — worth using, since
+the permutation null dominates `prep_3a`'s runtime.
+
+**Do not put an extent threshold on TFCE.** `k_threshold_tfce` defaults to 0 and is
+deliberately separate from `k_threshold_glm`: TFCE already integrates cluster extent into
+the statistic, so a `k` on top of a voxelwise FWE correction corrects twice. In one
+real analysis `k >= 50` removed every one of the 42 surviving voxels and reported an empty
+map. Cluster-size distributions from TFCE tend to be strongly bimodal — in another, four
+clusters held 91.5% of surviving voxels and the fifth was 29 voxels — so an extent
+threshold buys almost nothing and can cost everything.
+
+**Nuisance covariates must be declared.** `prep_3a` passes `X(:,wh_nuisance)` to the
+permutation test only when `nuisance_covs` is set; leaving it unset silently runs the TFCE
+with **no covariates at all**, even though the voxelwise GLM still adjusts for them, and
+even though the report may look fine. Check `tfce_info.nuisance_rank` in the saved results:
+it is the rank of the nuisance model, and **0 means nothing was controlled for**.
 
 **Results produced before the 2026 LaBGAScore TFCE overhaul should be re-run.**
 That work found the TFCE stack calling pTFCE — a different algorithm — with

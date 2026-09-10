@@ -59,6 +59,9 @@ function [fh, actual_size] = plugin_set_figure_size(varargin)
 % plugin_set_figure_size()                         % default, fitted to screen
 % plugin_set_figure_size('nrows', nrows)           % multi-row montage (canlab_results_fmridisplay 'multirow')
 % plugin_set_figure_size('width', w, 'height', h)  % explicit upper bound
+% plugin_set_figure_size('fig', fh)                % a figure a drawing call opened
+% plugin_set_figure_size('fig', fh, 'minpanel', [1.2 1.0])   % grid of many panels
+% plugin_set_figure_size('titlescale', 0.5)        % dense layout, smaller titles
 %
 % OPTIONAL NAME-VALUE ARGUMENTS:
 % 'width'   maximum figure width in inches (default 12)
@@ -86,6 +89,41 @@ function [fh, actual_size] = plugin_set_figure_size(varargin)
 %           (default true). Reported only ONCE per session per distinct
 %           request/display combination, since a published report calls
 %           this once per figure. Silence it entirely with false.
+% 'fig'     handle(s) of the figure(s) to size (default gcf). Use this for
+%           drawing calls that OPEN THEIR OWN figure - canlab_results_fmridisplay
+%           with 'multirow', @region/montage, and histogram(...,'byimage') all
+%           do - where gcf is no longer the figure you want to size. Pass a
+%           vector to size several at once.
+% 'titlescale'
+%           factor applied to the font size of every title in the figure
+%           (default 2/3). Titles scale with the canvas, so a canvas grown to
+%           fit many panels would otherwise carry enormous titles. Pass a
+%           smaller value for dense layouts: the carpet-plot panels use 0.5,
+%           whose 15.4 pt titles overlap even at the 2/3 default. Each title is
+%           marked once it has been scaled, so titles added after this call are
+%           still scaled on a later call and none is scaled twice.
+% 'keepaspect'
+%           true preserves the figure's CURRENT aspect ratio instead of the
+%           requested one, scaling it to fit (default false). For figures whose
+%           layout is meaningful and unusual - a wide 1x3 strip, say - which
+%           would be distorted by being forced to 16:10.
+% 'minpanel'
+%           [w h] minimum size in inches for a single panel of a grid figure.
+%           Grows the canvas until the median panel is at least this big,
+%           measuring the ACTUAL layout rather than assuming one, so a
+%           per-subject density grid stays legible with 64 or 158 subjects
+%           instead of being squeezed into the default canvas. Bounded: the
+%           canvas is capped at 20 x 30 inches and a request whose aspect ratio
+%           would exceed 3:1 is refused with an explanation, since a layout with
+%           that many panels in one row cannot be made readable by resizing and
+%           should be split across figures instead.
+%
+% HEADLESS: when there is no display (feature('ShowFigureWindows') == 0),
+% publish() PRINTS figures rather than capturing them from the screen, so the
+% fit-to-screen logic above does not apply and figure size is not limited by the
+% 1024x768 / 72 dpi virtual screen headless MATLAB reports. The screen bound is
+% therefore lifted headless, but ONLY when 'minpanel' is given - deliberately, so
+% that every other figure comes out at exactly the same size as before.
 %
 % OUTPUT:
 % fh            handle of the resized figure

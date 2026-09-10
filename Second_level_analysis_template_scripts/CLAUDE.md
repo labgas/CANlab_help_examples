@@ -8,17 +8,61 @@ A MATLAB template-script framework (part of `CANlab_help_examples`) for second-l
 
 This is not a conventional software package: there is no build system, linter, or automated test suite, and none should be added. It's a curated collection of runnable/copyable `.m` scripts, most of which produce figures/tables and can be run via MATLAB's `publish()` to generate timestamped HTML reports.
 
-## Current objective in this repo
+## State of the work in this repo
 
-The active goal of work here is to write a single, extensive `README.md` (currently missing — the repo only has `a0_begin_here_readme.m`, a MATLAB-comment readme covering the generic, non-LaBGAS-specific CANlab template) documenting **how LaBGAS actually uses this framework**, including its dependency on the sibling `LaBGAScore` repo. A second goal is to improve the documentation in the Matlab help header (commented section in the beginning) of the scripts below.
+**Documentation.** `README.md` exists and documents how LaBGAS actually uses this
+framework, including the dependency on the sibling `LaBGAScore` repo. Script header
+comments (USAGE/OPTIONS/NOTES) are maintained alongside the code; when you add an option,
+document it in the header of the script that consumes it, in the same `% * name` style.
 
-A third goal is to optimize the *code* of these scripts — not just their header documentation — for more consistent `publish()` HTML output across the team. These scripts run on a shared lab server accessed via X2go from team members' own computers with differing screen resolutions. The prevailing pattern of creating a figure and then calling `set(gcf,'WindowState','maximized')` before `snapnow`/`saveas` ties the figure's pixel dimensions to whichever X2go client's screen happened to be active — and since these scripts use exclusively default, point-based font sizes (no explicit `FontSize`/`FontUnits` calls), that makes text in published figures look inconsistently too large or too small depending on who ran the script. The fix is to replace `WindowState maximized` with a size set in INCHES (not pixels — MATLAB font sizes are in points, a physical unit, so an inch-anchored canvas keeps the font-to-canvas ratio constant across sessions whose DPI differs) via a shared `plugin_set_figure_size.m` helper (`core_scripts_to_run_without_modifying/`), applied script by script. Each script's new approach is validated first on a `test_figs_`-prefixed copy (e.g. `test_figs_prep_3a_run_second_level_regression_and_save.m`) before being rolled into the canonical script. Started with `prep_3a_run_second_level_regression_and_save.m`.
+**Figure consistency across sessions.** The prevailing pattern of `set(gcf,'WindowState',
+'maximized')` tied a figure's pixel dimensions to whichever X2go client happened to be
+connected, and since these scripts use exclusively default, point-based font sizes, that
+made published text inconsistently large or small per person. It is replaced by
+`plugin_set_figure_size.m`, which sizes in INCHES (not pixels: MATLAB font sizes are in
+points, a physical unit, so an inch-anchored canvas keeps the font-to-canvas ratio constant
+across sessions of differing DPI). Points worth not relitigating:
 
-**Status (2026-09-01):** the cross-machine validation has NOT been run yet, and `test_figs_prep_3a_...` is deliberately excluded from `DEPENDENCIES.md` until it has. Note that `plugin_set_figure_size.m` was revised on 2026-08-31, so the test harness now exercises different behaviour than when it was written:
+- The requested size is a **maximum**, not a fixed value. Interactively, `publish()`
+  captures what is on screen, so a figure larger than the display was previously captured
+  at display size *and at the wrong aspect ratio*, silently — `get(fh,'Position')` still
+  reported the requested size. Both dimensions are now scaled by one factor, so aspect
+  always holds, and the window is repositioned fully on screen.
+- The **default is 12x7.5 in**, not 16x10 (same 16:10 aspect). 16x10 is unreachable on any
+  lab laptop; a default nobody can achieve guarantees the inconsistency this exists to
+  remove.
+- `plugin_set_figure_size` also takes `'fig'` (size a figure a drawing call opened, since
+  `canlab_results_fmridisplay 'multirow'`, `@region/montage` and `histogram(...,'byimage')`
+  all open their own), `'titlescale'` (default 2/3), `'keepaspect'`, and `'minpanel'`
+  (grow the canvas until each panel of a grid is legible, bounded at 20x30 in and 3:1).
 
-- The requested size is a **maximum**, not a fixed value. `publish()` captures what is on screen, so a figure larger than the display was previously captured at display size *and at the wrong aspect ratio*, silently — `get(fh,'Position')` still reported the requested size. Measured on the LaBGAS server (1718x1360 at 133 DPI), the old fixed 16x10 in default needed 2128x1330 px, did not fit, and came out 1718x1254: aspect 1.37 instead of 1.60, i.e. exactly the `maximized` behaviour it exists to avoid. Both dimensions are now scaled by one factor, so the aspect ratio always holds, and the window is repositioned fully on screen.
-- The **default changed from 16x10 to 12x7.5 in** (same 16:10 aspect). 16x10 is unreachable on any lab laptop — it would need 72 DPI on a 1366x768 client. 12x7.5 is reachable on every lab screen at 96 DPI. A default nobody can achieve guarantees the inconsistency this work is meant to remove.
-- Run `LaBGAScore_check_display` (LaBGAScore `clean/`) to see what a given session can produce. `LaBGAScore_prov_publish` records the session's screen size, DPI and the resulting figure dimensions in every report, and flags figures whose size was set by the display — which is what makes the cross-machine comparison measurable when someone does run it. Recommended X2go settings per screen are in `LaBGAS_fMRI_analysis_workflow.md`.
+**Headless is now the default way to run these scripts**, via LaBGAScore's
+`clean/labgascore_run_headless.sh`. Consequences for anyone editing here:
+
+- Headless, `publish()` **prints** figures rather than capturing them, so figure size is
+  NOT limited by the 1024x768 / 72 dpi virtual screen. The screen-fitting logic is lifted
+  headless only when `'minpanel'` is given, so no other figure changes size.
+- `matlab -batch` **cannot** `publish()`. Use `-nodisplay` with `-r`, stdin from
+  `/dev/null`.
+- `LaBGAScore_check_display` and the X2go DPI table apply to the interactive route only.
+
+**`publish()` swallows errors — this is the main hazard in this repo.** It catches a
+script's error into the html and returns normally: no exception, exit status 0, report file
+present. Chains of these scripts have repeatedly appeared to complete while one had died,
+sometimes after an hour of computation and before anything was saved. Every failure found
+in this repo recently was of that shape: unguarded optional variables (`idx_nuisance`,
+`bayesian_results`, `tfce_results`, `summary()`), parcelwise branches assuming
+Bayes/TFCE results exist, and `char()` on a multi-element `wh_interest` dying in `horzcat`.
+So:
+
+- Run scripts through `LaBGAScore_run_reports` / `labgascore_run_headless.sh`, which read
+  the report back and fail on `<pre class="codeoutput error">`, and assert the expected
+  `.mat` exists. Never trust a chain that merely "finished".
+- When you add code that reads an option variable, assume it may not exist. `exist(...,
+  'var')` guards are why several of these scripts now survive configurations they used to
+  crash on.
+- Detect errors from report **markup**, never by searching report text for "Error in" —
+  that phrase occurs in ordinary comments, which `publish` renders as prose.
 
 **This documentation effort is scoped to a specific subset of scripts only** — not the full toolbox (~80 scripts). Do not analyze or document scripts outside this list unless explicitly asked to expand scope:
 
