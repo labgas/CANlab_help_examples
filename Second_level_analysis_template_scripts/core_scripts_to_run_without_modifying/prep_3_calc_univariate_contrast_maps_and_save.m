@@ -263,8 +263,21 @@ for c = 1:size(DAT.contrasts, 1)
         % orthviews panel being stretched to the default 16:10.
         fh_before = findobj('Type','figure');
         plot(DATA_OBJ_CON{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true, ...
-            'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
+        % Size every figure plot() produced, found by TAG as well as by newness.
+        % Newness alone is not enough: plot() builds its panels with create_figure,
+        % which REUSES a figure carrying the same tag rather than opening a new one.
+        % From the second loop iteration on, the 6-panel 'fmri data matrix' figure is
+        % therefore not new, setdiff missed it, and it never got sized or title-scaled
+        % - the titles came out shrunk on the first contrast and full size on every
+        % one after it.
+        fh_plot = findobj('Type','figure','Tag','fmri data matrix');
+        fh_plot = [fh_plot; findobj('Type','figure','Tag','means by condition (unique Y values)')];
+        fh_plot = [fh_plot; findobj('Type','figure','Tag','Slice_montage')];
+        fh_plot = unique([fh_plot; setdiff(findobj('Type','figure'), fh_before)]);
+        if ~isempty(fh_plot)
+            plugin_set_figure_size('fig', fh_plot, 'keepaspect', true, ...
+                'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
+        end
         
         drawnow; snapnow
         
@@ -331,8 +344,21 @@ for c = 1:size(DAT.contrasts, 1)
         % orthviews panel being stretched to the default 16:10.
         fh_before = findobj('Type','figure');
         plot(DATA_OBJ_CONscc{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true, ...
-            'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
+        % Size every figure plot() produced, found by TAG as well as by newness.
+        % Newness alone is not enough: plot() builds its panels with create_figure,
+        % which REUSES a figure carrying the same tag rather than opening a new one.
+        % From the second loop iteration on, the 6-panel 'fmri data matrix' figure is
+        % therefore not new, setdiff missed it, and it never got sized or title-scaled
+        % - the titles came out shrunk on the first contrast and full size on every
+        % one after it.
+        fh_plot = findobj('Type','figure','Tag','fmri data matrix');
+        fh_plot = [fh_plot; findobj('Type','figure','Tag','means by condition (unique Y values)')];
+        fh_plot = [fh_plot; findobj('Type','figure','Tag','Slice_montage')];
+        fh_plot = unique([fh_plot; setdiff(findobj('Type','figure'), fh_before)]);
+        if ~isempty(fh_plot)
+            plugin_set_figure_size('fig', fh_plot, 'keepaspect', true, ...
+                'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
+        end
         
         drawnow; snapnow
         
@@ -472,8 +498,21 @@ for c = 1:size(DAT.contrasts, 1)
         % orthviews panel being stretched to the default 16:10.
         fh_before = findobj('Type','figure');
         plot(DATA_OBJ_CONsc{c},'norunmontages'); % @lukasvo76 turned run montages off, since second level con images are most often not per run
-        plugin_set_figure_size('fig', setdiff(findobj('Type','figure'), fh_before), 'keepaspect', true, ...
-            'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
+        % Size every figure plot() produced, found by TAG as well as by newness.
+        % Newness alone is not enough: plot() builds its panels with create_figure,
+        % which REUSES a figure carrying the same tag rather than opening a new one.
+        % From the second loop iteration on, the 6-panel 'fmri data matrix' figure is
+        % therefore not new, setdiff missed it, and it never got sized or title-scaled
+        % - the titles came out shrunk on the first contrast and full size on every
+        % one after it.
+        fh_plot = findobj('Type','figure','Tag','fmri data matrix');
+        fh_plot = [fh_plot; findobj('Type','figure','Tag','means by condition (unique Y values)')];
+        fh_plot = [fh_plot; findobj('Type','figure','Tag','Slice_montage')];
+        fh_plot = unique([fh_plot; setdiff(findobj('Type','figure'), fh_before)]);
+        if ~isempty(fh_plot)
+            plugin_set_figure_size('fig', fh_plot, 'keepaspect', true, ...
+                'titlescale', 0.5);   % the 6-panel data-matrix figure's 15.4 pt titles overlap even at the 2/3 default
+        end
         
         drawnow; snapnow
         
