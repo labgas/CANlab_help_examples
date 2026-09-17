@@ -144,8 +144,34 @@
 
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
+% Remember where the study's own setup put the results, so the call below can be
+% checked against it (see the guard immediately after).
+resultsdir_before_setup = '';
+if exist('resultsdir','var'), resultsdir_before_setup = resultsdir; end
+
 
 a_set_up_paths_always_run_first;
+
+
+% GUARD: did the path setup just move the output directory?
+%
+% This line is meant to be replaced, in a study's copy, by that study's own
+% s0 (e.g. mystudy_secondlevel_m2a_s0_a_set_up_paths_always_run_first). Left
+% as the generic call, it RE-DERIVES resultsdir - typically from the
+% FIRST-LEVEL model name - and silently overwrites whatever the study's setup
+% had already set. Every result then lands in a different model's directory
+% while the published report still goes to the right one, so the split is easy
+% to miss. This has happened three times: proj_discoverie's SVM wrote into
+% secondlevel/model_2_basic, proj_moodbugs wrote into secondlevel/model_3_basic,
+% and all seven core scripts of a new discoverie model were about to do the same.
+if ~isempty(resultsdir_before_setup) && ~strcmp(resultsdir_before_setup, resultsdir)
+    error(['\nPATH SETUP MOVED THE RESULTS DIRECTORY.\n\n' ...
+           '  before: %s\n  after : %s\n\n' ...
+           'The generic a_set_up_paths_always_run_first re-derived resultsdir and\n' ...
+           'discarded the one your study setup had set. In your copy of this script,\n' ...
+           'replace that call with your study''s own s0 path script.\n'], ...
+           resultsdir_before_setup, resultsdir);
+end
 
 % NOTES
 %   1. CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT!

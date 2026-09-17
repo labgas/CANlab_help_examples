@@ -45,6 +45,16 @@
 % c2a_second_level_regression
 %
 %
+%
+% *SETTING results_suffix FROM A CALLING SCRIPT - READ THIS FIRST*
+%
+% This script re-declares results_suffix = '' in its own option block below.
+% An override placed BEFORE that point - for instance in the study's
+% a_set_up_paths or a2_set_default_options - is therefore silently wiped, and
+% the results are saved with an empty suffix, overwriting whatever a previous
+% model wrote to the same filename. Set results_suffix AFTER the script's own
+% default, not before it. Learned the hard way in proj_cfs model_2a.
+%
 % *OPTIONS*
 %
 % * NOTE 
@@ -56,6 +66,14 @@
 % * dorobust                    robust regression or OLS (true/false)
 %
 % * dorobfit_parcelwise         voxel- or parcelwise regression (true/false)
+%                              NOTE ON TFCE: the TFCE block sits inside
+%                              "if ~dorobfit_parcelwise" BY DESIGN. TFCE is a voxel-level method -
+%                              it integrates over cluster-forming thresholds using spatial
+%                              contiguity between neighbouring voxels - and a parcelwise fit has
+%                              discrete parcels rather than a spatial field, so there is no cluster
+%                              extent for it to operate on. doTFCE is therefore ignored in a
+%                              parcelwise run, correctly. Set it false explicitly anyway, so the
+%                              option block states what actually happens.
 %
 %       * csf_wm_covs               true adds global wm & csf regressors at second level
 %       * remove_outliers           true removes outlier images/subjects based on mahalanobis distance
@@ -169,6 +187,45 @@
 %         * roi_modelname        from same script; also the prefix of the .mat filename
 %         * roi_set_name         from same script; also part of the .mat filename
 %
+%         * doroi_glm            true runs inference on the roi averages, false (default) keeps
+%                                the earlier behaviour, where barplot_columns plots covariate-
+%                                adjusted roi means but no test is run, so an roi effect could
+%                                not be called significant without refitting by hand.
+%
+%                                Which covariates are of interest and which are nuisance comes
+%                                from nuisance_covs - NOT from a new option, and NOT from
+%                                covs2use, which SUBSETS the design matrix (dropping every
+%                                covariate not listed) rather than labelling its columns.
+%                                Everything in the design that nuisance_covs does not name is an
+%                                effect of interest.
+%
+%                                Two levels are reported, in this order:
+%
+%                                  1. MANOVA across the whole roi set (roi_manova_stats), one
+%                                     omnibus test per effect of interest. Wilks' Lambda from the
+%                                     full model against a reduced model without that effect, so
+%                                     nuisance covariates are adjusted for, converted to Rao's F.
+%                                     manova1 cannot do this: it is one-way and takes no
+%                                     covariates. Skipped with a message if there are fewer than
+%                                     2 rois, or if the error df do not exceed the number of rois
+%                                     (the residual covariance would be singular).
+%                                  2. A GLM per roi (roi_glm_stats): one model per roi holding
+%                                     every covariate in the design, no interaction,
+%                                         roi_mean ~ effect(s) of interest + nuisance...
+%                                     Each effect is reported separately with BOTH q_BH and
+%                                     q_Storey. Storey needs many tests to estimate pi0 and falls
+%                                     back to BH when it cannot (an roi set is usually far too
+%                                     small for it), so with a handful of rois expect the two
+%                                     columns to agree. Effect size is Cohen's d for a two-level
+%                                     effect, otherwise the partial correlation, and 'estimate'
+%                                     for a two-level effect is the DIFFERENCE between levels,
+%                                     not the raw beta.
+%
+%                                Both tables are printed into the published report and saved in
+%                                roi_stats_*.mat. Read them together: individual rois surviving
+%                                FDR under a null omnibus test should be treated cautiously.
+%                                Ignored when design_matrix_type is 'onesample' (no covariates).
+%
 % * doneurotransmitter_maps     calculate spatial similarity with neurotransmitter maps from Hansen et al Nat Neurosci 2022 for each contrast/condition
 %
 %       _neurotransmitter map options_
@@ -235,8 +292,34 @@
 % -------------------------------------------------------------------------
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
+% Remember where the study's own setup put the results, so the call below can be
+% checked against it (see the guard immediately after).
+resultsdir_before_setup = '';
+if exist('resultsdir','var'), resultsdir_before_setup = resultsdir; end
+
 
 a_set_up_paths_always_run_first;
+
+
+% GUARD: did the path setup just move the output directory?
+%
+% This line is meant to be replaced, in a study's copy, by that study's own
+% s0 (e.g. mystudy_secondlevel_m2a_s0_a_set_up_paths_always_run_first). Left
+% as the generic call, it RE-DERIVES resultsdir - typically from the
+% FIRST-LEVEL model name - and silently overwrites whatever the study's setup
+% had already set. Every result then lands in a different model's directory
+% while the published report still goes to the right one, so the split is easy
+% to miss. This has happened three times: proj_discoverie's SVM wrote into
+% secondlevel/model_2_basic, proj_moodbugs wrote into secondlevel/model_3_basic,
+% and all seven core scripts of a new discoverie model were about to do the same.
+if ~isempty(resultsdir_before_setup) && ~strcmp(resultsdir_before_setup, resultsdir)
+    error(['\nPATH SETUP MOVED THE RESULTS DIRECTORY.\n\n' ...
+           '  before: %s\n  after : %s\n\n' ...
+           'The generic a_set_up_paths_always_run_first re-derived resultsdir and\n' ...
+           'discarded the one your study setup had set. In your copy of this script,\n' ...
+           'replace that call with your study''s own s0 path script.\n'], ...
+           resultsdir_before_setup, resultsdir);
+end
 
 % NOTES 
 %   1. CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT
@@ -346,6 +429,100 @@ if ~exist('DATA_OBJ_CON','var') || ~exist('DATA_OBJ_CONsc','var') || ~exist('DAT
     
     load(fullfile(resultsdir,'contrast_data_objects.mat'));
     
+end
+
+
+%% RESTRICT THE SAMPLE (OPTIONAL)
+% -------------------------------------------------------------------------
+%
+% subject_filter subsets the analysis to a subgroup, so a study can run the
+% same model on nested samples - "tiers" - without building a separate model
+% directory for each. It is the GLM counterpart of the option of the same name
+% in LaBGAScore_decoding_SVM_between_subjects, so the two analyses can be run
+% on identical samples and compared.
+%
+% Format: a cell of {column, values-to-keep} pairs, ANDed, naming columns of
+% DAT.BETWEENPERSON.(mygroupnamefield){:}:
+%
+%   subject_filter = { {'center_UM', 0}, {'center_UGOT', 0} };   % KUL only
+%   subject_filter = { {'center_UM', 0} };                       % drop UM
+%
+% Everything is subset together - the image objects, the covariate tables and
+% the group vector - so the design cannot fall out of step with the data.
+% ALWAYS set results_suffix as well: without it each tier overwrites the last.
+if exist('subject_filter','var') && ~isempty(subject_filter)
+
+    % ALWAYS reload from disk before filtering.
+    %
+    % publish() runs a batch of scripts in ONE workspace, so objects left by an
+    % earlier script are still resident. prep_3a's loader is guarded by
+    % "if ~exist('DATA_OBJ_CON','var')", which means a second filtered run in
+    % the same batch would inherit the FIRST run's already-subset data and
+    % filter it again - "keeping 101 of 101" instead of 124 of 158, with no
+    % error and a plausible-looking report. Reloading makes each filtered run
+    % independent of whatever ran before it.
+    clear DATA_OBJ_CON DATA_OBJ_CONsc DATA_OBJ_CONscc DATA_OBJ DATA_OBJsc
+    load(fullfile(resultsdir,'contrast_data_objects.mat'));
+    tmp_sf_dat = load(fullfile(resultsdir,'image_names_and_setup.mat'),'DAT');
+    DAT = tmp_sf_dat.DAT; clear tmp_sf_dat
+    fprintf('\nreloaded unfiltered data and DAT before applying subject_filter\n');
+
+    keep_sf = [];
+    for sf = 1:numel(subject_filter)
+        col = subject_filter{sf}{1};
+        val = subject_filter{sf}{2};
+        tbl_sf = DAT.BETWEENPERSON.(mygroupnamefield){1};
+        if ~ismember(col, tbl_sf.Properties.VariableNames)
+            error(['\nsubject_filter names ''%s'', which is not a column of ' ...
+                   'DAT.BETWEENPERSON.%s{1}.\nAvailable: %s\n'], ...
+                   col, mygroupnamefield, strjoin(tbl_sf.Properties.VariableNames, ', '));
+        end
+        k = ismember(double(tbl_sf.(col)), val);
+        if isempty(keep_sf), keep_sf = k; else, keep_sf = keep_sf & k; end
+    end
+
+    if ~any(keep_sf)
+        error('\nsubject_filter left 0 subjects.\n');
+    end
+
+    fprintf('\n=== SUBJECT FILTER: keeping %d of %d subjects ===\n', sum(keep_sf), numel(keep_sf));
+    for sf = 1:numel(subject_filter)
+        fprintf('    %s in %s\n', subject_filter{sf}{1}, mat2str(subject_filter{sf}{2}));
+    end
+
+    idx_sf = find(keep_sf);
+
+    for cc_sf = 1:numel(DAT.BETWEENPERSON.conditions)
+        if ~isempty(DAT.BETWEENPERSON.conditions{cc_sf})
+            DAT.BETWEENPERSON.conditions{cc_sf} = DAT.BETWEENPERSON.conditions{cc_sf}(keep_sf,:);
+        end
+    end
+    for cc_sf = 1:numel(DAT.BETWEENPERSON.contrasts)
+        if ~isempty(DAT.BETWEENPERSON.contrasts{cc_sf})
+            DAT.BETWEENPERSON.contrasts{cc_sf} = DAT.BETWEENPERSON.contrasts{cc_sf}(keep_sf,:);
+        end
+    end
+    if isfield(DAT.BETWEENPERSON,'group') && ~isempty(DAT.BETWEENPERSON.group)
+        DAT.BETWEENPERSON.group = DAT.BETWEENPERSON.group(keep_sf);
+    end
+
+    for objname_sf = {'DATA_OBJ_CON','DATA_OBJ_CONsc','DATA_OBJ_CONscc','DATA_OBJ','DATA_OBJsc'}
+        if exist(objname_sf{1},'var')
+            tmp_sf = eval(objname_sf{1});
+            if iscell(tmp_sf)
+                for cc_sf = 1:numel(tmp_sf)
+                    if ~isempty(tmp_sf{cc_sf})
+                        tmp_sf{cc_sf} = get_wh_image(tmp_sf{cc_sf}, idx_sf);
+                    end
+                end
+                eval([objname_sf{1} ' = tmp_sf;']);
+            end
+        end
+    end
+    clear tmp_sf idx_sf keep_sf k col val tbl_sf cc_sf sf objname_sf
+
+    fprintf('    image objects, covariate tables and group vector all subset together\n\n');
+
 end
 
 
@@ -562,6 +739,29 @@ if doroi_analysis
 
         clear r
 
+        % GUARD: roi_names must actually match something.
+        %
+        % a2 ships EXAMPLE roi_names (the bit_rew reward set). A study that turns
+        % doroi_analysis on without replacing them selects nothing here, and
+        % roi_atlases_flat silently becomes empty - the roi analysis then either
+        % dies much later with an opaque error or quietly produces nothing. Fail
+        % here instead, naming what is actually available.
+        if ~any(roi_idx)
+            avail = cellfun(@(x) x.atlas_name, roi_atlases_flat, 'UniformOutput', false);
+            error(['\nNone of the roi_names matched the roi set in this model''s maskdir.\n\n' ...
+                   '  roi_names  : %s\n  available  : %s\n\n' ...
+                   'a2_set_default_options ships EXAMPLE roi_names - replace them with the\n' ...
+                   'rois of the set you generated for this model.\n'], ...
+                   strjoin(roi_names, ', '), strjoin(avail, ', '));
+        end
+        if sum(roi_idx) < numel(roi_names)
+            avail = cellfun(@(x) x.atlas_name, roi_atlases_flat, 'UniformOutput', false);
+            warning('CANlab:prep_3a:roiNamesPartial', ...
+                ['only %d of %d roi_names matched. Unmatched names are ignored, so the roi\n' ...
+                 'analysis will silently cover fewer rois than intended.\n  available: %s'], ...
+                 sum(roi_idx), numel(roi_names), strjoin(avail, ', '));
+        end
+
         roi_atlases_flat = roi_atlases_flat(roi_idx);
         
     else
@@ -674,6 +874,8 @@ if doroi_analysis
     roi_means = cell(1,kc);
     roi_means_table = cell(1,kc);
     roi_adjusted_means = cell(1,kc);
+    roi_glm_stats = cell(1,kc);       % per-roi GLM, filled when doroi_glm is true
+    roi_manova_stats = cell(1,kc);    % omnibus MANOVA across the roi set, same condition
     
 end
 
@@ -742,15 +944,72 @@ for c = 1:kc
 
                 end
                 
-                if exist('nuisance_covs','var')
+                % An EMPTY nuisance_covs is legitimate: a single-site tier, or any
+                % model with no nuisance regressor at all, has nothing to name here.
+                % The old guard fired on empty as well as on unmatched, so a model
+                % with nuisance_covs = {} could not run. The message also said
+                % covs2use while testing nuisance_covs, which sent debugging the
+                % wrong way.
+                if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
                     idx_nuisance = ismember(groupnames,nuisance_covs);
-                    
+
                         if sum(idx_nuisance) == 0
-                            error('\nOne or more covariates defined in covs2use not present in DAT.BETWEENPERSON.%s{%d}, please correct before proceeding\n',mygroupnamefield,c);
+                            error(['\nOne or more covariates named in NUISANCE_COVS are not present in ' ...
+                                   'DAT.BETWEENPERSON.%s{%d}.\n  nuisance_covs: %s\n  available    : %s\n'], ...
+                                   mygroupnamefield, c, strjoin(nuisance_covs, ', '), strjoin(groupnames, ', '));
                         end
-                        
+
                 end
-                    
+
+            % DUMMY-CODE UNORDERED FACTORS
+            %
+            % A k-level factor needs k-1 columns. Squeezing one into a single
+            % numeric column treats its levels as ordered and spends one degree
+            % of freedom where k-1 are needed, so it removes only part of the
+            % between-level variance. proj_discoverie's model_3a did exactly
+            % this: three centres (UGOT, KUL, UM) in one -1/0/1 column, which
+            % both imposes UGOT < KUL < UM and under-adjusts for site.
+            %
+            % Name such columns in categorical_covs and they are expanded here,
+            % before X is built, with the nuisance index expanded to match so a
+            % dummy-coded nuisance stays nuisance in regression_stats.
+            if exist('categorical_covs','var') && ~isempty(categorical_covs)
+
+                cat_here = categorical_covs(ismember(categorical_covs, groupnames));
+                if isempty(cat_here)
+                    error(['\ncategorical_covs names none of the columns of ' ...
+                           'DAT.BETWEENPERSON.%s{%d}.\nAvailable: %s\n'], ...
+                           mygroupnamefield, c, strjoin(groupnames, ', '));
+                end
+
+                new_tbl = table();
+                new_names = {};
+                new_nuis = false(1,0);
+                for gi = 1:numel(groupnames)
+                    gn = groupnames{gi};
+                    is_nuis_gi = exist('idx_nuisance','var') && idx_nuisance(gi);
+                    if ismember(gn, cat_here)
+                        [Xd, lev] = LaBGAScore_dummy_code(table_obj.(gn));
+                        for di = 1:size(Xd,2)
+                            dn = matlab.lang.makeValidName(sprintf('%s_%s', gn, lev{di+1}));
+                            new_tbl.(dn) = Xd(:,di);
+                            new_names{end+1} = dn; %#ok<AGROW>
+                            new_nuis(end+1) = is_nuis_gi; %#ok<AGROW>
+                        end
+                        fprintf('\ndummy-coded ''%s'': %d levels (%s) -> %d column(s), reference ''%s''\n', ...
+                            gn, numel(lev), strjoin(lev', ', '), size(Xd,2), lev{1});
+                    else
+                        new_tbl.(gn) = table_obj.(gn);
+                        new_names{end+1} = gn; %#ok<AGROW>
+                        new_nuis(end+1) = is_nuis_gi; %#ok<AGROW>
+                    end
+                end
+                table_obj  = new_tbl;
+                groupnames = new_names;
+                if exist('idx_nuisance','var'), idx_nuisance = new_nuis; end
+
+            end
+
             X = table2array(table_obj);
             idx_nan = ~isnan(X);
             idx_nan = ~(sum(idx_nan,2) < size(idx_nan,2)); % at least one column of X contains NaN
@@ -1120,6 +1379,310 @@ for c = 1:kc
     
         end
                
+
+        %%
+        % *GLM ON ROI MEANS*
+        %
+        % Formal inference on the roi averages. Until this existed the roi
+        % analysis produced a picture and no statistics: barplot_columns above
+        % adjusts the plotted means for covariates but reports no per-roi test,
+        % so an roi effect could not be called significant without refitting
+        % the model by hand.
+        %
+        % The split between effects of interest and nuisance is NOT a new
+        % option: it reuses nuisance_covs, the same variable the voxelwise GLM
+        % uses to set regression_stats.nuisance_columns and to build the
+        % Freedman-Lane permutations in the TFCE branch. Anything in the design
+        % that is not named there is an effect of interest. Note this is
+        % deliberately NOT covs2use, which SUBSETS the design matrix (dropping
+        % every covariate not listed) rather than labelling its columns.
+        %
+        % Two levels of inference are reported:
+        %
+        %   1. MANOVA across the whole roi set, adjusted for nuisance. One
+        %      omnibus test of whether the roi profile differs, which does not
+        %      spend multiple comparisons and is the univariate analogue of a
+        %      multivariate classifier trained on the same rois.
+        %   2. A GLM per roi, FDR-corrected across the set.
+        %
+        % Reported in that order deliberately: if the omnibus test is null,
+        % individual rois surviving FDR should be read with that in mind.
+        if exist('doroi_glm','var') && doroi_glm
+
+            if isequal(design_matrix_type,'onesample')
+
+                fprintf('\nroi GLM skipped: design_matrix_type is ''onesample'', so there are no covariates to model.\n');
+
+            else
+
+                switch design_matrix_type
+                    case 'custom'
+                        cov_tbl_glm = table_obj;
+                    case 'group'
+                        cov_tbl_glm = group_table;
+                end
+
+                covnames_glm = cov_tbl_glm.Properties.VariableNames;
+                roinames_glm = roi_means_table{c}.Properties.VariableNames;
+                roinames_glm = roinames_glm(~ismember(roinames_glm, covnames_glm));
+
+                % nuisance from the same option the voxelwise GLM uses
+                if exist('nuisance_covs','var') && ~isempty(nuisance_covs)
+                    nuis_glm = covnames_glm(ismember(covnames_glm, nuisance_covs));
+                else
+                    nuis_glm = {};
+                end
+                eoi_glm = covnames_glm(~ismember(covnames_glm, nuis_glm));
+
+                if isempty(eoi_glm)
+                    error(['\nroi GLM: every covariate in the design is named in nuisance_covs, ' ...
+                           'so there is no effect of interest left to test.\n']);
+                end
+
+                Xglm = table2array(cov_tbl_glm(:, [eoi_glm nuis_glm]));
+                if ~isnumeric(Xglm)
+                    error('\nroi GLM predictors must be numeric; %s are not.\n', ...
+                        strjoin([eoi_glm nuis_glm], ', '));
+                end
+                Yglm = table2array(roi_means_table{c}(:, roinames_glm));
+
+                nroi_glm = numel(roinames_glm);
+                ncov_glm = numel(eoi_glm);
+                nnui_glm = numel(nuis_glm);
+
+                fprintf('\n\n');
+                if isempty(nuis_glm)
+                    printhdr(['GLM ON ROI MEANS: ' upper(strjoin(eoi_glm, ', '))]);
+                else
+                    printhdr(['GLM ON ROI MEANS: ' upper(strjoin(eoi_glm, ', ')) ...
+                              ' controlling for ' upper(strjoin(nuis_glm, ', '))]);
+                end
+                fprintf('\nmodel: roi_mean ~ %s\n', strjoin([eoi_glm nuis_glm], ' + '));
+                fprintf('n = %d, %d roi(s)\n', size(Xglm,1), nroi_glm);
+
+
+                %%
+                % *MANOVA ACROSS ROIS*
+                %
+                % Wilks' Lambda from the full model against a reduced model
+                % without the effect being tested, so nuisance covariates are
+                % adjusted for rather than ignored. manova1 cannot do this - it
+                % is one-way and takes no covariates - so the SSCP matrices are
+                % formed directly and converted to Rao's F.
+                roi_manova_stats{c} = table();
+
+                if nroi_glm < 2
+
+                    fprintf('\nMANOVA skipped: needs 2 or more rois, %d present.\n', nroi_glm);
+
+                else
+
+                    Xfull_man = [ones(size(Xglm,1),1) Xglm];
+                    dfe_man   = size(Xfull_man,1) - rank(Xfull_man);
+
+                    if dfe_man <= nroi_glm
+                        fprintf(['\nMANOVA skipped: %d roi(s) but only %d error df. ' ...
+                                 'The residual covariance is singular, so Wilks'' Lambda is undefined.\n'], ...
+                                 nroi_glm, dfe_man);
+                    else
+
+                        Rfull_man = Yglm - Xfull_man*(Xfull_man\Yglm);
+                        E_man     = Rfull_man' * Rfull_man;
+
+                        man_eff = {}; man_lam = []; man_F = []; man_df1 = []; man_df2 = []; man_p = [];
+
+                        for ee = 1:ncov_glm
+                            % reduced model: drop just this effect, keep the rest
+                            keep_man = true(1, size(Xglm,2));
+                            keep_man(ee) = false;
+                            Xred_man = [ones(size(Xglm,1),1) Xglm(:,keep_man)];
+                            Rred_man = Yglm - Xred_man*(Xred_man\Yglm);
+                            E0_man   = Rred_man' * Rred_man;
+
+                            lambda_man = det(E_man) / det(E0_man);   % = det(E)/det(E+H)
+
+                            pp_man = nroi_glm;                        % dependent variables
+                            vh_man = 1;                               % hypothesis df (one column)
+                            ve_man = dfe_man;
+
+                            denom_man = pp_man^2 + vh_man^2 - 5;
+                            if denom_man > 0
+                                t_man = sqrt((pp_man^2*vh_man^2 - 4) / denom_man);
+                            else
+                                t_man = 1;
+                            end
+                            df1_man = pp_man * vh_man;
+                            df2_man = t_man*(ve_man - (pp_man - vh_man + 1)/2) - (pp_man*vh_man - 2)/2;
+                            lam_t   = lambda_man^(1/t_man);
+                            F_man   = ((1 - lam_t)/lam_t) * (df2_man/df1_man);
+                            p_man   = 1 - fcdf(F_man, df1_man, df2_man);
+
+                            man_eff{end+1,1} = eoi_glm{ee};
+                            man_lam(end+1,1) = lambda_man;
+                            man_F(end+1,1)   = F_man;
+                            man_df1(end+1,1) = df1_man;
+                            man_df2(end+1,1) = df2_man;
+                            man_p(end+1,1)   = p_man;
+                        end
+
+                        roi_manova_stats{c} = table(man_eff, man_lam, man_F, man_df1, man_df2, man_p, ...
+                            'VariableNames', {'effect','wilks_lambda','F','df1','df2','p'});
+
+                        fprintf('\n');
+                        printhdr(['MANOVA ACROSS ' num2str(nroi_glm) ' ROIS (Wilks'' Lambda, Rao''s F)']);
+                        fprintf('\n');
+                        if nnui_glm > 0
+                            fprintf('each effect tested against a reduced model, adjusted for %s\n\n', ...
+                                strjoin(nuis_glm, ', '));
+                        else
+                            fprintf('each effect tested against a reduced model (no nuisance covariates)\n\n');
+                        end
+                        disp(roi_manova_stats{c});
+
+                        for ee = 1:height(roi_manova_stats{c})
+                            if roi_manova_stats{c}.p(ee) < 0.05
+                                fprintf('%s: roi profile DIFFERS, F(%.0f,%.1f) = %.3f, p = %.4f\n', ...
+                                    roi_manova_stats{c}.effect{ee}, roi_manova_stats{c}.df1(ee), ...
+                                    roi_manova_stats{c}.df2(ee), roi_manova_stats{c}.F(ee), ...
+                                    roi_manova_stats{c}.p(ee));
+                            else
+                                fprintf('%s: no omnibus difference across rois, F(%.0f,%.1f) = %.3f, p = %.4f\n', ...
+                                    roi_manova_stats{c}.effect{ee}, roi_manova_stats{c}.df1(ee), ...
+                                    roi_manova_stats{c}.df2(ee), roi_manova_stats{c}.F(ee), ...
+                                    roi_manova_stats{c}.p(ee));
+                            end
+                        end
+
+                    end % enough df
+
+                end % enough rois
+
+
+                %%
+                % *GLM PER ROI*
+
+                B = nan(nroi_glm, ncov_glm); SE = B; TT = B; PP = B; DF = B; ES = B;
+
+                for rr = 1:nroi_glm
+                    y_glm = double(roi_means_table{c}.(roinames_glm{rr}));
+                    mdl_glm = fitlm(Xglm, y_glm, 'VarNames', ...
+                        [eoi_glm nuis_glm {roinames_glm{rr}}]);
+                    for ee = 1:ncov_glm
+                        k = ee + 1;   % +1 for the intercept
+                        B(rr,ee)  = mdl_glm.Coefficients.Estimate(k);
+                        SE(rr,ee) = mdl_glm.Coefficients.SE(k);
+                        TT(rr,ee) = mdl_glm.Coefficients.tStat(k);
+                        PP(rr,ee) = mdl_glm.Coefficients.pValue(k);
+                        DF(rr,ee) = mdl_glm.DFE;
+                        lv = unique(Xglm(~isnan(Xglm(:,ee)), ee));
+                        if numel(lv) == 2
+                            ES(rr,ee) = B(rr,ee) * diff(lv) / mdl_glm.RMSE;
+                        else
+                            ES(rr,ee) = sign(TT(rr,ee)) * ...
+                                sqrt(TT(rr,ee)^2 / (TT(rr,ee)^2 + mdl_glm.DFE));
+                        end
+                    end
+                end
+
+                eff_col = {}; roi_col = {}; est_col = []; se_col = []; t_col = [];
+                df_col = []; p_col = []; qbh_col = []; qst_col = []; es_col = []; esname_col = {};
+                strel_col = []; pi0_col = [];   % Storey reliability verdict and pi0, per effect
+
+                for ee = 1:ncov_glm
+                    p_ee   = PP(:,ee);
+                    % FDR through the lab's canonical implementation, so prep_3a and the
+                    % decoding scripts cannot drift apart. LaBGAScore_Storey_FDR defaults to
+                    % SAS PROC MULTTEST's PFDR (spline, falling back to the Storey &
+                    % Tibshirani bootstrap on SAS's own trigger), estimates pi0, judges
+                    % whether pi0 is identifiable at all, and returns Benjamini-Hochberg when
+                    % it is not. It prints its own diagnostics into the report.
+                    %
+                    % This replaced an inline copy that took mafdr's spline pi0 and guarded
+                    % only aprioriprob > 0.99. That catches the conservative failure but not
+                    % pi0 -> 0: on these very 8 roi p-values the spline returned pi0 = 0.012,
+                    % every q fell below its own p, and the q >= p floor turned the column
+                    % back into the RAW p-values under the heading q_Storey.
+                    %
+                    % Note roi means from the same subjects are strongly correlated, which
+                    % violates Storey's independence assumption; BH holds under positive
+                    % regression dependency. When the verdict is unreliable, q_Storey below
+                    % simply equals q_BH.
+                    fprintf('\n  %s:', eoi_glm{ee});
+                    [qst_ee, pi0_ee, storey_info_ee] = LaBGAScore_Storey_FDR(p_ee);
+
+                    qbh_ee             = storey_info_ee.q_BH(:);
+                    storey_reliable_ee = storey_info_ee.reliable;
+                    qst_ee             = qst_ee(:);
+
+                    lv = unique(Xglm(~isnan(Xglm(:,ee)), ee));
+                    if numel(lv) == 2
+                        est_ee = B(:,ee) * diff(lv);      % difference between the two levels
+                        esn = 'cohens_d';
+                    else
+                        est_ee = B(:,ee);                 % slope
+                        esn = 'partial_r';
+                    end
+                    eff_col    = [eff_col;    repmat(eoi_glm(ee), nroi_glm, 1)];
+                    roi_col    = [roi_col;    roinames_glm'];
+                    est_col    = [est_col;    est_ee];
+                    se_col     = [se_col;     SE(:,ee)];
+                    t_col      = [t_col;      TT(:,ee)];
+                    df_col     = [df_col;     DF(:,ee)];
+                    p_col      = [p_col;      p_ee];
+                    qbh_col    = [qbh_col;    qbh_ee];
+                    qst_col    = [qst_col;    qst_ee];
+                    es_col     = [es_col;     ES(:,ee)];
+                    esname_col = [esname_col; repmat({esn}, nroi_glm, 1)];
+                    strel_col  = [strel_col;  repmat(storey_reliable_ee, nroi_glm, 1)];
+                    pi0_col    = [pi0_col;    repmat(pi0_ee, nroi_glm, 1)];
+                end
+
+                roi_glm_stats{c} = table(eff_col, roi_col, est_col, se_col, t_col, ...
+                    df_col, p_col, qbh_col, qst_col, logical(strel_col), pi0_col, ...
+                    es_col, esname_col, 'VariableNames', ...
+                    {'effect','roi','estimate','se','t','df','p','q_BH','q_Storey', ...
+                     'storey_reliable','pi0','effect_size','effect_size_type'});
+
+                fprintf('\n');
+                printhdr(['GLM PER ROI, FDR ACROSS ' num2str(nroi_glm) ' ROIS']);
+                fprintf('\n');
+                disp(roi_glm_stats{c});
+
+                for ee = 1:ncov_glm
+                    lv  = unique(Xglm(~isnan(Xglm(:,ee)), ee));
+                    sel = strcmp(roi_glm_stats{c}.effect, eoi_glm{ee});
+                    qb  = roi_glm_stats{c}.q_BH(sel);
+                    qs  = roi_glm_stats{c}.q_Storey(sel);
+                    if numel(lv) == 2
+                        fprintf(['\n%s: ''estimate'' is the difference between %s = %g and %s = %g ' ...
+                                 '(positive = higher at %g).\n'], ...
+                            eoi_glm{ee}, eoi_glm{ee}, lv(2), eoi_glm{ee}, lv(1), lv(2));
+                    end
+                    if any(qb < 0.05)
+                        fprintf('%s: %d/%d roi(s) at q_BH < .05: %s\n', eoi_glm{ee}, ...
+                            sum(qb < 0.05), nroi_glm, strjoin(roinames_glm(qb < 0.05), ', '));
+                    else
+                        fprintf('%s: no roi at q_BH < .05 (smallest q_BH = %.4f)\n', ...
+                            eoi_glm{ee}, min(qb));
+                    end
+                    rel_ee = roi_glm_stats{c}.storey_reliable(find(sel,1));
+                    if any(qs < 0.05)
+                        fprintf('%s: %d/%d roi(s) at q_Storey < .05: %s\n', eoi_glm{ee}, ...
+                            sum(qs < 0.05), nroi_glm, strjoin(roinames_glm(qs < 0.05), ', '));
+                    else
+                        fprintf('%s: no roi at q_Storey < .05 (smallest q_Storey = %.4f)\n', ...
+                            eoi_glm{ee}, min(qs));
+                    end
+                    if ~rel_ee
+                        fprintf(['%s: the q_Storey column above is reported for completeness only - ' ...
+                                 'its pi0 is not trustworthy for this set, so read q_BH.\n'], eoi_glm{ee});
+                    end
+                end
+
+            end % onesample check
+
+        end % if roi glm requested
+
     end % if loop roi analysis
     
     
@@ -1375,6 +1938,51 @@ for c = 1:kc
             end
             fprintf('\nTFCE permutation seed for this run: %d\n', tfce_seed);
             
+            % MASK THE TFCE INPUT
+            % -------------------------------------------------------------
+            % TFCE is the one statistic prep_3a produces that is already
+            % CORRECTED: group_tfce_from_subject_maps builds its own
+            % max-statistic permutation null and returns FWE p-values. Every
+            % other map here is uncorrected, with masking and correction left
+            % to c2a - so TFCE is the exception, and its correction has to see
+            % the mask, or it is computed over the whole image extent while the
+            % FDR beside it is computed within grey matter.
+            %
+            % That is not a small difference. The null is a MAXIMUM over
+            % voxels, so including non-grey-matter and edge voxels inflates it,
+            % and every in-mask voxel is then judged against competitors that
+            % are not part of the analysis.
+            %
+            % Only a COPY is masked. cat_obj itself stays whole-brain, so the
+            % regression, its t-map and its p-values remain uncorrected and
+            % unmasked exactly as before, and c2a keeps full freedom to mask
+            % them at reporting time.
+            %
+            % Set mask_tfce_input = false to reproduce the previous behaviour.
+            if ~exist('mask_tfce_input','var') || isempty(mask_tfce_input)
+                mask_tfce_input = true;
+            end
+            cat_obj_tfce = cat_obj;
+            if mask_tfce_input && exist('glmmask','var') && ~isempty(glmmask)
+                glmmask_tfce = glmmask;
+                vs_m = abs(diag(glmmask_tfce.volInfo.mat(1:3,1:3)))';
+                vs_d = abs(diag(cat_obj.volInfo.mat(1:3,1:3)))';
+                if ~isequal(vs_m, vs_d)
+                    glmmask_tfce = resample_space(glmmask_tfce, cat_obj);
+                    glmmask_tfce.dat(glmmask_tfce.dat < 1) = 0;
+                end
+                n_before_tfce = size(cat_obj_tfce.dat,1);
+                cat_obj_tfce = apply_mask(cat_obj_tfce, glmmask_tfce);
+                fprintf(['\nTFCE input masked with %s: %d of %d voxels (%.1f%%).\n' ...
+                         'The permutation null is therefore a maximum over the MASKED volume,\n' ...
+                         'matching the FDR that c2a computes after masking. cat_obj itself is\n' ...
+                         'untouched, so the regression stays whole-brain and uncorrected.\n\n'], ...
+                         maskname_short, size(cat_obj_tfce.dat,1), n_before_tfce, ...
+                         100*size(cat_obj_tfce.dat,1)/n_before_tfce);
+            elseif mask_tfce_input
+                fprintf('\nmask_tfce_input is true but no glmmask exists; TFCE runs on the full extent\n\n');
+            end
+
             fprintf('\n\n');
             printhdr('Calculating voxel-wise TFCE maps');
             fprintf('\n\n');
@@ -1387,11 +1995,11 @@ for c = 1:kc
                         
                         case 'two'
                             
-                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'onesample',[],[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj_tfce,'onesample',[],[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
                         
                         case 'one'
                             
-                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'onesample',[],[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj_tfce,'onesample',[],[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
                             
                     end
                     
@@ -1401,11 +2009,11 @@ for c = 1:kc
                         
                         case 'two'
                             
-                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj_tfce,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
                         
                         case 'one'
                             
-                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                            [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj_tfce,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
                             
                     end
                     
@@ -1420,11 +2028,11 @@ for c = 1:kc
 
                                 case 'two'
 
-                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,regression_stats.X(:,regression_stats.wh_nuisance),perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj_tfce,'twosample',DAT.BETWEENPERSON.group,regression_stats.X(:,regression_stats.wh_nuisance),perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
 
                                 case 'one'
 
-                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,regression_stats.X(:,regression_stats.wh_nuisance),perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj_tfce,'twosample',DAT.BETWEENPERSON.group,regression_stats.X(:,regression_stats.wh_nuisance),perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
                                     
                            end
                            
@@ -1434,11 +2042,11 @@ for c = 1:kc
                         
                                 case 'two'
 
-                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj_tfce,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
 
                                 case 'one'
 
-                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj_tfce,'twosample',DAT.BETWEENPERSON.group,[],perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
                             
                             end
 
@@ -2181,7 +2789,7 @@ if doroi_analysis
     fprintf('\n\n');
     
     savefilenamedata_roi = fullfile(resultsdir, ['roi_stats_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
-    save(savefilenamedata_roi, 'roi_means_table', 'roi_adjusted_means', '-v7.3');
+    save(savefilenamedata_roi, 'roi_means_table', 'roi_adjusted_means', 'roi_glm_stats', 'roi_manova_stats', '-v7.3');
     fprintf('\nSaved roi_stats for %s\n', mygroupnamefield);
     fprintf('\nFilename: %s\n', savefilenamedata_roi);
     
@@ -2194,10 +2802,72 @@ if doneurotransmitter_maps
     printhdr('SAVING NEUROTRANSMITTER MAP RESULTS');
     fprintf('\n\n');
     
+    % FDR ACROSS NEUROTRANSMITTER MAPS
+    % ---------------------------------------------------------------------
+    % hansen_neurotransmitter_maps tests each map separately and returns one
+    % ANOVA table per map. There are ~30 of them, so reading those p-values
+    % uncorrected treats thirty chances as one. Correct within contrast,
+    % across maps, with the same LaBGAScore_Storey_FDR used by the roi GLM
+    % above and by the decoding scripts.
+    %
+    % Unlike the roi set (8 tests), ~30 maps is enough that Storey can
+    % sometimes estimate pi0; when it cannot it falls back to pi0 = 1 and
+    % q_Storey equals q_BH, and the verdict below says so.
+    %
+    % The p-value sits at {2,6} of each ANOVA cell (row 'Groups', column
+    % 'Prob>F'); a map whose table is missing or malformed yields NaN and is
+    % excluded rather than silently scored.
+    neurotransmitter_group_fdr = cell(1, numel(neurotransmitter_group_tables));
+    if exist('neurotransmitter_group_tables','var') && ~all(cellfun(@isempty, neurotransmitter_group_tables))
+        fprintf('\n\n');
+        printhdr('FDR CORRECTION ACROSS NEUROTRANSMITTER MAPS');
+        fprintf('\n\n');
+        for cnt = 1:numel(neurotransmitter_group_tables)
+            Tnt = neurotransmitter_group_tables{cnt};
+            if isempty(Tnt), continue, end
+            pnt = nan(1, numel(Tnt));
+            for mm_i = 1:numel(Tnt)
+                x = Tnt{mm_i};
+                if iscell(x) && size(x,1) >= 2 && size(x,2) >= 6 && isnumeric(x{2,6}) && isscalar(x{2,6})
+                    pnt(mm_i) = x{2,6};
+                end
+            end
+            ok_nt = ~isnan(pnt);
+            if ~any(ok_nt)
+                fprintf('contrast %d: no usable p-values from the neurotransmitter tables\n', cnt);
+                continue
+            end
+            [q_st_nt, pi0_nt, info_nt] = LaBGAScore_Storey_FDR(pnt(ok_nt));
+            q_bh_nt = info_nt.q_BH(:)';
+            nmz = {};
+            if ~isempty(neurotransmitter_stats) && numel(neurotransmitter_stats) >= cnt && ~isempty(neurotransmitter_stats{cnt})
+                if isfield(neurotransmitter_stats{cnt},'networknames') && ~isempty(neurotransmitter_stats{cnt}.networknames)
+                    nmz = neurotransmitter_stats{cnt}.networknames;
+                end
+            end
+            idx_nt = find(ok_nt);
+            neurotransmitter_group_fdr{cnt} = struct('map_index',idx_nt,'p',pnt(ok_nt), ...
+                'q_BH',q_bh_nt,'q_Storey',q_st_nt,'pi0',pi0_nt,'storey_reliable',info_nt.reliable);
+            [~, ord_nt] = sort(pnt(ok_nt));
+            fprintf('\n%s: %d map(s) tested\n', mygroupnamefield, numel(idx_nt));
+            fprintf('  %-24s %10s %9s %10s\n','map','p','q_BH','q_Storey');
+            for jj = 1:min(10, numel(ord_nt))
+                k = ord_nt(jj); lbl = sprintf('map %d', idx_nt(k));
+                if numel(nmz) >= idx_nt(k), lbl = strtrim(char(string(nmz{idx_nt(k)}))); end
+                fprintf('  %-24s %10.4f %9.4f %10.4f\n', lbl, pnt(idx_nt(k)), q_bh_nt(k), q_st_nt(k));
+            end
+            fprintf('\n  %d/%d at q_BH < .05, %d at q_Storey < .05 (pi0 = %.3f)\n', ...
+                sum(q_bh_nt < .05), numel(q_bh_nt), sum(q_st_nt < .05), pi0_nt);
+            if ~info_nt.reliable
+                fprintf('  pi0 not identifiable for this set, so q_Storey equals q_BH - read q_BH\n');
+            end
+        end
+    end
+
     savefilenamedata_nt = fullfile(resultsdir, ['neurotransmitter_stats_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
     
     if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
-        save(savefilenamedata_nt, 'neurotransmitter_stats', 'neurotransmitter_group_stats', 'neurotransmitter_group_tables', 'neurotransmitter_multcomp_group','-v7.3');
+        save(savefilenamedata_nt, 'neurotransmitter_stats', 'neurotransmitter_group_stats', 'neurotransmitter_group_tables', 'neurotransmitter_multcomp_group', 'neurotransmitter_group_fdr', '-v7.3');
     else
         save(savefilenamedata_nt, 'neurotransmitter_stats', '-v7.3');
     end

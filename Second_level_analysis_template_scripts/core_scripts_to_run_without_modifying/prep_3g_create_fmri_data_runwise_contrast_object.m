@@ -86,8 +86,34 @@
 % NOTE: do NOT use to add a suffix specifying the behavioral outcome nor included conditions, this will be added automatically
 
 % GET MODEL-SPECIFIC PATHS AND OPTIONS
+% Remember where the study's own setup put the results, so the call below can be
+% checked against it (see the guard immediately after).
+resultsdir_before_setup = '';
+if exist('resultsdir','var'), resultsdir_before_setup = resultsdir; end
+
 
 a_set_up_paths_always_run_first;
+
+% GUARD: did the path setup just move the output directory?
+%
+% This line is meant to be replaced, in a study's copy, by that study's own
+% s0 (e.g. mystudy_secondlevel_m2a_s0_a_set_up_paths_always_run_first). Left
+% as the generic call, it RE-DERIVES resultsdir - typically from the
+% FIRST-LEVEL model name - and silently overwrites whatever the study's setup
+% had already set. Every result then lands in a different model's directory
+% while the published report still goes to the right one, so the split is easy
+% to miss. This has happened three times: proj_discoverie's SVM wrote into
+% secondlevel/model_2_basic, proj_moodbugs wrote into secondlevel/model_3_basic,
+% and all seven core scripts of a new discoverie model were about to do the same.
+if ~isempty(resultsdir_before_setup) && ~strcmp(resultsdir_before_setup, resultsdir)
+    error(['\nPATH SETUP MOVED THE RESULTS DIRECTORY.\n\n' ...
+           '  before: %s\n  after : %s\n\n' ...
+           'The generic a_set_up_paths_always_run_first re-derived resultsdir and\n' ...
+           'discarded the one your study setup had set. In your copy of this script,\n' ...
+           'replace that call with your study''s own s0 path script.\n'], ...
+           resultsdir_before_setup, resultsdir);
+end
+
 % NOTE: CHANGE THIS TO THE MODEL-SPECIFIC VERSION OF THIS SCRIPT!
 % NOTE: THIS WILL ALSO AUTOMATICALLY CALL A2_SET_DEFAULT_OPTIONS
 
@@ -130,7 +156,7 @@ idx_subjs = contains(behavioral_data_table.(subj_identifier_dat_rw),subjs);
 behavioral_data_table = behavioral_data_table(idx_subjs,:);
 behavioral_data_table = behavioral_data_table((behavioral_data_table.Time > 1),:); % exclude baseline timepoint
 
-subjs_behav = unique(behavioral_data_table.PPID);
+subjs_behav = unique(behavioral_data_table.(subj_identifier_dat_rw));
 subjs_2use = intersect(subjs,subjs_behav);
 firstsubjdirs_2use = firstsubjdirs(contains(firstsubjdirs,subjs_2use));
 
@@ -160,7 +186,7 @@ max_length_image_name = (size(contrast_name,2) + max_length_subj_name + 6);
 
 for sub = 1:size(subjs_2use,1)
     
-    behavioral_data_tables_subjs{sub} = behavioral_data_table(contains(behavioral_data_table.PPID,subjs_2use{sub}),:); 
+    behavioral_data_tables_subjs{sub} = behavioral_data_table(contains(behavioral_data_table.(subj_identifier_dat_rw),subjs_2use{sub}),:); 
     idx_subjs_behav{sub} = ~isnan(behavioral_data_tables_subjs{sub}.(behav_outcome_dat_rw));
     idx_subjs_mri_qc{sub} = (behavioral_data_tables_subjs{sub}.(run_included_dat_rw) == 1);
     idx_subjs_combined{sub} = idx_subjs_behav{sub} & idx_subjs_mri_qc{sub};
@@ -213,27 +239,52 @@ for sub = 1:size(subjs_2use,1)
    load(fullfile(firstsubjdirs_2use{sub},'SPM.mat'));
    betas_subjs{sub} = SPM.Vbeta(contains({SPM.Vbeta.descrip}',cons2include_dat_rw'));
 
-   if ~runs_excluded_mri_qc
-       
-        idx_subjs_betas{sub} = repelem(idx_subjs_combined{sub},2);   
-        betas_subjs{sub} = betas_subjs{sub}(idx_subjs_betas{sub});
-        
-   else
-       
-       if runs_excluded_behav % this (rather unlikely) scenario where a subject has both runs with NaN behavioral outcome values and runs excluded during QC has not been tested
-       
-            idx_subjs_betas{sub} = repelem(idx_subjs_combined{sub}(run_numbers_subjs{sub},:),2);  
-            betas_subjs{sub} = betas_subjs{sub}(idx_subjs_betas{sub}); 
-       end
-        
+   % Select the betas whose runs survive the combined behavioural + QC filter.
+   %
+   % betas_subjs is ordered by SPM session, and idx_subjs_combined is a logical
+   % over this subject's behavioural rows BEFORE they were filtered (the table
+   % is filtered a few lines below where idx_subjs_combined is built), so the
+   % two line up one row per session and repelem(...,2) expands per-run to
+   % per-beta. That is true whether or not runs were dropped, which is why
+   % there is no longer a branch here.
+   %
+   % The previous version branched on runs_excluded_mri_qc and, in the else
+   % arm, indexed idx_subjs_combined BY RUN NUMBER
+   % (idx_subjs_combined{sub}(run_numbers_subjs{sub},:)). That mixes two
+   % different index spaces: run_numbers_subjs is derived from the FILTERED
+   % table while idx_subjs_combined spans the unfiltered rows, so any subject
+   % whose runs do not start at 1 and run consecutively threw
+   % "Index in position 1 exceeds array bounds". It also left idx_subjs_betas
+   % unassigned entirely when runs were QC-excluded but behavioural data were
+   % complete, silently leaving the betas unfiltered. Both are fixed here.
+   %
+   % The precondition is that the behavioural table has exactly one row per
+   % SPM session for this subject. Assert it rather than trust it: getting
+   % this wrong pairs ratings with the wrong runs and raises nothing.
+   n_sess_betas = numel(betas_subjs{sub}) / numel(cons2include_dat_rw);
+   if numel(idx_subjs_combined{sub}) ~= n_sess_betas
+       error(['subject %s: %d behavioural rows but %d SPM sessions worth of betas.\n' ...
+              'The phenotype file must carry exactly one row per imaged run, in session order.\n'], ...
+              subjs_2use{sub}, numel(idx_subjs_combined{sub}), n_sess_betas);
    end
+
+   idx_subjs_betas{sub} = repelem(idx_subjs_combined{sub},2);
+   betas_subjs{sub} = betas_subjs{sub}(idx_subjs_betas{sub});
  
    betas_objs_subjs{sub} = cell(size(betas_subjs{sub},2),1);
    con_objs_subjs{sub} = cell(size(betas_subjs{sub},2)/2,1);
    image_names_subjs{sub} = cell(size(betas_subjs{sub},2)/2,1);
 
        for beta = 1:size(betas_subjs{sub},2)
-           betas_objs_subjs{sub}{beta} = fmri_data_st(fullfile(firstsubjdirs_2use{sub},betas_subjs{sub}(beta).fname),which('brain_mask_fmriprep20_template_1000.nii'));
+           % SPM.Vbeta.fname always names a .nii, but first-level betas are
+           % routinely gzipped in place to save disk (57 of 134 subjects in
+           % proj_cfs). fmri_data_st reads .nii.gz directly, so fall back to
+           % it rather than erroring or forcing the dataset to be inflated.
+           betafile = fullfile(firstsubjdirs_2use{sub},betas_subjs{sub}(beta).fname);
+           if ~exist(betafile,'file') && exist([betafile '.gz'],'file')
+               betafile = [betafile '.gz'];
+           end
+           betas_objs_subjs{sub}{beta} = fmri_data_st(betafile,which('brain_mask_fmriprep20_template_1000.nii'));
        end
 
        for con = 1:size(betas_subjs{sub},2)/2
@@ -272,7 +323,13 @@ fmri_dat.files_exist = logical([]);
 fmri_dat.metadata_table = vertcat(behavioral_data_tables_subjs{:});
 fmri_dat.Y = vertcat(behav_ratings_subjs{:});
 fmri_dat.Y_descrip = behav_outcome_dat_rw;
-fmri_dat.image_names = vertcat(images_names_subjs{:});
+% char() pads each char matrix to a common width; vertcat() demands exactly
+% equal widths and so fails the moment subject IDs differ in length (proj_cfs
+% mixes 8-character sub-0070 with 12-character sub-KULHC070). Empty entries
+% are dropped first: subjects excluded for having no behavioural data leave an
+% empty cell, and char() would otherwise turn each into a blank row.
+nonempty_names = images_names_subjs(~cellfun(@isempty, images_names_subjs));
+fmri_dat.image_names = char(nonempty_names{:});
 
     
 %% SANITY CHECKS ON FMRI_DATA_ST OBJECT

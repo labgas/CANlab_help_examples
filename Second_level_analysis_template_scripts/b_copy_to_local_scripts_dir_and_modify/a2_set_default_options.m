@@ -53,6 +53,15 @@ omit_histograms = false;                                            % default fa
 dozipimages = false;                                                % default false     To avoid load on data upload/download when re-running often, true is useful to save space when running final analyses; lukasvo76: changed from original CANlab default
 maskname_brain = which('brain_mask_fmriprep20_template_1000.nii');  % default use of brain mask based on fmriprep template 
 subjs2exclude_data = {};                                            % default empty     Subjects to be excluded from data objects, for example because of missing session not allowing all contrasts to be calculated, example {'sub-010' 'sub-018'}
+docombat = false;                                                   % default false     Run ComBat harmonization on the RAW condition images, before scaling and before contrasts are formed
+combat_batch = '';                                                  % default empty     Batch/site labels: name of a column in DAT.BETWEENPERSON.conditions{i} (e.g. 'center'), or an n x 1 vector; required if docombat is true
+combat_mod = {};                                                    % default empty     Column names in DAT.BETWEENPERSON.conditions{i} whose effects are PRESERVED, e.g. {'group'}; do NOT include a variable you will subsequently decode - that leaks labels into the features
+combat_parametric = true;                                           % default true      Parametric (true) or non-parametric (false) empirical Bayes adjustment
+combat_ref_batch = '';                                              % default empty     Batch label to harmonize towards; empty harmonizes to the grand mean rather than to any one site's distribution
+docombat_contrasts = false;                                         % default false     Run ComBat on the CONTRAST images in prep_3, after contrasts are formed.
+                                                                    %                   Independent of docombat: a model may harmonize conditions, contrasts, both or neither.
+                                                                    %                   Harmonizing conditions does NOT harmonize contrasts - contrast variance depends on
+                                                                    %                   the between-condition covariance, which condition-level ComBat does not touch.
 
 
 %% PREP_3A_RUN_SECOND_LEVEL_REGRESSION_AND_SAVE
@@ -131,6 +140,26 @@ doroi_analysis = false;                                                 % extrac
                                                                             % into this model's maskdir.
     roi_modelname = 'bit_rew_m1';
     roi_set_name = 'reward_regions';
+    doroi_glm = false;                                                      % true runs inference on the roi averages, in two levels:
+                                                                            %   1. MANOVA across the whole roi set (Wilks' Lambda -> Rao's F),
+                                                                            %      one omnibus test per effect of interest, adjusted for
+                                                                            %      nuisance. manova1 cannot do this: one-way, no covariates.
+                                                                            %   2. a GLM per roi, reported with both q_BH and q_Storey.
+                                                                            % Which covariates are nuisance comes from nuisance_covs, the SAME
+                                                                            % option the voxelwise GLM uses - not from covs2use, which subsets
+                                                                            % the design matrix instead of labelling its columns.
+                                                                            % Both tables are printed into the report and saved in roi_stats_*.
+                                                                            % Read them together: an roi surviving FDR under a null omnibus
+                                                                            % test should be treated cautiously.
+
+categorical_covs = {};                                                      % variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} that are
+                                                                            % UNORDERED FACTORS and must be dummy-coded into k-1 columns before
+                                                                            % entering the design, e.g. {'center'} for a 3-site study. Leaving a
+                                                                            % k-level factor in one numeric column treats its levels as ordered
+                                                                            % and spends one df where k-1 are needed, so it under-adjusts: this
+                                                                            % is what proj_discoverie's model_3a did, with three centres in a
+                                                                            % single -1/0/1 column. A dummy-coded column named in nuisance_covs
+                                                                            % stays nuisance - the nuisance index is expanded with the columns.
                                                                             % need to correspond to varnames in LaBGAScore_atlas_binary_mask_from_atlas.m, do not comment out
 doneurotransmitter_maps = true;                                         % calculate similarity metric with neurotransmitter maps from Hansen et al Nat Neurosci 2022 for each contrast/condition
     % neurotransmitter map options
@@ -347,6 +376,12 @@ dosavepdmstats = true;                                                          
 myscaling_sigs = 'raw';                                         % default 'raw'                     'raw', or 'scaled', see myscaling_glm above
 similarity_metric_sigs = 'cosine_similarity';                   % default 'cosine_similarity'       other options 'cosine_similarity','correlation' - passed into apply_all_signatures
 keyword_sigs = {which('PleasureSignature.nii'),'ncs'};          % default 'all'                     cell array of signature images and/or keywords passed into load_image_set, help load_image_set for overview of many options
+% NOTE on 'all': it makes load_image_set pull EVERY signature set, and fails with
+% an error in check_image_names_get_full_path if any of them is missing from this
+% machine's Neuroimaging_Pattern_Masks clone - not all signature sets ship with it.
+% prep_4 then dies, and the downstream signature scripts die after it because
+% DAT.SIG_contrasts was never written. Name the set you actually want, e.g.
+% {'npsplus'}, unless you have verified that 'all' loads here.
 
 
 %% D_SIGNATURE_RESPONSES_GENERIC & D10_SIGNATURE_RIVERPLOTS

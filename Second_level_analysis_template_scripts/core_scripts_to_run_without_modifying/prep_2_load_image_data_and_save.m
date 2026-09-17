@@ -53,6 +53,16 @@
 %                           THIS WILL ALSO REMOVE THOSE SUBJECTS IN
 %                           DAT.BEHAVIOR AND DAT.BETWEENPERSON
 %
+% * docombat                default false, run ComBat harmonization on the RAW condition images before scaling and before contrasts are formed
+%
+% * combat_batch            batch/site labels, either the name of a column in DAT.BETWEENPERSON.conditions{i} (e.g. 'center') or an n x 1 vector; required if docombat is true
+%
+% * combat_mod              default {}, cell array of column names in DAT.BETWEENPERSON.conditions{i} whose effects are PRESERVED, e.g. {'group'}; see the warning about classifiers in the ComBat section below
+%
+% * combat_parametric       default true, parametric (true) or non-parametric (false) empirical Bayes adjustment
+%
+% * combat_ref_batch        default empty, label of the batch to harmonize towards; empty harmonizes to the grand mean rather than any one site's distribution
+%
 % -------------------------------------------------------------------------
 %
 % modified by: Lukas Van Oudenhove
@@ -68,8 +78,34 @@
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
 % -------------------------------------------------------------------------
+% Remember where the study's own setup put the results, so the call below can be
+% checked against it (see the guard immediately after).
+resultsdir_before_setup = '';
+if exist('resultsdir','var'), resultsdir_before_setup = resultsdir; end
+
 
 a_set_up_paths_always_run_first;
+
+
+% GUARD: did the path setup just move the output directory?
+%
+% This line is meant to be replaced, in a study's copy, by that study's own
+% s0 (e.g. mystudy_secondlevel_m2a_s0_a_set_up_paths_always_run_first). Left
+% as the generic call, it RE-DERIVES resultsdir - typically from the
+% FIRST-LEVEL model name - and silently overwrites whatever the study's setup
+% had already set. Every result then lands in a different model's directory
+% while the published report still goes to the right one, so the split is easy
+% to miss. This has happened three times: proj_discoverie's SVM wrote into
+% secondlevel/model_2_basic, proj_moodbugs wrote into secondlevel/model_3_basic,
+% and all seven core scripts of a new discoverie model were about to do the same.
+if ~isempty(resultsdir_before_setup) && ~strcmp(resultsdir_before_setup, resultsdir)
+    error(['\nPATH SETUP MOVED THE RESULTS DIRECTORY.\n\n' ...
+           '  before: %s\n  after : %s\n\n' ...
+           'The generic a_set_up_paths_always_run_first re-derived resultsdir and\n' ...
+           'discarded the one your study setup had set. In your copy of this script,\n' ...
+           'replace that call with your study''s own s0 path script.\n'], ...
+           resultsdir_before_setup, resultsdir);
+end
 
 if ~exist('DAT','var')
     
@@ -345,6 +381,207 @@ for i = 1:size(DAT.conditions,2)
     DAT.globalstd{i} = std(DATA_OBJ{i}.dat)';
     
     drawnow; snapnow
+
+end
+
+
+%% COMBAT HARMONIZATION OF RAW IMAGES (OPTIONAL)
+% -------------------------------------------------------------------------
+% Harmonizes multi-site (or multi-scanner) additive and multiplicative
+% differences out of the RAW condition images - before any scaling, and before
+% contrasts are formed - so that everything downstream inherits harmonized
+% data. Runs only if docombat is true.
+%
+% Requires ComBatHarmonization on the path (Jfortin1/ComBatHarmonization,
+% Matlab/scripts/combat.m).
+%
+% *combat_mod AND SUBSEQUENT DECODING - READ THIS*
+% Variables named in combat_mod are PRESERVED: their effects are protected
+% from removal as site effects. Include the biological effect of interest
+% (typically group) when the harmonized data feed a GLM. Do NOT include it
+% when the harmonized data feed a classifier trained on that same variable -
+% that leaks label information into the features and inflates accuracy.
+% combat.m's own help gives the same warning. For decoding, harmonize inside
+% the cross-validation loop instead.
+%
+% *IDENTIFIABILITY*
+% A site whose subjects are all one group carries no within-site contrast, so
+% its site effect and the group effect are separable only through the other
+% sites. ComBat does not repair such a design: it removes that site's offset
+% and leaves the group effect estimated from the sites that do vary, so those
+% subjects contribute little independent evidence. The per-batch counts
+% printed below show whether this applies.
+
+if ~exist('docombat','var') || isempty(docombat), docombat = false; end
+
+if docombat
+
+    fprintf('\n\n');
+    printhdr('COMBAT HARMONIZATION OF RAW IMAGES');
+    fprintf('\n\n');
+
+    if isempty(which('combat'))
+        error('docombat is true but combat.m is not on the path. Add ComBatHarmonization/Matlab/scripts.');
+    end
+    if ~exist('combat_batch','var') || isempty(combat_batch)
+        error('docombat is true but combat_batch is empty. Set it to a column name in DAT.BETWEENPERSON.conditions{1}, or an n x 1 vector of site labels.');
+    end
+    if ~exist('combat_mod','var'), combat_mod = {}; end
+    if ~exist('combat_parametric','var') || isempty(combat_parametric), combat_parametric = true; end
+    if ~exist('combat_ref_batch','var'), combat_ref_batch = []; end
+    if ischar(combat_mod) || isstring(combat_mod), combat_mod = cellstr(combat_mod); end
+
+    DAT.combat = struct();
+    DAT.combat.mod_vars   = combat_mod;
+    DAT.combat.parametric = logical(combat_parametric);
+    DAT.combat.ref_batch  = combat_ref_batch;
+
+    for i = 1:size(DAT.conditions,2)
+
+        fprintf('\n\n');
+        printhdr(sprintf('ComBat: condition #%d, %s', i, DAT.conditions{i}));
+        fprintf('\n\n');
+
+        n_i = size(DATA_OBJ{i}.dat, 2);
+        T   = DAT.BETWEENPERSON.conditions{i};
+
+        % --- resolve the batch vector -------------------------------------
+        if ischar(combat_batch) || isstring(combat_batch)
+            bname = char(combat_batch);
+            % Look in the per-condition covariate table first, then in
+            % DAT.BETWEENPERSON itself. Site labels usually should NOT be a
+            % column of the covariate table: that table becomes the second-level
+            % design matrix, and a categorical label column would break it.
+            % Keeping the raw labels in DAT.BETWEENPERSON.<name> lets ComBat use
+            % them while the design carries dummy columns, or none at all.
+            if istable(T) && ismember(bname, T.Properties.VariableNames)
+                batch_raw = T.(bname);
+            elseif isstruct(DAT.BETWEENPERSON) && isfield(DAT.BETWEENPERSON, bname)
+                batch_raw = DAT.BETWEENPERSON.(bname);
+            else
+                error(['combat_batch ''%s'' was found neither as a column of ' ...
+                       'DAT.BETWEENPERSON.conditions{%d} nor as a field of DAT.BETWEENPERSON.'], bname, i);
+            end
+            DAT.combat.batch_var = bname;
+        else
+            batch_raw = combat_batch;
+            DAT.combat.batch_var = '<supplied as vector>';
+        end
+        batch_raw = batch_raw(:);
+        if numel(batch_raw) ~= n_i
+            error('combat_batch has %d entries but condition #%d has %d images.', numel(batch_raw), i, n_i);
+        end
+
+        % combat.m compares batch entries with == (find(batch == uniq_batch(i))),
+        % so the batch vector MUST be numeric - a cellstr of site names errors
+        % there. Map labels to integer codes, keeping the labels for reporting.
+        batch_labels_all = cellstr(string(batch_raw));
+        [batch_labels, ~, batch] = unique(batch_labels_all, 'stable');
+        batch = double(batch);
+
+        % --- resolve the reference batch ----------------------------------
+        ref_code = [];
+        if ~isempty(combat_ref_batch)
+            ref_code = find(strcmp(batch_labels, char(string(combat_ref_batch))));
+            if isempty(ref_code)
+                error('combat_ref_batch ''%s'' is not one of the batches present (%s).', ...
+                    char(string(combat_ref_batch)), strjoin(batch_labels(:)', ', '));
+            end
+        end
+
+        % --- build the preserved-effects design ---------------------------
+        mod = [];
+        for k = 1:numel(combat_mod)
+            if ~istable(T) || ~ismember(combat_mod{k}, T.Properties.VariableNames)
+                error('combat_mod variable ''%s'' is not in DAT.BETWEENPERSON.conditions{%d}.', combat_mod{k}, i);
+            end
+            mod = [mod double(T.(combat_mod{k})(:))]; %#ok<AGROW>
+        end
+
+        % --- report the design --------------------------------------------
+        fprintf('  batch variable : %s\n', DAT.combat.batch_var);
+        if isempty(combat_mod)
+            fprintf('  preserved      : none\n');
+        else
+            fprintf('  preserved      : %s\n', strjoin(combat_mod, ', '));
+        end
+        if isempty(ref_code)
+            fprintf('  reference      : none (harmonized to grand mean)\n');
+        else
+            fprintf('  reference      : %s\n', batch_labels{ref_code});
+        end
+        if logical(combat_parametric)
+            fprintf('  adjustment     : parametric empirical Bayes\n\n');
+        else
+            fprintf('  adjustment     : non-parametric empirical Bayes\n\n');
+        end
+        for b = 1:numel(batch_labels)
+            sel = batch == b;
+            lvlstr = '';
+            for k = 1:size(mod,2)
+                u = unique(mod(sel,k));
+                lvlstr = [lvlstr sprintf('   %s: %s', combat_mod{k}, mat2str(u(:)'))]; %#ok<AGROW>
+            end
+            fprintf('    %-12s n = %3d%s\n', batch_labels{b}, sum(sel), lvlstr);
+        end
+        if ~isempty(mod)
+            fprintf(['\n    a batch showing a single level of a preserved variable carries no\n' ...
+                     '    within-batch contrast for it - see the identifiability note above\n']);
+        end
+
+        % --- harmonize ------------------------------------------------------
+        dat = DATA_OBJ{i}.dat;
+
+        % ComBat standardizes by the within-batch variance, so a voxel that is
+        % constant within ANY batch yields Inf/NaN. Harmonize only voxels that
+        % vary in every batch and pass the rest through untouched.
+        ok = true(size(dat,1),1);
+        for b = 1:numel(batch_labels)
+            ok = ok & (std(double(dat(:, batch == b)), 0, 2) > 0);
+        end
+        if ~all(ok)
+            fprintf('\n  %d of %d voxels are constant within at least one batch; left unharmonized\n', ...
+                sum(~ok), numel(ok));
+        end
+
+        cb_args = {double(dat(ok,:)), batch, mod, double(logical(combat_parametric))};
+        if ~isempty(ref_code), cb_args = [cb_args {'ref', ref_code}]; end %#ok<AGROW>
+
+        fprintf('\n');
+        [harmonized, gamma_star, delta_star, gamma_hat, delta_hat] = combat(cb_args{:});
+
+        dat(ok,:) = harmonized;
+        DATA_OBJ{i}.dat = dat;
+        DATA_OBJ{i} = enforce_variable_types(DATA_OBJ{i});
+
+        % combat.m's help: a dramatic empirical -> posterior shift means the
+        % priors are driving the fit rather than the data. Print both so that
+        % is visible in the report rather than buried in the returned structs.
+        fprintf('\n  empirical -> posterior batch parameters (mean over voxels):\n');
+        for b = 1:numel(batch_labels)
+            fprintf('    %-12s gamma %+8.4f -> %+8.4f    delta %8.4f -> %8.4f\n', ...
+                batch_labels{b}, mean(gamma_hat(b,:)), mean(gamma_star(b,:)), ...
+                mean(delta_hat(b,:)), mean(delta_star(b,:)));
+        end
+
+        DAT.combat.batch_labels      = batch_labels;
+        DAT.combat.n_per_batch       = accumarray(batch, 1)';
+        DAT.combat.n_voxels_adjusted(i) = sum(ok);
+        DAT.combat.gamma_hat_mean{i}    = mean(gamma_hat, 2)';
+        DAT.combat.gamma_star_mean{i}   = mean(gamma_star, 2)';
+        DAT.combat.delta_hat_mean{i}    = mean(delta_hat, 2)';
+        DAT.combat.delta_star_mean{i}   = mean(delta_star, 2)';
+
+        drawnow; snapnow
+
+    end
+
+    DAT.combat.applied = true;
+    fprintf('\n\nComBat applied to raw condition images; all downstream scaling and contrasts inherit harmonized data\n\n');
+
+else
+
+    DAT.combat.applied = false;
 
 end
 
