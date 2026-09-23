@@ -99,7 +99,7 @@
 %
 % _Mandatory options_
 %
-% * mygroupfieldname                    'contrasts'/'conditions'
+% * mygroupnamefield                    'contrasts'/'conditions'
 %
 % * results_suffix                      name added to results file by prep_3a script in case of multiple versions of model, e.g. 'covariate_rating'
 %
@@ -172,6 +172,14 @@ end
 
 mygroupnamefield = 'contrasts'; 
 results_suffix = ''; % suffix of your choice added to .mat file with saved results
+
+% Guarded defaults: a2 normally sets both, but a study copy of a2 that omits
+% them would otherwise fail with an undefined variable, and only on the branch
+% that actually uses covariates - so the script would appear to work until the
+% first model that needs one.
+if ~exist('nuisance_covs','var'),    nuisance_covs = {};    end
+if ~exist('categorical_covs','var'), categorical_covs = {}; end
+
 
 % Options to copy if specified in prep_3a script
 
@@ -418,6 +426,30 @@ brainmask = fmri_mask_image(maskname_brain,'noverbose');
 
 % CHECK Q THRESHOLD IN CASE OF PARCELWISE ANALYSIS
 
+% GUARD: were these results computed in the parcellation we are about to use?
+%
+% prep_3a fits the model in the parcels of atlas_granularity and saves that
+% value with the results. This script rebuilds the parcellation from whatever
+% atlas_granularity is in scope NOW, which in a fresh session comes from a2. If
+% the two differ, the labels and regions below describe a different parcellation
+% from the one that was actually analysed, and nothing else would say so.
+if dorobfit_parcelwise && exist('savefilenamedata','var') && exist(savefilenamedata,'file')
+    saved_vars = whos('-file', savefilenamedata);
+    if ismember('atlas_granularity', {saved_vars.name})
+        fitted = load(savefilenamedata, 'atlas_granularity');
+        if exist('atlas_granularity','var') && ...
+                ~isequal(fitted.atlas_granularity, atlas_granularity)
+            error(['\nPARCELLATION GRANULARITY MISMATCH.\n\n' ...
+                   '  results were fitted at atlas_granularity = %d\n' ...
+                   '  this script is about to display them at = %d\n\n' ...
+                   'Set atlas_granularity to the fitted value in this script, or\n' ...
+                   're-run prep_3a at the granularity you want.\n'], ...
+                   fitted.atlas_granularity, atlas_granularity);
+        end
+    end
+end
+
+
 if dorobfit_parcelwise
     
     if q_threshold_glm ~= 0.05
@@ -487,11 +519,35 @@ else
     
     results = parcelwise_stats_results;
 
+    % The parcelwise branch DOES compute Bayes factors - prep_3a stores them as
+    % parcelwise_stats.BF, i.e. INSIDE each contrast's parcelwise struct, not in
+    % a separate bayesian_regression_stats_results variable the way the voxelwise
+    % branch does. This script only ever looked for the voxelwise shape, so
+    % has_bayes was false for parcelwise runs and the whole Bayes section - the
+    % |BF| > BF_threshold_glm montages and tables - was skipped, even though
+    % prep_3a had already reported the same maps at |BF| > 3.
+    %
+    % Repackage into the shape the rest of this script expects.
+    if doBayes
+        bayesian_results = cell(1, numel(results));
+        for bb = 1:numel(results)
+            % numel, not isempty: .BF is a 1 x nregressors statistic_image ARRAY, and
+            % isempty on an object array expands obj.dat into a comma-separated list,
+            % so image_vector/isempty is called with 3 arguments and errors.
+            if ~isempty(results{bb}) && isfield(results{bb}, 'BF') && numel(results{bb}.BF) > 0
+                bayesian_results{bb}.BF = results{bb}.BF;
+            end
+        end
+        if all(cellfun(@isempty, bayesian_results))
+            clear bayesian_results   % nothing to show; has_bayes stays false
+        end
+    end
+
 end
 
-% Bayes factors come from prep_3a's VOXELWISE branch only - the parcelwise
-% results file contains just parcelwise_stats_results - so doBayes on its own
-% does not tell us whether they are available here. Without this, a parcelwise
+% doBayes on its own does not tell us whether Bayes factors are available here:
+% a results file written before parcelwise Bayes existed contains just
+% parcelwise_stats_results. Without this check, such a
 % run with doBayes = true dies on an undefined bayesian_results.
 has_bayes = doBayes && exist('bayesian_results','var') && ~isempty(bayesian_results);
 

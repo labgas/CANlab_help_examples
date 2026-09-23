@@ -94,7 +94,7 @@
 %       1. 'group' 
 %           Assuming that groups are concatenated in contrast image lists, and
 %           regressor values of 1 or -1 will specify the group identity for each image. 
-%           Requires DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.(mygroupfieldname){c}.groupfield specifying group membership for
+%           Requires DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.(mygroupnamefield){c}.groupfield specifying group membership for
 %           each image.
 %
 %       2. 'custom'
@@ -159,7 +159,7 @@
 %
 %       * holdout_set_method_mvpa_reg_cov
 %
-%           1. group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.(mygroupfieldname){c}.group to balance holdout sets over groups
+%           1. group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.(mygroupnamefield){c}.group to balance holdout sets over groups
 %                                        
 %
 %           2. no_group: no group factor, stratifies by subject (i.e.leave whole subject out) since data is purely between-subject
@@ -171,7 +171,7 @@
 %
 % *MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT*
 %
-% * mygroupfieldname            'contrasts' or 'conditions'
+% * mygroupnamefield            'contrasts' or 'conditions'
 %
 % * results_suffix              name to add to results file to specify in case of multiple versions of model, e.g. 'covariate_rating'
 %

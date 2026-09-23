@@ -71,9 +71,19 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_2_load_image_data_and_save.m         v2.5
+% prep_2_load_image_data_and_save.m         v2.6
 %
-% last modified: 2026/08/14
+% last modified: 2026/09/23
+%
+% v2.6  The subjs2exclude_data block no longer assumes prep_1b built
+%       DAT.BETWEENPERSON on the FULL subject list. A model whose sample is
+%       itself a subset (patients only, one site only) legitimately builds a
+%       shorter design in prep_1b; indexing that with the full-length mask
+%       errored, or could silently mis-align. The block now decides by length
+%       and errors with both counts named when neither fits. It also checks
+%       DAT.BETWEENPERSON.conditions{}/.contrasts{} against the retained count -
+%       prep_2 never subsets those, so prep_1b must build them on the sample
+%       prep_2 loads, and this says so here rather than in prep_3a.
 %
 %
 %% RUN SCRIPT A_SET_UP_PATHS_ALWAYS_RUN_FIRST AND LOAD/CREATE DAT IF NEEDED
@@ -154,17 +164,59 @@ clear imgs cimgs
 
 if ~isempty(subjs2exclude_data) % we have subjects to exclude
     idx_include = ~contains(firstsubjdirs,subjs2exclude_data);
-        
-    if isfield(DAT,'BEHAVIOR')
-        DAT.BEHAVIOR.behavioral_data_table = DAT.BEHAVIOR.behavioral_data_table(idx_include,:);
-    end
-    
-    if isfield(DAT,'BETWEENPERSON')
-        if isfield(DAT.BETWEENPERSON,'group')
-            DAT.BETWEENPERSON.group = DAT.BETWEENPERSON.group(idx_include,:);
+
+    % The template subset these unconditionally, which assumes prep_1b always
+    % built them on the FULL subject list. That is not always true: a model
+    % whose sample IS a subset (here, patients only) legitimately builds a
+    % design of the retained length in prep_1b, and indexing that with the
+    % full-length mask either errors or, worse, silently mis-aligns.
+    %
+    % So decide by length: full length means subset, retained length means
+    % prep_1b already did it, anything else is a real inconsistency.
+    n_all  = numel(idx_include);
+    n_keep = sum(idx_include);
+
+    if isfield(DAT,'BEHAVIOR') && isfield(DAT.BEHAVIOR,'behavioral_data_table')
+        n_beh = height(DAT.BEHAVIOR.behavioral_data_table);
+        if n_beh == n_all
+            DAT.BEHAVIOR.behavioral_data_table = DAT.BEHAVIOR.behavioral_data_table(idx_include,:);
+        elseif n_beh ~= n_keep
+            error(['\nDAT.BEHAVIOR.behavioral_data_table has %d rows; expected %d ' ...
+                   '(full list) or %d (already restricted).\n'], n_beh, n_all, n_keep);
         end
     end
-    
+
+    if isfield(DAT,'BETWEENPERSON') && isfield(DAT.BETWEENPERSON,'group')
+        n_grp = numel(DAT.BETWEENPERSON.group);
+        if n_grp == n_all
+            DAT.BETWEENPERSON.group = DAT.BETWEENPERSON.group(idx_include,:);
+            fprintf('\nrestricted DAT.BETWEENPERSON.group from %d to %d subject(s)\n', n_all, n_keep);
+        elseif n_grp == n_keep
+            fprintf(['\nDAT.BETWEENPERSON.group already holds %d subject(s), matching the ' ...
+                     'retained set - prep_1b built it on the restricted sample, nothing to do\n'], n_grp);
+        else
+            error(['\nDAT.BETWEENPERSON.group has %d entries; expected %d (full list) ' ...
+                   'or %d (already restricted).\n'], n_grp, n_all, n_keep);
+        end
+    end
+
+    % The design tables themselves (DAT.BETWEENPERSON.conditions{} and
+    % .contrasts{}) are NOT touched here, by the template or by this guard.
+    % prep_1b is their only author, so they must already match the retained
+    % sample. Check that, rather than discover it as a size error in prep_3a.
+    for fld = {'conditions','contrasts'}
+        if isfield(DAT.BETWEENPERSON, fld{1})
+            T = DAT.BETWEENPERSON.(fld{1});
+            for ii = 1:numel(T)
+                if istable(T{ii}) && height(T{ii}) ~= n_keep && height(T{ii}) > 0
+                    error(['\nDAT.BETWEENPERSON.%s{%d} has %d rows but %d subject(s) are ' ...
+                           'retained. prep_1b must build the design on the SAME sample ' ...
+                           'prep_2 loads.\n'], fld{1}, ii, height(T{ii}), n_keep);
+                end
+            end
+        end
+    end
+
 end
 
 for i = 1:size(DAT.conditions,2)
@@ -713,6 +765,37 @@ cd(resultsdir); % unannex image_names_and_setup.mat file if already datalad save
 cd(rootdir);
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
+
+% GUARD: does the stored DAT carry signature results this one would discard?
+%
+% prep_4 appends DAT.SIG_conditions / DAT.SIG_contrasts to this same file. The
+% '-append' below replaces the whole DAT variable, so re-running this script
+% after prep_4 destroys them silently - no error, nothing in the report. That is
+% exactly how proj_moodbugs model_1b lost its signature analysis: prep_4 ran on
+% 2026-09-08, this script was re-run on 2026-09-09, and the SIG fields have been
+% absent ever since.
+%
+% They are deliberately NOT carried over: the image objects have just been
+% rebuilt, so any signature response computed from the previous ones is stale,
+% and keeping it quietly would be worse than losing it. Re-run prep_4.
+if exist(savefilename, 'file')
+    stored = whos('-file', savefilename);
+    if ismember('DAT', {stored.name})
+        prior = load(savefilename, 'DAT');
+        lost = intersect({'SIG_conditions','SIG_contrasts'}, fieldnames(prior.DAT));
+        lost = lost(~ismember(lost, fieldnames(DAT)));
+        if ~isempty(lost)
+            warning(['\n\n*** SIGNATURE RESULTS OVERWRITTEN ***\n' ...
+                     'The stored DAT carried %s, which this save discards.\n' ...
+                     'They were computed from the image objects that have just been rebuilt,\n' ...
+                     'so they are stale and are NOT being kept.\n' ...
+                     'RE-RUN prep_4_apply_signatures_and_save (and any h_/d_ script after it)\n' ...
+                     'before reporting any signature result from this model.\n\n'], ...
+                     strjoin(lost, ' and '));
+        end
+    end
+end
+
 save(savefilename, '-append', 'DAT');
 
 savefilenamedata = fullfile(resultsdir, 'data_objects.mat');

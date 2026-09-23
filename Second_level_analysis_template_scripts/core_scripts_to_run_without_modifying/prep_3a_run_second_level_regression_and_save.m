@@ -112,7 +112,7 @@
 %       1. 'group' 
 %           Assuming that groups are concatenated in contrast image lists, and
 %           regressor values of 1 or -1 will specify the group identity for each image. 
-%           Requires DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.(mygroupfieldname){c}.groupfield specifying group membership for
+%           Requires DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.(mygroupnamefield){c}.groupfield specifying group membership for
 %           each image.
 %
 %       2. 'custom'
@@ -187,7 +187,11 @@
 %         * roi_modelname        from same script; also the prefix of the .mat filename
 %         * roi_set_name         from same script; also part of the .mat filename
 %
-%         * doroi_glm            true runs inference on the roi averages, false (default) keeps
+%                               Inference on the roi averages is part of this option:
+%                               an omnibus MANOVA across the roi set followed by a GLM per
+%                               roi. The former doroi_glm switch is retired - extracting
+%                               the means and testing nothing was almost never wanted.
+%         * (retired) doroi_glm  kept only so an old a2 setting it does not error; ignored
 %                                the earlier behaviour, where barplot_columns plots covariate-
 %                                adjusted roi means but no test is run, so an roi effect could
 %                                not be called significant without refitting by hand.
@@ -243,7 +247,7 @@
 %
 %       * holdout_set_method_mvpa_reg_cov
 %
-%           1. group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.(mygroupfieldname){c}.group to balance holdout sets over groups
+%           1. group: use DAT.BETWEENPERSON.group or DAT.BETWEENPERSON.(mygroupnamefield){c}.group to balance holdout sets over groups
 %                                        
 %
 %           2. no_group: no group factor, stratifies by subject (i.e.leave whole subject out) since data is purely between-subject
@@ -255,7 +259,7 @@
 %
 % *MANDATORY OPTIONS TO BE SPECIFIED IN THIS SCRIPT*
 %
-% * mygroupfieldname            'contrasts' or 'conditions'
+% * mygroupnamefield            'contrasts' or 'conditions'
 %
 % * results_suffix              name to add to results file to specify in case of multiple versions of model, e.g. 'covariate_rating'
 %
@@ -337,6 +341,14 @@ end
 mygroupnamefield = 'contrasts'; 
 results_suffix = ''; % adds a suffix of your choice to .mat file with results that will be saved
 
+% Guarded defaults: a2 normally sets both, but a study copy of a2 that omits
+% them would otherwise fail with an undefined variable, and only on the branch
+% that actually uses covariates - so the script would appear to work until the
+% first model that needs one.
+if ~exist('nuisance_covs','var'),    nuisance_covs = {};    end
+if ~exist('categorical_covs','var'), categorical_covs = {}; end
+
+
 % NOTES 
 %   1. do NOT delete the latter option, leave empty if not needed
 %   2. do NOT use to add a suffix specifying the regressors, scaling or masking option, this will be added automatically
@@ -414,6 +426,14 @@ end
 
 if ~exist('DSGN','var') || ~exist('DAT','var')
     
+% contrast_objects_tag lets one model hold more than one set of contrast objects,
+% which is what a second, differently-harmonised path needs: prep_3 can be run twice
+% over the same conditions with different combat_mod and the two results no longer
+% collide on one filename. Empty (the default) reproduces the original behaviour
+% exactly, so every existing study is unaffected.
+if ~exist('contrast_objects_tag','var') || isempty(contrast_objects_tag)
+    contrast_objects_tag = '';
+end
     load(fullfile(resultsdir,'image_names_and_setup.mat'));
     
 end
@@ -427,7 +447,7 @@ end
 
 if ~exist('DATA_OBJ_CON','var') || ~exist('DATA_OBJ_CONsc','var') || ~exist('DATA_OBJ_CONscc','var')
     
-    load(fullfile(resultsdir,'contrast_data_objects.mat'));
+    load(fullfile(resultsdir,['contrast_data_objects' contrast_objects_tag '.mat']));
     
 end
 
@@ -462,7 +482,7 @@ if exist('subject_filter','var') && ~isempty(subject_filter)
     % error and a plausible-looking report. Reloading makes each filtered run
     % independent of whatever ran before it.
     clear DATA_OBJ_CON DATA_OBJ_CONsc DATA_OBJ_CONscc DATA_OBJ DATA_OBJsc
-    load(fullfile(resultsdir,'contrast_data_objects.mat'));
+    load(fullfile(resultsdir,['contrast_data_objects' contrast_objects_tag '.mat']));
     tmp_sf_dat = load(fullfile(resultsdir,'image_names_and_setup.mat'),'DAT');
     DAT = tmp_sf_dat.DAT; clear tmp_sf_dat
     fprintf('\nreloaded unfiltered data and DAT before applying subject_filter\n');
@@ -874,7 +894,7 @@ if doroi_analysis
     roi_means = cell(1,kc);
     roi_means_table = cell(1,kc);
     roi_adjusted_means = cell(1,kc);
-    roi_glm_stats = cell(1,kc);       % per-roi GLM, filled when doroi_glm is true
+    roi_glm_stats = cell(1,kc);       % per-roi GLM, filled whenever doroi_analysis is true
     roi_manova_stats = cell(1,kc);    % omnibus MANOVA across the roi set, same condition
     
 end
@@ -1407,7 +1427,14 @@ for c = 1:kc
         %
         % Reported in that order deliberately: if the omnibus test is null,
         % individual rois surviving FDR should be read with that in mind.
-        if exist('doroi_glm','var') && doroi_glm
+
+        % Inference is part of the roi analysis, not a separate switch. Extracting
+        % roi averages and testing nothing was almost never what was wanted, and a
+        % study whose a2 predated the old doroi_glm option silently got the means
+        % with no tests. doroi_glm is retired; doroi_analysis now covers both. The
+        % condition below is the enclosing one, kept so the block structure and its
+        % end are untouched.
+        if doroi_analysis
 
             if isequal(design_matrix_type,'onesample')
 
@@ -1585,7 +1612,7 @@ for c = 1:kc
                 end
 
                 eff_col = {}; roi_col = {}; est_col = []; se_col = []; t_col = [];
-                df_col = []; p_col = []; qbh_col = []; qst_col = []; es_col = []; esname_col = {};
+                df_col = []; p_col = []; qbh_col = []; qst_col = []; qaf_col = []; es_col = []; esname_col = {};
                 strel_col = []; pi0_col = [];   % Storey reliability verdict and pi0, per effect
 
                 for ee = 1:ncov_glm
@@ -1610,6 +1637,15 @@ for c = 1:kc
                     fprintf('\n  %s:', eoi_glm{ee});
                     [qst_ee, pi0_ee, storey_info_ee] = LaBGAScore_Storey_FDR(p_ee);
 
+                    % Adaptive FDR (two-stage BH), computed independently of Storey.
+                    % At these m, Storey's spline pi0 has collapsed to the floor more
+                    % than once, leaving q_Storey identical to p while still flagged
+                    % reliable. adaptiveFDR estimates pi0 differently, so it is a
+                    % second adaptive column to weigh against q_BH.
+                    qaf_ee = LaBGAScore_Storey_FDR(p_ee, 'method', 'adaptivefdr', ...
+                                                   'verbose', false);
+                    qaf_ee = qaf_ee(:);
+
                     qbh_ee             = storey_info_ee.q_BH(:);
                     storey_reliable_ee = storey_info_ee.reliable;
                     qst_ee             = qst_ee(:);
@@ -1631,6 +1667,7 @@ for c = 1:kc
                     p_col      = [p_col;      p_ee];
                     qbh_col    = [qbh_col;    qbh_ee];
                     qst_col    = [qst_col;    qst_ee];
+                    qaf_col    = [qaf_col;    qaf_ee];
                     es_col     = [es_col;     ES(:,ee)];
                     esname_col = [esname_col; repmat({esn}, nroi_glm, 1)];
                     strel_col  = [strel_col;  repmat(storey_reliable_ee, nroi_glm, 1)];
@@ -1638,10 +1675,10 @@ for c = 1:kc
                 end
 
                 roi_glm_stats{c} = table(eff_col, roi_col, est_col, se_col, t_col, ...
-                    df_col, p_col, qbh_col, qst_col, logical(strel_col), pi0_col, ...
+                    df_col, p_col, qbh_col, qst_col, qaf_col, logical(strel_col), pi0_col, ...
                     es_col, esname_col, 'VariableNames', ...
                     {'effect','roi','estimate','se','t','df','p','q_BH','q_Storey', ...
-                     'storey_reliable','pi0','effect_size','effect_size_type'});
+                     'q_adaptiveFDR','storey_reliable','pi0','effect_size','effect_size_type'});
 
                 fprintf('\n');
                 printhdr(['GLM PER ROI, FDR ACROSS ' num2str(nroi_glm) ' ROIS']);
@@ -1676,6 +1713,19 @@ for c = 1:kc
                     if ~rel_ee
                         fprintf(['%s: the q_Storey column above is reported for completeness only - ' ...
                                  'its pi0 is not trustworthy for this set, so read q_BH.\n'], eoi_glm{ee});
+                    end
+
+                    % adaptive FDR, reported alongside: a second adaptive estimate
+                    % that does not share Storey's spline pi0, which has collapsed to
+                    % the floor at these m more than once.
+                    qa = roi_glm_stats{c}.q_adaptiveFDR(sel);
+                    if any(qa < 0.05)
+                        fprintf('%s: %d/%d roi(s) at q_adaptiveFDR < .05: %s\n', eoi_glm{ee}, ...
+                            sum(qa < 0.05), numel(qa), ...
+                            strjoin(roi_glm_stats{c}.roi(sel & [roi_glm_stats{c}.q_adaptiveFDR] < 0.05)', ', '));
+                    else
+                        fprintf('%s: no roi at q_adaptiveFDR < .05 (smallest = %.4f)\n', ...
+                            eoi_glm{ee}, min(qa));
                     end
                 end
 
@@ -2766,6 +2816,12 @@ if ~dorobfit_parcelwise
 else
         savefilenamedata = fullfile(resultsdir, ['parcelwise_stats_and_maps_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
         save(savefilenamedata, 'parcelwise_stats_results', '-v7.3');
+        % Record the parcellation these results were fitted in. c2a rebuilds the
+        % parcellation to label and display them and otherwise has no way to know
+        % which one to rebuild - see the granularity check near the top of c2a.
+        if exist('atlas_granularity','var')
+            save(savefilenamedata, 'atlas_granularity', '-append');
+        end
 
         % The parcelwise branch computes Bayes Factors too (see the doBayes block
         % above, which assigns bayesian_regression_stats_results), but this save

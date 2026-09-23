@@ -141,6 +141,19 @@ if ~exist('contrasts2include_pdm','var'),                     contrasts2include_
 if ~exist('dosavepdmstats','var') || isempty(dosavepdmstats), dosavepdmstats = true; end
 if ischar(pdm_covs) || isstring(pdm_covs), pdm_covs = cellstr(pdm_covs); end
 
+% Mask tag. Results run under different analysis masks must not collide: the
+% output names carried only a covariate tag, so a second mask silently
+% overwrote the first. The GM mask is the default and deliberately keeps the
+% original untagged names, so results already on disk stay addressable.
+[~, masknm_pdm] = fileparts(char(maskname_pdm));
+if contains(masknm_pdm, 'gm_mask_canlab2023_coarse')
+    masktag_pdm = '';
+elseif contains(masknm_pdm, 'neurosyn')
+    masktag_pdm = '_nsmask';
+else
+    masktag_pdm = ['_' matlab.lang.makeValidName(masknm_pdm)];
+end
+
 if isempty(which('multivariateMediation'))
     error('multivariateMediation not found. Add MediationToolbox/PDM_toolbox to the path.');
 end
@@ -372,20 +385,27 @@ for c = cons
         if pdm_resid_outcome, covtag_dir = [covtag_dir '_yadj']; end
     end
     condir = fullfile(mediationresultsdir, ...
-        [matlab.lang.makeValidName(DAT.contrastnames{c}) covtag_dir]);
+        [matlab.lang.makeValidName(DAT.contrastnames{c}) covtag_dir masktag_pdm]);
     if ~exist(condir,'dir'), mkdir(condir); end
 
-    if isfield(pdm,'boot') && isfield(pdm.boot,'p')
-        for k = 1:numel(pdm.boot.p)
-            d = dat_template;
-            d.dat = pdm.Wfull{k} .* (pdm.boot.p{k} < pdm.pThreshold(k));
-            nsig = sum(d.dat ~= 0);
-            fprintf('  PDM%d: %d voxel(s) below the bootstrap threshold p < %.4g\n', k, nsig, pdm.pThreshold(k));
-            write(d, 'fname', fullfile(condir, sprintf('PDM%d.nii', k)), 'overwrite');
+    % Write the thresholded PDM images AND report them the way c2a reports GLM
+    % results: overview montage, labelled region table, and a regioncenters
+    % montage when there are few enough regions to read. plotPDM above gives a
+    % bare montage with no labelling and no table, which is not enough to
+    % interpret a result from.
+    %
+    % The atlas is loaded once per run, not once per PDM.
+    if ~exist('pdm_report_atlas','var') || isempty(pdm_report_atlas)
+        if exist('atlasname_glm','var') && ~isempty(atlasname_glm)
+            pdm_report_atlas = load_atlas(atlasname_glm);
+        else
+            pdm_report_atlas = load_atlas('canlab2024_fine_2mm');
         end
-    else
-        fprintf('  no bootstrap performed, so no thresholded PDM images written\n');
     end
+
+    pdm_report{c} = LaBGAScore_pdm_report(pdm, dat_template, condir, ...
+        'atlas', pdm_report_atlas, ...
+        'titlestr', sprintf('%s, %s%s', DAT.contrastnames{c}, behav_outcome_pdm, masktag_pdm)); %#ok<SAGROW>
 
 end
 
@@ -403,7 +423,7 @@ if dosavepdmstats
         if pdm_resid_outcome, covtag_pdm = [covtag_pdm '_yadj']; end
     end
     savefilename_pdm = fullfile(mediationresultsdir, ...
-        ['pdm_mediation_', behav_outcome_pdm, '_', scaling_string_pdm, covtag_pdm, '.mat']);
+        ['pdm_mediation_', behav_outcome_pdm, '_', scaling_string_pdm, covtag_pdm, masktag_pdm, '.mat']);
     save(savefilename_pdm, 'pdm_results', 'behav_outcome_pdm', 'myscaling_pdm', ...
          'pdm_covs', 'pdm_resid_outcome', 'nPDM_svd', 'nPDM_B', 'boot_n_pdm', '-v7.3');
     fprintf('\nSaved: %s\n', savefilename_pdm);

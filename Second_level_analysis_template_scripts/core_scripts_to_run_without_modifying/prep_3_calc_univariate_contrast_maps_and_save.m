@@ -955,11 +955,30 @@ end
 % ------------------------------------------------------------------------
 
 fprintf('\n\n');
-printhdr('SAVE CONTRAST DATA OBJECTS IN contrast_data_objects.mat');
+% contrast_objects_tag lets one model hold more than one set of contrast objects,
+% which is what a second, differently-harmonised path needs: prep_3 can be run twice
+% over the same conditions with different combat_mod and the two results no longer
+% collide on one filename. Empty (the default) reproduces the original behaviour
+% exactly, so every existing study is unaffected.
+%
+% DEFINED HERE, above the first use below - an earlier version defined it further
+% down, beside savefilenamedata, and the printhdr line that also uses it ran first.
+if ~exist('contrast_objects_tag','var') || isempty(contrast_objects_tag)
+    contrast_objects_tag = '';
+end
+printhdr(['SAVE CONTRAST DATA OBJECTS IN contrast_data_objects' contrast_objects_tag '.mat']);
 fprintf('\n\n');
 
-savefilenamedata = fullfile(resultsdir, 'contrast_data_objects.mat');   % both unscaled and two versions of scaled
-save(savefilenamedata, 'DATA_OBJ_CON*', '-v7.3');                       % Note: 6/7/17 Tor switched to -v7.3 format by default 
+savefilenamedata = fullfile(resultsdir, ['contrast_data_objects' contrast_objects_tag '.mat']);   % both unscaled and two versions of scaled
+if isempty(contrast_objects_tag)
+    save(savefilenamedata, 'DATA_OBJ_CON*', '-v7.3');
+else
+    % A tagged run is a SECOND harmonisation path over the same conditions. Its
+    % provenance travels with its own objects rather than in the shared DAT,
+    % which belongs to the untagged path.
+    combat_record = DAT.combat_conditions; %#ok<NASGU>
+    save(savefilenamedata, 'DATA_OBJ_CON*', 'combat_record', '-v7.3');
+end                       % Note: 6/7/17 Tor switched to -v7.3 format by default 
 
 
 %% GET CONTRASTS IN GLOBAL GRAY, WHITE, CSF VALUES
@@ -1007,4 +1026,47 @@ cd(resultsdir); % unannex image_names_and_setup.mat file if already datalad save
 cd(rootdir);
 
 savefilename = fullfile(resultsdir, 'image_names_and_setup.mat');
-save(savefilename, '-append', 'DAT');
+
+% GUARD: does the stored DAT carry signature results this one would discard?
+%
+% prep_4 appends DAT.SIG_conditions / DAT.SIG_contrasts to this same file. The
+% '-append' below replaces the whole DAT variable, so re-running this script
+% after prep_4 destroys them silently - no error, nothing in the report. That is
+% exactly how proj_moodbugs model_1b lost its signature analysis: prep_4 ran on
+% 2026-09-08, this script was re-run on 2026-09-09, and the SIG fields have been
+% absent ever since.
+%
+% They are deliberately NOT carried over: the image objects have just been
+% rebuilt, so any signature response computed from the previous ones is stale,
+% and keeping it quietly would be worse than losing it. Re-run prep_4.
+if exist(savefilename, 'file')
+    stored = whos('-file', savefilename);
+    if ismember('DAT', {stored.name})
+        prior = load(savefilename, 'DAT');
+        lost = intersect({'SIG_conditions','SIG_contrasts'}, fieldnames(prior.DAT));
+        lost = lost(~ismember(lost, fieldnames(DAT)));
+        if ~isempty(lost)
+            warning(['\n\n*** SIGNATURE RESULTS OVERWRITTEN ***\n' ...
+                     'The stored DAT carried %s, which this save discards.\n' ...
+                     'They were computed from the image objects that have just been rebuilt,\n' ...
+                     'so they are stale and are NOT being kept.\n' ...
+                     'RE-RUN prep_4_apply_signatures_and_save (and any h_/d_ script after it)\n' ...
+                     'before reporting any signature result from this model.\n\n'], ...
+                     strjoin(lost, ' and '));
+        end
+    end
+end
+
+% Only the UNTAGGED path owns the shared DAT. A tagged run rebuilds the same
+% contrasts under a different harmonisation, so appending its DAT here would
+% overwrite combat_conditions and gray_white_csf_contrasts with values that do
+% not describe the objects the GLM actually uses - a silent metadata/contrast
+% mismatch. Its own record is saved beside its contrast objects instead.
+if isempty(contrast_objects_tag)
+    save(savefilename, '-append', 'DAT');
+else
+    fprintf(['\nDAT NOT appended to %s: this is a tagged run (%s), and the shared\n' ...
+             'DAT belongs to the untagged harmonisation path. The harmonisation record\n' ...
+             'for this path is saved as combat_record in %s.\n'], ...
+            savefilename, contrast_objects_tag, savefilenamedata);
+end

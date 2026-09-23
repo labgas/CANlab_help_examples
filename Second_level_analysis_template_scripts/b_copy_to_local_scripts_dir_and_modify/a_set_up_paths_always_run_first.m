@@ -103,7 +103,31 @@ if ~exist('DSGN','var')
     LaBGAScore_firstlevel_s1_options_dsgn_struct;
 end
 
-[~,modelname] = fileparts(DSGN.modeldir); 
+[~,modelname] = fileparts(DSGN.modeldir);
+
+% NAMING CONVENTION
+% Second-level models derived from the SAME first-level model share that
+% model's numeric index, then take a letter index and an informative name:
+%
+%   firstlevel/model_2_basic                 <- modelname, from DSGN.modeldir
+%     secondlevel/model_2a_casecontrol_cov_scanner
+%     secondlevel/model_2b_cov_scanner       <- modelname_2nd
+%
+% so the numeric index says which first-level data a second-level model reads,
+% and the letter distinguishes the analyses run on it. That is exactly the
+% distinction the two variables below carry, which is why they cannot be one
+% variable.
+% modelname     names the FIRST-LEVEL model, and therefore where the con images
+%               are read from. Derived from DSGN, never set by hand.
+% modelname_2nd names THIS SECOND-LEVEL model - its results dir and its scripts
+%               dir. Set it in your study's s0 when the second-level model has a
+%               name of its own, which is the normal case as soon as a study runs
+%               more than one second-level analysis on the same first-level data
+%               (proj_cfs has 16). Leave it unset and it falls back to modelname,
+%               which is the historical behaviour.
+if ~exist('modelname_2nd','var') || isempty(modelname_2nd)
+    modelname_2nd = modelname;
+end
 
 
 %% SET DEFAULT USER OPTIONS
@@ -228,7 +252,7 @@ spmtoolboxdir = fullfile(spmrootdir,'toolbox');
 
 % Base directory for second level model
 
-basedir = fullfile(rootdir,'secondlevel',modelname);
+basedir = fullfile(rootdir,'secondlevel',modelname_2nd);
 
     if ~exist(basedir, 'dir')
         mkdir(basedir); 
@@ -247,7 +271,7 @@ maskdir = fullfile(basedir,'masks');
         mkdir(maskdir); 
     end
     addpath(genpath(maskdir),'-end');
-scriptsdir = fullfile(codedir,'secondlevel',modelname); %lukasvo76: contrary to the original CANlab script, we want our scripts to live in the code subdataset
+scriptsdir = fullfile(codedir,'secondlevel',modelname_2nd); %lukasvo76: contrary to the original CANlab script, we want our scripts to live in the code subdataset
     if ~exist(scriptsdir, 'dir')
         mkdir(scriptsdir); 
     end

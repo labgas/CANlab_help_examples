@@ -52,6 +52,69 @@
 % last modified: 2026/08/13
 
 
+% NOTE ON ORDER: the path/data block MUST come before the user options below.
+% It calls a2_set_default_options, which (re)assigns every option a2 defines -
+% so anything set above it is silently discarded, and options that READ a2
+% values (mysignature = keyword_sigs, and the scaling/metric names) would be
+% referencing variables that do not exist yet. The other core scripts already
+% order it this way; this one did not.
+
+%% LOAD PATHS AND DATA IF NEEDED
+% -------------------------------------------------------------------------
+% These scripts were written to run straight after their s10 counterpart, in
+% the same MATLAB session, and so relied on DAT already being in the
+% workspace. Run on their own they failed at the first DAT reference with
+% "Unable to resolve the name DAT.BETWEENPERSON.group". The cfs h1 script has
+% always carried this guard; adding it here makes the two studies behave the
+% same and lets these be re-run without redoing prep_4.
+
+% Remember where the study's own setup put the results, so the call below can be
+% checked against it (see the guard immediately after).
+resultsdir_before_setup = '';
+if exist('resultsdir','var'), resultsdir_before_setup = resultsdir; end
+
+
+a_set_up_paths_always_run_first;   % NOTE: replace with your study-specific s0 script
+
+% GUARD: did the path setup just move the output directory?
+%
+% The call above is meant to be replaced, in a study's copy, by that study's own
+% s0 (e.g. mystudy_secondlevel_m2a_s0_a_set_up_paths_always_run_first). Left as
+% the generic call, it RE-DERIVES resultsdir - typically from the FIRST-LEVEL
+% model name - and silently overwrites whatever the study's setup had already
+% set. Every result then lands in a different model's directory while the
+% published report still goes to the right one, so the split is easy to miss.
+if ~isempty(resultsdir_before_setup) && ~strcmp(resultsdir_before_setup, resultsdir)
+    error(['\nPATH SETUP MOVED THE RESULTS DIRECTORY.\n\n' ...
+           '  before: %s\n  after : %s\n\n' ...
+           'The generic a_set_up_paths_always_run_first re-derived resultsdir and\n' ...
+           'discarded the one your study setup had set. In your copy of this script,\n' ...
+           'replace that call with your study''s own s0 path script.\n'], ...
+           resultsdir_before_setup, resultsdir);
+end
+
+
+if ~exist('DAT','var') || ~isfield(DAT,'SIG_contrasts')
+    load(fullfile(resultsdir,'image_names_and_setup.mat'));
+end
+
+% The reload above is not proof the data arrived: if prep_2 or prep_3 was re-run
+% after prep_4, the stored DAT was rebuilt without SIG_* and the file has none
+% either. Without this check the script carries on and fails later somewhere
+% less obvious - or appears to run on nothing. proj_moodbugs model_1b sat in
+% exactly this state, with a published prep_4 report and no SIG fields on disk.
+if ~isfield(DAT,'SIG_contrasts') || isempty(DAT.SIG_contrasts)
+    error(['\nNO SIGNATURE RESULTS IN DAT.\n\n' ...
+           'DAT.SIG_contrasts is missing from %s.\n\n' ...
+           'prep_4_apply_signatures_and_save appends it, but prep_2 and prep_3 ' ...
+           'rebuild DAT\nand overwrite the stored copy, so re-running either of ' ...
+           'them after prep_4\ndiscards the signature results.\n\n' ...
+           'Re-run prep_4_apply_signatures_and_save, then this script.\n'], ...
+           fullfile(resultsdir,'image_names_and_setup.mat'));
+end
+
+
+
 %% USER OPTIONS
 % -------------------------------------------------------------------------
 
@@ -68,7 +131,12 @@
 % When set, each contrast additionally gets a covariate-adjusted group test
 % (signature ~ group + covariates) and a companion barplot of the adjusted
 % responses, so the adjusted and unadjusted results sit side by side.
-adjust_for_covs = {};
+adjust_for_covs = {};   % names of DAT.BETWEENPERSON.contrasts{i} columns to adjust for; {} for none.
+                        % ComBat already removed centre from the condition images, and the
+                        % corresponding GLM arm (nocov) does not covary centre either. Adjusting
+                        % here would correct twice for the same thing and would make the
+                        % signature results describe a different model from the GLM they sit
+                        % beside. Set to {'center_UGOT','center_UM'} only against a cov_center arm.
 
 
 % Now set in a2 script
@@ -77,6 +145,51 @@ scalenames =    {myscaling_sigs};                       % or scaled
 simnames =      {similarity_metric_sigs};               % or 'cosine_sim' 'dotproduct'
 mygroupnamefield = 'contrasts';                         % 'conditions' or 'contrasts'
 
+% Signature selection, matched to proj_cfs so the two studies report the same
+% set. Empty = report every signature in the group.
+% FIRST PASS: NPSpos and NPSneg are LEFT OUT. They are the positive- and
+% negative-weight halves of NPS, not independent signatures, so including all
+% three tests the same pattern three times and inflates the family the FDR
+% correction is applied over. Test NPS itself first; only if NPS is significant
+% (unadjusted) is it worth decomposing it into NPSpos/NPSneg and the NPS
+% subregions, for which prep_4 already stores DAT.NPSsubregions and there is
+% commented-out group-difference code at the bottom of this script.
+subsets_i_want = {'NPS','SIIPS','PINES','GSR','Heart','FM_pain'};
+
+
+
+% WHICH MULTIPLE-COMPARISON CORRECTIONS TO REPORT
+%
+% 'BH'          Benjamini-Hochberg linear step-up                    FDR
+% 'Storey'      Storey q-values via LaBGAScore_Storey_FDR ('sas')     FDR
+% 'adaptiveFDR' Benjamini & Hochberg (2000) adaptive step-up, m0 by
+%               lowest slope (SAS ADAPTIVEFDR default)               FDR
+% 'BKY'         Benjamini, Krieger & Yekutieli (2006) two-stage      FDR
+% 'holmSidak'   Holm step-down with Sidak multiplier                 FWER
+%
+% BH and Storey only by default: those are the two the pipeline has always
+% reported, and a table with every method in it is harder to read, not easier.
+% Add the others when the question is specifically whether a result depends on
+% the choice of correction - at small m it often does.
+%
+% Note holmSidak is reported as p_holmSidak, not q_: it is an FWER-adjusted
+% p-value, a different quantity from the FDR q-values, not a stricter version
+% of one.
+if ~exist('corrections_i_want','var') || isempty(corrections_i_want)
+    corrections_i_want = {'BH','Storey'};
+end
+
+% Output tag. This script writes its summary table to a name built from the
+% metric, the scaling and the contrast - none of which change when you run it a
+% second time over a DIFFERENT subsets_i_want. Two runs on the same contrast
+% therefore collide, and the second silently overwrites the first: running an
+% NPS decomposition after the main panel replaced the main panel's table with a
+% two-row one. Set sig_results_tag in the second script to keep them apart.
+if ~exist('sig_results_tag','var') || isempty(sig_results_tag), sig_results_tag = ''; end
+
+if ~exist('corrections_i_want_subregions','var') || isempty(corrections_i_want_subregions)
+    corrections_i_want_subregions = {'BH','Storey','holmSidak'};
+end
 
 %% DEFINE GROUPS IN PREP_1b_PREP_BEHAVIORAL_DATA
 % -------------------------------------------------------------------------
@@ -94,10 +207,9 @@ group = DAT.BETWEENPERSON.group;
 
 %% LOOP THROUGH SIGNATURES, TEST GROUP DIFFERENCE, CREATE ONE PLOT PER CONTRAST
 % -------------------------------------------------------------------------
-% Collect every signature's group test so the set can be FDR-corrected below.
-% Signatures are tested one at a time above; without this the report gives a
-% dozen or more uncorrected p-values and no way to read them as a family.
-sig_fdr = struct('name',{},'contrast',{},'p_unadj',{},'p_adj',{});
+sig_fdr = struct('name',{},'contrast',{},'p_unadj',{},'p_adj',{}, ...
+                 'y1',{},'y2',{},'t',{},'df',{},'d',{},'diff_adj',{},'t_adj',{}, ...
+                 'y1_adj',{},'y2_adj',{});
 
 for s = 1:length(mysignature)
     
@@ -110,6 +222,12 @@ for s = 1:length(mysignature)
         for sig = 1:size(siggroup.signaturenames,2)
             
             signature = siggroup.signaturenames{1,sig};
+
+            % Report only the signatures named in subsets_i_want, so this study
+            % and proj_cfs cover the same set. Empty = report all of them.
+            if ~isempty(subsets_i_want) && ~ismember(signature, subsets_i_want)
+                continue
+            end
             
             contrastdata = table2array(siggroup.(signature));
             
@@ -161,17 +279,34 @@ for s = 1:length(mysignature)
                 printstr('Between-groups test:');
 
                 [H,p,ci,stats] = ttest2_printout(y{1}, y{2});
-            p_unadj_this = p;
                 p_unadj_this = p;
 
                 printstr(dashes)
 
-            % covariate-adjusted test + companion plot, when requested
+            % Covariate-adjusted test, when requested. The sig_fdr record is made
+            % UNCONDITIONALLY: it used to sit inside this guard, so turning the
+            % adjustment off emptied sig_fdr and silently skipped both the FDR
+            % correction and the summary table - the unadjusted analysis lost its
+            % multiple-comparison correction precisely when it was the only one being
+            % reported. The adjusted fields are NaN/[] when no adjustment was made.
             if ~isempty(adjust_for_covs)
                 [y_adj_all{i}, adj_stats_this] = h_adjusted_group_test(y, group, DAT, i, adjust_for_covs);
-                sig_fdr(end+1) = struct('name',signature,'contrast',DAT.contrastnames{i}, ...
-                    'p_unadj',p_unadj_this,'p_adj',adj_stats_this.p); %#ok<SAGROW>
+                if iscell(y_adj_all{i}) && numel(y_adj_all{i}) == 2
+                    y1a = y_adj_all{i}{1}; y2a = y_adj_all{i}{2};
+                else
+                    y1a = []; y2a = [];
+                end
+            else
+                y_adj_all{i} = [];
+                adj_stats_this = struct('p',NaN,'t',NaN,'df',NaN,'diff',NaN,'covs',{{}});
+                y1a = []; y2a = [];
             end
+            sig_fdr(end+1) = struct('name',signature,'contrast',DAT.contrastnames{i}, ...
+                    'p_unadj',p_unadj_this,'p_adj',adj_stats_this.p, ...
+                    'y1',{y{1}},'y2',{y{2}},'t',stats.tstat,'df',stats.df, ...
+                    'd',stats.tstat*sqrt(1/numel(y{1})+1/numel(y{2})), ...
+                    'diff_adj',adj_stats_this.diff,'t_adj',adj_stats_this.t, ...
+                    'y1_adj',{y1a},'y2_adj',{y2a}); %#ok<SAGROW>
 
             end % panels
 
@@ -248,14 +383,32 @@ for s = 1:length(mysignature)
             printstr('Between-groups test:');
 
             [H,p,ci,stats] = ttest2_printout(y{1}, y{2});
+                p_unadj_this = p;
 
             printstr(dashes)
 
+            % The sig_fdr record is made UNCONDITIONALLY: it used to sit inside this
+            % guard, so turning the adjustment off emptied sig_fdr and silently
+            % skipped both the FDR correction and the summary table. Adjusted fields
+            % are NaN/[] when no adjustment was made.
             if ~isempty(adjust_for_covs)
                 [y_adj_all{i}, adj_stats_this] = h_adjusted_group_test(y, group, DAT, i, adjust_for_covs);
-                sig_fdr(end+1) = struct('name',mysignature{s},'contrast',DAT.contrastnames{i}, ...
-                    'p_unadj',p_unadj_this,'p_adj',adj_stats_this.p); %#ok<SAGROW>
+                if iscell(y_adj_all{i}) && numel(y_adj_all{i}) == 2
+                    y1a = y_adj_all{i}{1}; y2a = y_adj_all{i}{2};
+                else
+                    y1a = []; y2a = [];
+                end
+            else
+                y_adj_all{i} = [];
+                adj_stats_this = struct('p',NaN,'t',NaN,'df',NaN,'diff',NaN,'covs',{{}});
+                y1a = []; y2a = [];
             end
+            sig_fdr(end+1) = struct('name',mysignature{s},'contrast',DAT.contrastnames{i}, ...
+                    'p_unadj',p_unadj_this,'p_adj',adj_stats_this.p, ...
+                    'y1',{y{1}},'y2',{y{2}},'t',stats.tstat,'df',stats.df, ...
+                    'd',stats.tstat*sqrt(1/numel(y{1})+1/numel(y{2})), ...
+                    'diff_adj',adj_stats_this.diff,'t_adj',adj_stats_this.t, ...
+                    'y1_adj',{y1a},'y2_adj',{y2a}); %#ok<SAGROW>
 
         end % panels
 
@@ -279,7 +432,6 @@ for s = 1:length(mysignature)
     end % if loop group or individual signature
     
 end % signature
-
 
 %% FDR CORRECTION ACROSS SIGNATURES
 % -------------------------------------------------------------------------
@@ -361,6 +513,401 @@ if ~isempty(sig_fdr)
     end
 
 end
+
+
+
+%% SUMMARY TABLE AND VIOLIN PLOT ACROSS SIGNATURES
+% -------------------------------------------------------------------------
+% One row per signature: the unadjusted and covariate-adjusted group
+% differences with their raw p-values, and both FDR corrections.
+%
+% q_Storey comes from LaBGAScore_Storey_FDR, the same function the ROI GLM and
+% the decoding scripts use. With a handful of signatures Storey usually cannot
+% identify pi0, falls back to pi0 = 1, and q_Storey then EQUALS q_BH. That is
+% the documented behaviour, not a bug - the printout says so when it happens,
+% and q_BH is the column to read in that case.
+%
+% The figure plots the UNADJUSTED cosine similarities, since those are the
+% observed data; the adjusted statistics live in the table. Cosine is bounded
+% and unitless, so all signatures can share one axis - which is exactly what
+% dot product does not allow.
+
+SIGSUM = table();
+
+if ~isempty(sig_fdr)
+
+    fprintf('\n\n');
+    printhdr('SUMMARY TABLE: GROUP DIFFERENCES IN COSINE SIMILARITY');
+    fprintf('\n\n');
+
+    contrasts_done = unique({sig_fdr.contrast}, 'stable');
+
+    for cc = 1:numel(contrasts_done)
+
+        sel = find(strcmp({sig_fdr.contrast}, contrasts_done{cc}));
+        nms = {sig_fdr(sel).name}';
+        pu  = [sig_fdr(sel).p_unadj]';
+        pa  = [sig_fdr(sel).p_adj]';
+
+        % same correction as the section above, recomputed here so the table is
+        % self-contained and cannot silently disagree with the printout
+        % Corrections requested in corrections_i_want. Each is computed by
+        % LaBGAScore_Storey_FDR under a different 'method', so the table cannot
+        % drift from the function: there is one implementation, selected here.
+        corr_defs = { 'BH',          'bh',             'q_BH'
+                      'Storey',      'sas',            'q_Storey'
+                      'adaptiveFDR', 'adaptivefdr',    'q_adaptiveFDR'
+                      'BKY',         'bky',            'q_BKY'
+                      'holmSidak',   'stepdown_sidak', 'p_holmSidak' };
+        unknown_corr = setdiff(corrections_i_want, corr_defs(:,1));
+        if ~isempty(unknown_corr)
+            error('unknown entry in corrections_i_want: %s. Valid: %s', ...
+                strjoin(unknown_corr, ', '), strjoin(corr_defs(:,1)', ', '));
+        end
+        wh_corr = find(ismember(corr_defs(:,1), corrections_i_want));
+
+        ok_u   = ~isnan(pu);
+        corr_u = cell(numel(wh_corr),1);
+        for z = 1:numel(wh_corr)
+            v = nan(size(pu));
+            v(ok_u) = LaBGAScore_Storey_FDR(pu(ok_u), 'method', corr_defs{wh_corr(z),2}, 'verbose', false);
+            corr_u{z} = v(:);
+        end
+
+        % pi0 and its verdict are Storey-specific; only meaningful if asked for
+        if ismember('Storey', corrections_i_want)
+            [~, pi0_u, info_u] = LaBGAScore_Storey_FDR(pu(ok_u));
+        else
+            pi0_u = NaN; info_u = struct('reliable', true);
+        end
+
+        % Additional corrections, so the table shows what the choice of method
+        % is actually worth rather than resting on one of them. At the panel
+        % sizes here Storey's pi0 is estimated from a handful of tests and is
+        % biased low, which makes q_Storey the most permissive column by some
+        % margin; the two adaptive FDR procedures are biased conservative, and
+        % Holm-Sidak controls FWER rather than FDR so it is stricter again and
+        % is NOT comparable with the q columns.
+        qau = nan(size(pu)); qku = nan(size(pu)); qhu = nan(size(pu));
+        qau(~isnan(pu)) = LaBGAScore_Storey_FDR(pu(~isnan(pu)), 'method', 'adaptivefdr',    'verbose', false);
+        qku(~isnan(pu)) = LaBGAScore_Storey_FDR(pu(~isnan(pu)), 'method', 'bky',            'verbose', false);
+        qhu(~isnan(pu)) = LaBGAScore_Storey_FDR(pu(~isnan(pu)), 'method', 'stepdown_sidak', 'verbose', false);
+
+        use_adj = ~isempty(adjust_for_covs) && any(~isnan(pa));
+        corr_a  = cell(numel(wh_corr),1);
+        pi0_a   = NaN; info_a = struct('reliable', true);
+        if use_adj
+            ok_a = ~isnan(pa);
+            for z = 1:numel(wh_corr)
+                v = nan(size(pa));
+                v(ok_a) = LaBGAScore_Storey_FDR(pa(ok_a), 'method', corr_defs{wh_corr(z),2}, 'verbose', false);
+                corr_a{z} = v(:);
+            end
+            if ismember('Storey', corrections_i_want)
+                [~, pi0_a, info_a] = LaBGAScore_Storey_FDR(pa(ok_a));
+            end
+        end
+
+        n = numel(sel);
+        m1 = nan(n,1); m2 = nan(n,1); sd1 = nan(n,1); sd2 = nan(n,1);
+        n1 = nan(n,1); n2 = nan(n,1); dmean = nan(n,1);
+        for k = 1:n
+            y1 = sig_fdr(sel(k)).y1(:); y2 = sig_fdr(sel(k)).y2(:);
+            m1(k) = mean(y1,'omitnan');  sd1(k) = std(y1,'omitnan');  n1(k) = sum(~isnan(y1));
+            m2(k) = mean(y2,'omitnan');  sd2(k) = std(y2,'omitnan');  n2(k) = sum(~isnan(y2));
+            dmean(k) = m1(k) - m2(k);
+        end
+
+        % Holm-Sidak is named p_, not q_, on purpose: it is an FWER-adjusted
+        % P-VALUE (probability of ANY false positive), while the q_ columns are
+        % FDR q-values (expected PROPORTION of false positives among those
+        % called). Different quantities, not different strengths of the same
+        % one - the prefix is there so the table cannot be read as if they were
+        % interchangeable.
+        T = table(nms, n1, n2, m1, sd1, m2, sd2, dmean, ...
+                  [sig_fdr(sel).t]', [sig_fdr(sel).d]', pu, ...
+            'VariableNames', {'signature','n_g1','n_g2','mean_g1','sd_g1','mean_g2','sd_g2', ...
+                              'diff_unadj','t_unadj','cohens_d','p_unadj'});
+        corr_cols_u = cell(numel(wh_corr),1);
+        for z = 1:numel(wh_corr)
+            corr_cols_u{z} = [corr_defs{wh_corr(z),3} '_unadj'];
+            T.(corr_cols_u{z}) = corr_u{z};
+        end
+        T.diff_adj = [sig_fdr(sel).diff_adj]';
+        T.t_adj    = [sig_fdr(sel).t_adj]';
+        T.p_adj    = pa;
+        corr_cols_a = {};
+        if use_adj
+            corr_cols_a = cell(numel(wh_corr),1);
+            for z = 1:numel(wh_corr)
+                corr_cols_a{z} = [corr_defs{wh_corr(z),3} '_adj'];
+                T.(corr_cols_a{z}) = corr_a{z};
+            end
+        end
+        T = sortrows(T, 'p_unadj');
+        T.Properties.UserData = struct('contrast', contrasts_done{cc}, ...
+            'metric', simnames{1}, 'scaling', scalenames{1}, ...
+            'groups', {groupnames}, 'adjusted_for', {adjust_for_covs}, ...
+            'pi0_unadj', pi0_u, 'storey_reliable_unadj', info_u.reliable);
+
+        fprintf('\ncontrast: %s   |   metric: %s   |   scaling: %s\n', ...
+            contrasts_done{cc}, simnames{1}, scalenames{1});
+        fprintf('groups: %s (n=%d) vs %s (n=%d)', groupnames{1}, n1(1), groupnames{2}, n2(1));
+        if use_adj, fprintf('   |   adjusted for: %s', strjoin(adjust_for_covs, ', ')); end
+        fprintf('\n\n');
+        % full table is wide; print the requested corrections compactly too
+        disp(T);
+        fprintf('\n  corrections side by side (unadjusted), %d method(s):\n', numel(wh_corr));
+        disp(T(:, [{'signature','p_unadj'}, corr_cols_u(:)']));
+
+        if ~info_u.reliable
+            fprintf('  NOTE pi0 not identifiable (unadjusted): q_Storey == q_BH, read q_BH\n');
+        end
+        if use_adj && ~info_a.reliable
+            fprintf('  NOTE pi0 not identifiable (adjusted): q_Storey == q_BH, read q_BH\n');
+        end
+
+        csvname = fullfile(resultsdir, sprintf('signature_group_diff_%s_%s_%s%s.csv', ...
+            simnames{1}, scalenames{1}, matlab.lang.makeValidName(contrasts_done{cc}), ...
+            sig_results_tag));
+        writetable(T, csvname);
+        fprintf('\n  saved: %s\n', csvname);
+
+        SIGSUM = [SIGSUM; T]; %#ok<AGROW>
+
+        % ---- violin plots: one figure unadjusted, one adjusted --------------
+        % Two figures rather than one, because the adjusted values are on the
+        % same scale but are not the observed data: overlaying them would
+        % invite reading the covariate-removed spread as raw variability.
+        variants = {'unadjusted'};
+        if use_adj && ~isempty(sig_fdr(sel(1)).y1_adj), variants{end+1} = 'adjusted'; end
+
+        for vv = 1:numel(variants)
+
+            isadj = strcmp(variants{vv}, 'adjusted');
+
+            Y1 = cell(1,n); Y2 = cell(1,n); keep = true(1,n);
+            for k = 1:n
+                if isadj
+                    Y1{k} = sig_fdr(sel(k)).y1_adj(:); Y2{k} = sig_fdr(sel(k)).y2_adj(:);
+                else
+                    Y1{k} = sig_fdr(sel(k)).y1(:);     Y2{k} = sig_fdr(sel(k)).y2(:);
+                end
+                keep(k) = ~isempty(Y1{k}) && ~isempty(Y2{k});
+            end
+            if ~any(keep), continue, end
+            Y1 = Y1(keep); Y2 = Y2(keep);
+            labs = T.signature(keep);
+            nk = numel(Y1);
+
+            figttl = sprintf('signature group diffs %s %s %s', simnames{1}, variants{vv}, contrasts_done{cc});
+            fh_v = create_figure(figttl);
+
+            xg1 = (1:3:3*nk); xg2 = xg1 + 1;
+
+            violinplot(Y1, 'x', xg1, 'facecolor', groupcolors{1}, 'edgecolor', 'none', ...
+                       'facealpha', 0.45, 'mc', 'k', 'medc', [.3 .3 .3], 'pointsize', 8, 'plotlegend', 0);
+            violinplot(Y2, 'x', xg2, 'facecolor', groupcolors{2}, 'edgecolor', 'none', ...
+                       'facealpha', 0.45, 'mc', 'k', 'medc', [.3 .3 .3], 'pointsize', 8, 'plotlegend', 0);
+
+            % Pad the x-axis. Without this the first violin sits exactly on the
+            % axis line at x = 1 and is clipped by it, which reads as a missing
+            % group rather than as a clipped one.
+            xlim([min(xg1) - 1.5, max(xg2) + 1.5]);
+
+            set(gca, 'XTick', xg1 + 0.5, 'XTickLabel', labs, 'XTickLabelRotation', 45);
+            if isadj
+                ylabel(sprintf('cosine similarity, adjusted for %s', strjoin(adjust_for_covs, ', ')));
+            else
+                ylabel(sprintf('cosine similarity (%s)', scalenames{1}));
+            end
+            title(sprintf('%s: %s vs %s (%s)', contrasts_done{cc}, groupnames{1}, groupnames{2}, variants{vv}), 'FontSize', 14);
+            yline(0, ':', 'Color', [.5 .5 .5]);
+
+            % Significance marks come from the matching column, so each figure
+            % is annotated with its own test rather than the other one's.
+            yl = ylim; ytxt = yl(2) - 0.03*range(yl);
+            Tk = T(keep,:);
+            for k = 1:nk
+                % ** marks whichever correction is the headline one for this
+                % run: Storey if requested, else BH, else the first requested
+                % method. Hard-coding q_Storey here would error whenever the
+                % user switches it off in corrections_i_want.
+                if isadj, sfx = '_adj'; praw = Tk.p_adj(k); else, sfx = '_unadj'; praw = Tk.p_unadj(k); end
+                star = '';
+                for cand = {'q_Storey','q_BH','q_adaptiveFDR','q_BKY','p_holmSidak'}
+                    cn = [cand{1} sfx];
+                    if ismember(cn, Tk.Properties.VariableNames)
+                        if Tk.(cn)(k) < .05, star = '**'; end
+                        break
+                    end
+                end
+                if isempty(star) && praw < .05, star = '*'; end
+                if ~isempty(star)
+                    text(xg1(k)+0.5, ytxt, star, 'HorizontalAlignment','center', 'FontSize', 16);
+                end
+            end
+            xlabel(sprintf('* p < .05   ** q_{Storey} < .05   (%s)', variants{vv}), 'Interpreter', 'tex');
+
+            plugin_set_figure_size('fig', fh_v);
+            drawnow, snapnow
+
+        end
+
+    end
+
+    save(fullfile(resultsdir, sprintf('signature_group_diff_%s_%s%s.mat', simnames{1}, scalenames{1}, sig_results_tag)), ...
+         'SIGSUM', 'sig_fdr');
+
+end
+
+
+% %% NPS SUBREGIONS, TEST GROUP DIFFERENCE, CREATE ONE PLOT PER CONTRAST
+% % -------------------------------------------------------------------------
+% 
+% % POSITIVE
+% % --------
+% 
+% % which variables to use
+% mysubrfield = 'npspos_by_region_contrasts'; % 'npspos_by_region_cosinesim';     %'npspos_by_regionsc';
+% mysubrfieldneg = 'npsneg_by_region_contrasts'; % 'npsneg_by_region_cosinesim';  % 'npsneg_by_regionsc';
+% 
+% posnames = DAT.NPSsubregions.posnames;
+% negnames = DAT.NPSsubregions.negnames;
+% 
+% clear means p T
+% 
+% for i = 1:kc  % for each contrast
+%     
+%     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
+%     if isempty(group), continue, end % skip this condition/contrast - no groups
+%     
+%     if size(group, 2) > 1            % we have multiple variables
+%         disp('Warning: Group has > 1 column. Using first column only.')
+%         group = group(:, 1);
+%     end
+%     
+%     if length(unique(group)) > 2  % this is a continuous variable
+%         disp('Binarizing continuous grouping variable via median split.')
+%         group = mediansplit(group);
+%     end
+%     
+%     % In case we forgot to assign colors or groupnames in prep 1b script
+%     if length(groupcolors) < 2, groupcolors = seaborn_colors(2); end
+%     if length(groupnames) < 2, groupnames = {'High' 'Low'}; end
+%         
+%     mydat = DAT.NPSsubregions.(mysubrfield){i};
+%     k = size(mydat, 2);
+%     
+%     create_figure(sprintf('NPS subregions by group %s', DAT.contrastnames{i}), 1, k);
+%     pos = get(gcf, 'Position');
+%     pos(4) = pos(4) .* 2.5;
+%     set(gcf, 'Position', pos);
+%     
+%     clear means p T
+%     
+%     for j = 1:k  % for each subregion
+%         
+%         subplot(1, k, j);
+%         
+%         y = {mydat(group == 1, j) mydat(group == -1, j)};
+%         
+%         printhdr(posnames{j});
+%         
+%         barplot_columns(y, 'nofig', 'colors', groupcolors, 'noviolin', 'noind', 'names', groupnames );
+%         
+%         title(posnames{j})
+%         xlabel('Group');
+%         if j == 1, ylabel('NPS Response'); end
+%         
+%         printstr('Between-groups test:');
+%         [H,p(j, 1),ci,stats] = ttest2_printout(y{1}, y{2});
+%         
+%         means(j, :) = stats.means;
+%         T(j, 1) = stats.tstat;
+%         
+%     end
+%     
+%     drawnow, snapnow
+%     
+%     % Print between-subject Table
+%     printhdr('Between-group tests');
+%     Region = posnames';
+%     regionmeans = table(Region, means, T, p);
+%     
+%     disp(regionmeans);
+%     
+% end % panels
+% 
+% % NEGATIVE
+% % --------
+% 
+% for i = 1:kc
+%     
+%     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
+%     
+%     if size(group, 2) > 1            % we have multiple variables
+%         disp('Warning: Group has > 1 column. Using first column only.')
+%         group = group(:, 1);
+%     end
+%     
+%     if length(unique(group)) > 2  % this is a continuous variable
+%         disp('Binarizing continuous grouping variable via median split.')
+%         group = mediansplit(group);
+%     end
+%     
+%     % In case we forgot to assign colors or groupnames in prep 1b script
+%     if length(groupcolors) < 2, groupcolors = seaborn_colors(2); end
+%     if length(groupnames) < 2, groupnames = {'High' 'Low'}; end
+%     
+%         
+%     if isempty(group), continue, end % skip this condition/contrast - no groups
+%     
+%     mydat = DAT.NPSsubregions.(mysubrfieldneg){i};
+%     k = size(mydat, 2);
+%     
+%     create_figure(sprintf('NPS neg subregions by group %s', DAT.contrastnames{i}), 1, k);
+%     pos = get(gcf, 'Position');
+%     pos(4) = pos(4) .* 2.5;
+%     set(gcf, 'Position', pos);
+%     
+%     clear means p T
+%     
+%     for j = 1:k
+%         
+%         subplot(1, k, j);
+%         
+%         y = {mydat(group == 1, j) mydat(group == -1, j)};
+%         
+%         printhdr(negnames{j});
+%         
+%         barplot_columns(y, 'nofig', 'colors', groupcolors, 'noviolin', 'noind', 'names', groupnames );
+%         
+%         title(negnames{j})
+%         xlabel('Group');
+%         if j == 1, ylabel('NPS Response'); end
+%         
+%         printstr('Between-groups test:');
+%         [H,p(j, 1),ci,stats] = ttest2_printout(y{1}, y{2});
+%         
+%         means(j, :) = stats.means;
+%         T(j, 1) = stats.tstat;
+%         
+%     end
+%     
+%     drawnow, snapnow
+%     
+%     % Print between-subject Table
+%     printhdr('Between-group tests');
+%     Region = negnames';
+%     regionmeans = table(Region, means, T, p);
+%     
+%     disp(regionmeans);
+%     
+% end
+
+
+% =========================================================================
 
 
 
@@ -511,6 +1058,427 @@ end
 
 % =========================================================================
 
+%% NPS SUBREGIONS: GROUP DIFFERENCES, TABLE AND PLOT
+% -------------------------------------------------------------------------
+% Third level of the decomposition: the 8 positive and 7 negative NPS regions.
+%
+% These come from DAT.NPSsubregions, written by prep_4 via apply_nps using
+% whatever similarity metric prep_4 ran with. The field names do NOT record the
+% metric, so this script must be run in the same session as (or straight after)
+% the COSINE prep_4 variant, or the numbers here will silently describe a
+% different metric from the signature results above.
+%
+% Correction is applied across the positive set and the negative set SEPARATELY,
+% since each is a family in its own right, and both q_BH and q_Storey are shown
+% for the same reason as above: at 7-8 tests pi0 is barely identifiable.
+
+if isfield(DAT, 'NPSsubregions')
+
+    fprintf('\n\n');
+    printhdr('NPS SUBREGIONS: GROUP DIFFERENCES');
+    fprintf('\n\n');
+
+    subr_sets = {'npspos_by_region_contrasts', 'posnames', 'POSITIVE'
+                 'npsneg_by_region_contrasts', 'negnames', 'NEGATIVE'};
+
+    NPSSUBSUM = table();
+
+    for ss = 1:size(subr_sets,1)
+
+        fld = subr_sets{ss,1}; nmfld = subr_sets{ss,2}; lbl = subr_sets{ss,3};
+        if ~isfield(DAT.NPSsubregions, fld)
+            fprintf('  %s: %s not present, skipped\n', lbl, fld); continue
+        end
+
+        regnames = DAT.NPSsubregions.(nmfld);
+
+        for i = 1:kc
+
+            [grp, gnames, gcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
+            if isempty(grp), continue, end
+            if size(grp,2) > 1, grp = grp(:,1); end
+            if numel(unique(grp)) > 2, grp = mediansplit(grp); end
+            if numel(gcolors) < 2, gcolors = seaborn_colors(2); end
+            if numel(gnames)  < 2, gnames  = {'High' 'Low'}; end
+
+            mydat = DAT.NPSsubregions.(fld){i};
+            nreg  = size(mydat, 2);
+
+            nm = cell(nreg,1); pv = nan(nreg,1); tv = nan(nreg,1); dv = nan(nreg,1);
+            m1 = nan(nreg,1); m2 = nan(nreg,1); Y1 = cell(1,nreg); Y2 = cell(1,nreg);
+
+            for rgn = 1:nreg
+                y1 = mydat(grp > 0, rgn); y2 = mydat(grp < 0, rgn);
+                [~, pp, ~, st] = ttest2(y1, y2);
+                nm{rgn} = regnames{rgn};
+                pv(rgn) = pp; tv(rgn) = st.tstat;
+                dv(rgn) = st.tstat * sqrt(1/numel(y1) + 1/numel(y2));
+                m1(rgn) = mean(y1,'omitnan'); m2(rgn) = mean(y2,'omitnan');
+                Y1{rgn} = y1; Y2{rgn} = y2;
+            end
+
+            % Subregions use corrections_i_want_subregions, NOT the list used
+            % for the two-signature table above: 7-8 regions is a family where
+            % an FDR is meaningful, two signatures is not.
+            wh_sub = find(ismember(corr_defs(:,1), corrections_i_want_subregions));
+            [~, pi0_s, info_s] = LaBGAScore_Storey_FDR(pv);
+            Tsub = table(nm, m1, m2, m1-m2, tv, dv, pv, ...
+                'VariableNames', {'region','mean_g1','mean_g2','diff','t','cohens_d','p'});
+            sub_cols = cell(numel(wh_sub),1);
+            for z = 1:numel(wh_sub)
+                sub_cols{z} = corr_defs{wh_sub(z),3};
+                Tsub.(sub_cols{z}) = LaBGAScore_Storey_FDR(pv, 'method', corr_defs{wh_sub(z),2}, 'verbose', false);
+            end
+            Tsub = sortrows(Tsub, 'p');
+            Tsub.set = repmat({lbl}, height(Tsub), 1);
+            Tsub.contrast = repmat(DAT.contrastnames(i), height(Tsub), 1);
+
+            fprintf('\n--- NPS %s subregions, %s (%s n=%d vs %s n=%d), pi0 = %.3f ---\n', ...
+                lbl, DAT.contrastnames{i}, gnames{1}, sum(grp>0), gnames{2}, sum(grp<0), pi0_s);
+            disp(Tsub(:, [{'region','diff','t','cohens_d','p'}, sub_cols(:)']));
+            fprintf('  %d of %d at p < .05', sum(Tsub.p < .05), height(Tsub));
+            for z = 1:numel(sub_cols)
+                fprintf(', %d at %s < .05', sum(Tsub.(sub_cols{z}) < .05), sub_cols{z});
+            end
+            fprintf('\n');
+
+            NPSSUBSUM = [NPSSUBSUM; Tsub]; %#ok<AGROW>
+
+            % violin panel, ordered as the table
+            fh_s = create_figure(sprintf('NPS %s subregions %s', lbl, DAT.contrastnames{i}));
+            [~, ord] = ismember(Tsub.region, nm);
+            xg1 = (1:3:3*nreg); xg2 = xg1 + 1;
+            violinplot(Y1(ord), 'x', xg1, 'facecolor', gcolors{1}, 'edgecolor', 'none', ...
+                'facealpha', 0.45, 'mc', 'k', 'medc', [.3 .3 .3], 'pointsize', 8, 'plotlegend', 0);
+            violinplot(Y2(ord), 'x', xg2, 'facecolor', gcolors{2}, 'edgecolor', 'none', ...
+                'facealpha', 0.45, 'mc', 'k', 'medc', [.3 .3 .3], 'pointsize', 8, 'plotlegend', 0);
+            xlim([min(xg1) - 1.5, max(xg2) + 1.5]);
+            set(gca, 'XTick', xg1 + 0.5, 'XTickLabel', Tsub.region, 'XTickLabelRotation', 45);
+            ylabel(sprintf('NPS %s subregion response', lower(lbl)));
+            title(sprintf('NPS %s subregions: %s vs %s', lbl, gnames{1}, gnames{2}), 'FontSize', 14);
+            yline(0, ':', 'Color', [.5 .5 .5]);
+            yl = ylim; ytxt = yl(2) - 0.03*range(yl);
+            for rgn = 1:nreg
+                star = ''; if Tsub.q_Storey(rgn) < .05, star = '**'; elseif Tsub.p(rgn) < .05, star = '*'; end
+                if ~isempty(star), text(xg1(rgn)+0.5, ytxt, star, 'HorizontalAlignment','center','FontSize',16); end
+            end
+            xlabel('* p < .05   ** q_{Storey} < .05', 'Interpreter', 'tex');
+            plugin_set_figure_size('fig', fh_s);
+            drawnow, snapnow
+
+        end
+    end
+
+    if ~isempty(NPSSUBSUM)
+        csvsub = fullfile(resultsdir, sprintf('NPS_subregion_group_diff_%s_%s.csv', simnames{1}, scalenames{1}));
+        writetable(NPSSUBSUM, csvsub);
+        fprintf('\n  saved: %s\n', csvsub);
+        save(fullfile(resultsdir, sprintf('NPS_subregion_group_diff_%s_%s.mat', simnames{1}, scalenames{1})), 'NPSSUBSUM');
+    end
+
+else
+    fprintf('\n\nDAT.NPSsubregions not present - run the cosine prep_4 variant first.\n\n');
+end
+
+
+% %% NPS SUBREGIONS, TEST GROUP DIFFERENCE, CREATE ONE PLOT PER CONTRAST
+% % -------------------------------------------------------------------------
+% 
+% % POSITIVE
+% % --------
+% 
+% % which variables to use
+% mysubrfield = 'npspos_by_region_contrasts'; % 'npspos_by_region_cosinesim';     %'npspos_by_regionsc';
+% mysubrfieldneg = 'npsneg_by_region_contrasts'; % 'npsneg_by_region_cosinesim';  % 'npsneg_by_regionsc';
+% 
+% posnames = DAT.NPSsubregions.posnames;
+% negnames = DAT.NPSsubregions.negnames;
+% 
+% clear means p T
+% 
+% for i = 1:kc  % for each contrast
+%     
+%     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
+%     if isempty(group), continue, end % skip this condition/contrast - no groups
+%     
+%     if size(group, 2) > 1            % we have multiple variables
+%         disp('Warning: Group has > 1 column. Using first column only.')
+%         group = group(:, 1);
+%     end
+%     
+%     if length(unique(group)) > 2  % this is a continuous variable
+%         disp('Binarizing continuous grouping variable via median split.')
+%         group = mediansplit(group);
+%     end
+%     
+%     % In case we forgot to assign colors or groupnames in prep 1b script
+%     if length(groupcolors) < 2, groupcolors = seaborn_colors(2); end
+%     if length(groupnames) < 2, groupnames = {'High' 'Low'}; end
+%         
+%     mydat = DAT.NPSsubregions.(mysubrfield){i};
+%     k = size(mydat, 2);
+%     
+%     create_figure(sprintf('NPS subregions by group %s', DAT.contrastnames{i}), 1, k);
+%     pos = get(gcf, 'Position');
+%     pos(4) = pos(4) .* 2.5;
+%     set(gcf, 'Position', pos);
+%     
+%     clear means p T
+%     
+%     for j = 1:k  % for each subregion
+%         
+%         subplot(1, k, j);
+%         
+%         y = {mydat(group == 1, j) mydat(group == -1, j)};
+%         
+%         printhdr(posnames{j});
+%         
+%         barplot_columns(y, 'nofig', 'colors', groupcolors, 'noviolin', 'noind', 'names', groupnames );
+%         
+%         title(posnames{j})
+%         xlabel('Group');
+%         if j == 1, ylabel('NPS Response'); end
+%         
+%         printstr('Between-groups test:');
+%         [H,p(j, 1),ci,stats] = ttest2_printout(y{1}, y{2});
+%         
+%         means(j, :) = stats.means;
+%         T(j, 1) = stats.tstat;
+%         
+%     end
+%     
+%     drawnow, snapnow
+%     
+%     % Print between-subject Table
+%     printhdr('Between-group tests');
+%     Region = posnames';
+%     regionmeans = table(Region, means, T, p);
+%     
+%     disp(regionmeans);
+%     
+% end % panels
+% 
+% % NEGATIVE
+% % --------
+% 
+% for i = 1:kc
+%     
+%     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
+%     
+%     if size(group, 2) > 1            % we have multiple variables
+%         disp('Warning: Group has > 1 column. Using first column only.')
+%         group = group(:, 1);
+%     end
+%     
+%     if length(unique(group)) > 2  % this is a continuous variable
+%         disp('Binarizing continuous grouping variable via median split.')
+%         group = mediansplit(group);
+%     end
+%     
+%     % In case we forgot to assign colors or groupnames in prep 1b script
+%     if length(groupcolors) < 2, groupcolors = seaborn_colors(2); end
+%     if length(groupnames) < 2, groupnames = {'High' 'Low'}; end
+%     
+%         
+%     if isempty(group), continue, end % skip this condition/contrast - no groups
+%     
+%     mydat = DAT.NPSsubregions.(mysubrfieldneg){i};
+%     k = size(mydat, 2);
+%     
+%     create_figure(sprintf('NPS neg subregions by group %s', DAT.contrastnames{i}), 1, k);
+%     pos = get(gcf, 'Position');
+%     pos(4) = pos(4) .* 2.5;
+%     set(gcf, 'Position', pos);
+%     
+%     clear means p T
+%     
+%     for j = 1:k
+%         
+%         subplot(1, k, j);
+%         
+%         y = {mydat(group == 1, j) mydat(group == -1, j)};
+%         
+%         printhdr(negnames{j});
+%         
+%         barplot_columns(y, 'nofig', 'colors', groupcolors, 'noviolin', 'noind', 'names', groupnames );
+%         
+%         title(negnames{j})
+%         xlabel('Group');
+%         if j == 1, ylabel('NPS Response'); end
+%         
+%         printstr('Between-groups test:');
+%         [H,p(j, 1),ci,stats] = ttest2_printout(y{1}, y{2});
+%         
+%         means(j, :) = stats.means;
+%         T(j, 1) = stats.tstat;
+%         
+%     end
+%     
+%     drawnow, snapnow
+%     
+%     % Print between-subject Table
+%     printhdr('Between-group tests');
+%     Region = negnames';
+%     regionmeans = table(Region, means, T, p);
+%     
+%     disp(regionmeans);
+%     
+% end
+
+
+% =========================================================================
+
+
+
+% %% NPS SUBREGIONS, TEST GROUP DIFFERENCE, CREATE ONE PLOT PER CONTRAST
+% % -------------------------------------------------------------------------
+% 
+% % POSITIVE
+% % --------
+% 
+% % which variables to use
+% mysubrfield = 'npspos_by_region_contrasts'; % 'npspos_by_region_cosinesim';     %'npspos_by_regionsc';
+% mysubrfieldneg = 'npsneg_by_region_contrasts'; % 'npsneg_by_region_cosinesim';  % 'npsneg_by_regionsc';
+% 
+% posnames = DAT.NPSsubregions.posnames;
+% negnames = DAT.NPSsubregions.negnames;
+% 
+% clear means p T
+% 
+% for i = 1:kc  % for each contrast
+%     
+%     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
+%     if isempty(group), continue, end % skip this condition/contrast - no groups
+%     
+%     if size(group, 2) > 1            % we have multiple variables
+%         disp('Warning: Group has > 1 column. Using first column only.')
+%         group = group(:, 1);
+%     end
+%     
+%     if length(unique(group)) > 2  % this is a continuous variable
+%         disp('Binarizing continuous grouping variable via median split.')
+%         group = mediansplit(group);
+%     end
+%     
+%     % In case we forgot to assign colors or groupnames in prep 1b script
+%     if length(groupcolors) < 2, groupcolors = seaborn_colors(2); end
+%     if length(groupnames) < 2, groupnames = {'High' 'Low'}; end
+%         
+%     mydat = DAT.NPSsubregions.(mysubrfield){i};
+%     k = size(mydat, 2);
+%     
+%     create_figure(sprintf('NPS subregions by group %s', DAT.contrastnames{i}), 1, k);
+%     pos = get(gcf, 'Position');
+%     pos(4) = pos(4) .* 2.5;
+%     set(gcf, 'Position', pos);
+%     
+%     clear means p T
+%     
+%     for j = 1:k  % for each subregion
+%         
+%         subplot(1, k, j);
+%         
+%         y = {mydat(group == 1, j) mydat(group == -1, j)};
+%         
+%         printhdr(posnames{j});
+%         
+%         barplot_columns(y, 'nofig', 'colors', groupcolors, 'noviolin', 'noind', 'names', groupnames );
+%         
+%         title(posnames{j})
+%         xlabel('Group');
+%         if j == 1, ylabel('NPS Response'); end
+%         
+%         printstr('Between-groups test:');
+%         [H,p(j, 1),ci,stats] = ttest2_printout(y{1}, y{2});
+%         
+%         means(j, :) = stats.means;
+%         T(j, 1) = stats.tstat;
+%         
+%     end
+%     
+%     drawnow, snapnow
+%     
+%     % Print between-subject Table
+%     printhdr('Between-group tests');
+%     Region = posnames';
+%     regionmeans = table(Region, means, T, p);
+%     
+%     disp(regionmeans);
+%     
+% end % panels
+% 
+% % NEGATIVE
+% % --------
+% 
+% for i = 1:kc
+%     
+%     [group, groupnames, groupcolors] = plugin_get_group_names_colors(DAT, mygroupnamefield, i);
+%     
+%     if size(group, 2) > 1            % we have multiple variables
+%         disp('Warning: Group has > 1 column. Using first column only.')
+%         group = group(:, 1);
+%     end
+%     
+%     if length(unique(group)) > 2  % this is a continuous variable
+%         disp('Binarizing continuous grouping variable via median split.')
+%         group = mediansplit(group);
+%     end
+%     
+%     % In case we forgot to assign colors or groupnames in prep 1b script
+%     if length(groupcolors) < 2, groupcolors = seaborn_colors(2); end
+%     if length(groupnames) < 2, groupnames = {'High' 'Low'}; end
+%     
+%         
+%     if isempty(group), continue, end % skip this condition/contrast - no groups
+%     
+%     mydat = DAT.NPSsubregions.(mysubrfieldneg){i};
+%     k = size(mydat, 2);
+%     
+%     create_figure(sprintf('NPS neg subregions by group %s', DAT.contrastnames{i}), 1, k);
+%     pos = get(gcf, 'Position');
+%     pos(4) = pos(4) .* 2.5;
+%     set(gcf, 'Position', pos);
+%     
+%     clear means p T
+%     
+%     for j = 1:k
+%         
+%         subplot(1, k, j);
+%         
+%         y = {mydat(group == 1, j) mydat(group == -1, j)};
+%         
+%         printhdr(negnames{j});
+%         
+%         barplot_columns(y, 'nofig', 'colors', groupcolors, 'noviolin', 'noind', 'names', groupnames );
+%         
+%         title(negnames{j})
+%         xlabel('Group');
+%         if j == 1, ylabel('NPS Response'); end
+%         
+%         printstr('Between-groups test:');
+%         [H,p(j, 1),ci,stats] = ttest2_printout(y{1}, y{2});
+%         
+%         means(j, :) = stats.means;
+%         T(j, 1) = stats.tstat;
+%         
+%     end
+%     
+%     drawnow, snapnow
+%     
+%     % Print between-subject Table
+%     printhdr('Between-group tests');
+%     Region = negnames';
+%     regionmeans = table(Region, means, T, p);
+%     
+%     disp(regionmeans);
+%     
+% end
+
+
+%% LOCAL FUNCTIONS: covariate-adjusted group comparison
+% -------------------------------------------------------------------------
+
+
 function [y_adj, adj_stats] = h_adjusted_group_test(y, group_i, DAT, i, adjust_for_covs)
 % Print the group difference ADJUSTED for the named covariate(s), and return
 % the covariate-adjusted values split by group so they can be plotted.
@@ -522,9 +1490,6 @@ function [y_adj, adj_stats] = h_adjusted_group_test(y, group_i, DAT, i, adjust_f
 % the two are directly comparable and nothing existing changes meaning.
 
 y_adj = [];
-% Second output carries the adjusted test so the caller can correct across
-% signatures. Initialised before every early return, so a skipped adjustment
-% yields NaN rather than an undefined variable.
 adj_stats = struct('p',NaN,'t',NaN,'df',NaN,'diff',NaN,'covs',{{}});
 if isempty(adjust_for_covs), return, end
 
@@ -615,4 +1580,10 @@ set(fh_adj, 'Tag', figtitle);
 plugin_set_figure_size('fig', fh_adj);
 drawnow, snapnow;
 
+end
+
+
+function s = ternary_str(c, a, b)
+% tiny helper: MATLAB has no inline conditional expression
+if c, s = a; else, s = b; end
 end

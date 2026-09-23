@@ -59,6 +59,7 @@ combat_mod = {};                                                    % default em
 combat_parametric = true;                                           % default true      Parametric (true) or non-parametric (false) empirical Bayes adjustment
 combat_ref_batch = '';                                              % default empty     Batch label to harmonize towards; empty harmonizes to the grand mean rather than to any one site's distribution
 docombat_contrasts = false;                                         % default false     Run ComBat on the CONTRAST images in prep_3, after contrasts are formed.
+docombat_conditions = false;                                        % default false     Run ComBat on the CONDITION images in prep_3, i.e. on DATA_OBJ/DATA_OBJsc AFTER scaling but BEFORE contrasts are formed. Distinct from docombat, which harmonizes the raw images before scaling, and from docombat_contrasts, which harmonizes the difference. Harmonizing conditions gives ComBat twice the observations and a simpler signal than harmonizing a contrast, where the two halves' site effects have already partly cancelled.
                                                                     %                   Independent of docombat: a model may harmonize conditions, contrasts, both or neither.
                                                                     %                   Harmonizing conditions does NOT harmonize contrasts - contrast variance depends on
                                                                     %                   the between-condition covariance, which condition-level ComBat does not touch.
@@ -94,6 +95,7 @@ myscaling_glm = 'raw';                                                  % 'raw',
                                                                             % 'scaled': use z-scored condition images prior to computing contrasts
                                                                             % 'scaled_contrasts': l2norm contrasts after computing them
 design_matrix_type = 'onesample';                                       % 'group', 'custom', or 'onesample'
+nuisance_covs = {};                                                     % default empty     Names of DAT.BETWEENPERSON columns to treat as NUISANCE in the second-level design, e.g. {'center_UGOT','center_UM'} for a three-site study with KUL as the reference level. Read by the voxelwise GLM and by the roi GLM. An UNORDERED factor must be dummy-coded here, one column per non-reference level - squeezing k levels into a single numeric column treats them as ordered and spends one df where k-1 are needed.
                                                                             % 'group': use DAT.BETWEENPERSON.group or 
                                                                                 % DAT.BETWEENPERSON.contrasts{c}.group;
                                                                                 % @lukasvo76: compare groups without controlling for covariates
@@ -118,6 +120,7 @@ doTFCE = false;                                                         % calcul
     % at their defaults (2, 0.5, 26); change them by calling that function
     % directly. Results predating the 2026 TFCE overhaul are not comparable.
     perm_n_tfce = 1000;                                                     % number of permutations for TFCE-based stats
+    tfce_seed = [];                                                         % default empty (unseeded). Set an integer to PIN the TFCE null so it is reproducible across runs; without it the permutation null differs run to run and reported p-values move.
     tfce_sidedness = 'two';                                                 % 'one' versus 'two'-tailed test for TFCE-based stats
     tfce_tail = 'pos';                                                      % 'pos' or 'neg' if tfce_sidedness = 'one'
     cons2tfce = [];                                                     % vector of contrast indices to run TFCE on, e.g. [5], if you only want it for a
@@ -125,9 +128,15 @@ doTFCE = false;                                                         % calcul
                                                                             % prep_3a - perm_n_tfce permutations per contrast - so restricting it to the
                                                                             % contrast(s) of interest is often the difference between an overnight job and
                                                                             % a coffee break. c2a skips TFCE reporting for contrasts not in this list.
-doroi_analysis = false;                                                 % extract roi averages from condition (beta) or contrast (con) images using an atlas object created by LaBGAScore_atlas_binary_mask_from_atlas.m as input
+doroi_analysis = false;                                                 % extract roi averages from condition (beta) or contrast (con) images using atlas objects made by LaBGAScore_atlas_rois_from_atlas.m, AND run inference on them: an omnibus MANOVA across the roi set (Wilks' Lambda -> Rao's F, adjusted for nuisance), then a GLM per roi reported with both q_BH and q_Storey. Extraction and inference are one option: the former doroi_glm switch is retired.
     % roi_analysis options
-    roi_names = {'amINS_L','amINS_R','ventral_striatum_L','ventral_striatum_R','caudate_L','caudate_R','putamen_L','putamen_R','vmPFC_L','vmPFC_R','hypothalamus','VTA','lOFC_L','lOFC_R','mOFC_L','mOFC_R'}; 
+    % roi_names is COMMENTED OUT on purpose: left active it selects an EXAMPLE
+    % set of reward regions that exists in no study's maskdir, so prep_3a's guard
+    % rejects it and doroi_analysis cannot run. Commented out, prep_3a uses every
+    % roi the model's roi script generated, which is the sensible default. Uncomment
+    % and edit ONLY to analyse a subset, and then the names must match the set in
+    % this model's maskdir exactly.
+%    roi_names = {'amINS_L','amINS_R','ventral_striatum_L','ventral_striatum_R','caudate_L','caudate_R','putamen_L','putamen_R','vmPFC_L','vmPFC_R','hypothalamus','VTA','lOFC_L','lOFC_R','mOFC_L','mOFC_R'}; 
                                                                             % names AND ORDER need to correspond to roiname variables (WITH L AND R ADDED FOR THE BILATERAL ONES) in LaBGAScore_atlas_rois_from_atlas.m which saves atlas objects for each roi in a cell array in secondlevel/modeldir/masks
                                                                             % comment out if you want to use all rois created by the roi script
                                                                             % PREREQUISITE: the roi masks must already exist in THIS model's maskdir
@@ -140,17 +149,9 @@ doroi_analysis = false;                                                 % extrac
                                                                             % into this model's maskdir.
     roi_modelname = 'bit_rew_m1';
     roi_set_name = 'reward_regions';
-    doroi_glm = false;                                                      % true runs inference on the roi averages, in two levels:
-                                                                            %   1. MANOVA across the whole roi set (Wilks' Lambda -> Rao's F),
-                                                                            %      one omnibus test per effect of interest, adjusted for
-                                                                            %      nuisance. manova1 cannot do this: one-way, no covariates.
-                                                                            %   2. a GLM per roi, reported with both q_BH and q_Storey.
-                                                                            % Which covariates are nuisance comes from nuisance_covs, the SAME
-                                                                            % option the voxelwise GLM uses - not from covs2use, which subsets
-                                                                            % the design matrix instead of labelling its columns.
-                                                                            % Both tables are printed into the report and saved in roi_stats_*.
-                                                                            % Read them together: an roi surviving FDR under a null omnibus
-                                                                            % test should be treated cautiously.
+    % doroi_glm is RETIRED. Inference on the roi averages (omnibus MANOVA across
+    % the set, then a GLM per roi with q_BH and q_Storey) now runs whenever
+    % doroi_analysis is true. Setting doroi_glm in a study a2 has no effect.
 
 categorical_covs = {};                                                      % variable name(s) in DAT.BETWEENPERSON.(mygroupnamefield){:} that are
                                                                             % UNORDERED FACTORS and must be dummy-coded into k-1 columns before
@@ -197,6 +198,15 @@ k_threshold_tfce = 0;                                           % extent thresho
                                                                     % filter counts extent twice, and max-statistic FWE already controls familywise
                                                                     % error across the whole volume - which is what an extent threshold is usually
                                                                     % brought in to approximate. 0 = no extent filter.
+tfce_correction = 'fwe';                                        % 'fwe' (default) or 'fdr': which multiple-comparisons correction to report for
+                                                                    % the TFCE maps. Both thresholded maps are saved either way; only the reported
+                                                                    % one gets montages and region tables.
+p_threshold_fwe = .05;                                          % threshold for the FWE-corrected TFCE p-values. These are already corrected, so
+                                                                    % the threshold is applied uncorrected - running FDR on top of max-statistic
+                                                                    % FWE p-values would correct twice.
+dotables_tfce_unc = false;                                      % true also prints region tables for the UNCORRECTED TFCE map. Off by default:
+                                                                    % the uncorrected TFCE map is shown for context, and tabling it invites
+                                                                    % reporting results that did not survive correction.
 max_regioncenters_montage = 21;                                 % show 'regioncenters' montages only when a result has FEWER than this many regions.
                                                                     % These montages put one titled panel per region on a single figure, so they stop
                                                                     % being readable - and stop being quick to render - once there are many. Shared by
