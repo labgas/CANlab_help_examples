@@ -13,6 +13,7 @@ If you are new to this repo, read this file top to bottom once, then use the [sc
 - [Shared data model](#shared-data-model)
 - [`a2_set_default_options.m` and the capitalization convention](#a2_set_default_optionsm-and-the-capitalization-convention)
 - [Script reference](#script-reference)
+- [What you need on the MATLAB path](#what-you-need-on-the-matlab-path)
 - [The `LaBGAScore` dependency](#the-labgascore-dependency)
 - [Out of scope](#out-of-scope)
 
@@ -53,7 +54,7 @@ where `M` is the model number and `N` is the script's sequential order within th
 
 Both directories also contain many other scripts not covered here — see [Out of scope](#out-of-scope).
 
-Not every script gets copied into every study's model folder: the 4 Group 1 scripts plus `prep_2_load_image_data_and_save.m` and `prep_3_calc_univariate_contrast_maps_and_save.m` are always needed (core setup and image/contrast loading, a prerequisite for everything else). The remaining 12 Group 2 scripts are added only as a given model's specific analyses require them.
+Not every script gets copied into every study's model folder: the 4 Group 1 scripts plus `prep_2_load_image_data_and_save.m` and `prep_3_calc_univariate_contrast_maps_and_save.m` are always needed (core setup and image/contrast loading, a prerequisite for everything else). The remaining 13 Group 2 scripts are added only as a given model's specific analyses require them.
 
 ## Per-study workflow
 
@@ -70,7 +71,11 @@ Not every script gets copied into every study's model folder: the 4 Group 1 scri
    - **Single-trial / runwise MVPA & mediation:** `prep_3f_create_fmri_data_single_trial_object.m` or `prep_3g_create_fmri_data_runwise_contrast_object.m` → `c2f_run_MVPA_regression_single_trial.m` / `c2g_run_multivariate_mediation_single_trial.m`. These additionally require single-trial con images already produced by `LaBGAScore_firstlevel_s2_fit_model.m` (first-level, not part of this repo).
 7. For a script that must run multiple times within the model with different options, add a lettered sequence-number copy (`..._s5a_...`, `..._s5b_...`) rather than duplicating `a2_set_default_options.m`; override only the differing options in that copy's own "SET CUSTOM OPTIONS" section.
 
-You do **not** need to explicitly reload `.mat` files before Group 2 scripts. From `prep_3a` onward (and in every lettered on-demand script), each script contains its own guarded reload — `if ~exist('DAT','var') ... load(...)`, etc. — so it transparently reloads `image_names_and_setup.mat`, `data_objects.mat`/`data_objects_scaled.mat`, and `contrast_data_objects.mat` as needed. The generic template's `b_reload_saved_matfiles.m` is only relevant earlier/manually (e.g., if you want a fresh MATLAB session to have `DAT` in the workspace before editing `prep_1b` interactively).
+You do **not** need to explicitly reload `.mat` files before Group 2 scripts. From `prep_1b` onward (and in every lettered on-demand script), each script contains its own guarded reload — `if ~exist('DAT','var') ... load(...)`, etc. — so it transparently reloads `image_names_and_setup.mat`, `data_objects.mat`/`data_objects_scaled.mat`, and `contrast_data_objects.mat` as needed.
+
+**Two places where the workspace still matters, and the guard does not help.** `prep_1` builds `DAT` and `prep_1b` extends it; `prep_1b`'s guard reloads a *saved* `DAT`, so if `prep_1` has run but not yet saved, the two must share a MATLAB session. And `c2a_second_level_regression` reads `regression_stats_results` straight from the workspace, so it must follow its `prep_3a` in the same session — which is what the note on running several `prep_3a` variants is really about.
+
+**If you adapt a Group 1 script, keep the guard.** A study copy that replaces the guarded reload with a bare call to its own `s0` path script gets paths but no `DAT`, and then fails on the first `isfield(DAT, ...)` with `Unrecognized function or variable 'DAT'` whenever it is run on its own. Setting paths is not the same as loading data. The generic template's `b_reload_saved_matfiles.m` is only relevant earlier/manually (e.g., if you want a fresh MATLAB session to have `DAT` in the workspace before editing `prep_1b` interactively).
 
 ## Shared data model
 
@@ -85,7 +90,39 @@ Because `secondlevel/model_x/results/` is DataLad/git-annex managed, some script
 
 `a2_set_default_options.m` centralizes every option consumed by Group 2 scripts, one `%%` section per script. Per the file's own convention comment: *"If the title of the section below is capitalized, the scripts and their options have been revamped by @lukasvo76 already."* Capitalized sections mark scripts LaBGAS actively maintains — this is exactly how the Group 2 list above was derived. Lowercase sections (`prep_3d_run_SVMs_betweenperson_contrasts options`, `z_batch_publish_everything, z_batch_publish_analyses options`) are explicitly **not** revamped and out of scope here.
 
-One exception worth knowing: `h_signature_responses_group_diff.m` has no dedicated section of its own — it reuses `keyword_sigs`, `myscaling_sigs`, and `similarity_metric_sigs` straight from the `PREP_4_APPLY_SIGNATURES_AND_SAVE` section.
+One exception worth knowing: `h_signature_responses_group_diff.m` takes `keyword_sigs`, `myscaling_sigs` and `similarity_metric_sigs` straight from the `PREP_4_APPLY_SIGNATURES_AND_SAVE` section rather than having its own entries for them, but it does set three options of its own at the top of the script: `subsets_i_want` (which signatures to report), `adjust_for_covs` (covariates to residualise the group comparison on, fold-free — it is a straight GLM adjustment here) and `corrections_i_want` (which multiple-comparison corrections to tabulate).
+
+## Site harmonisation with ComBat
+
+`a2_set_default_options` carries three independent switches for *where* ComBat is applied, all
+`false` by default. They are mutually exclusive in practice — pick one:
+
+| Option | Harmonises | Applied in |
+|---|---|---|
+| `docombat` | the **raw** condition images, before scaling and before contrasts | `prep_2` |
+| `docombat_conditions` | the **scaled** condition images (`DATA_OBJ`/`DATA_OBJsc`), before contrasts | `prep_3` |
+| `docombat_contrasts` | the **contrast** images, after they are formed | `prep_3` |
+
+Shared settings: `combat_batch` (site column, e.g. `'center'`), `combat_mod` (effects to
+**preserve**, e.g. `{'group'}`), `combat_ref_batch` (harmonise towards one site rather than the
+grand mean), `combat_parametric`, and `combat_prescale_sites`.
+
+Two things worth knowing before choosing:
+
+**Harmonising conditions is generally preferable to harmonising contrasts.** ComBat estimates site
+location and scale per feature; on condition images it sees twice the observations and a simpler
+signal, whereas on a contrast it must model the site effect in a difference where the two halves'
+site effects have already partly cancelled.
+
+**`combat_mod = {'group'}` preserves the group effect, which makes it unsafe for decoding.** It is
+correct for a group-difference GLM, but telling ComBat to protect the very variable a classifier
+will then predict leaks labels into the features. For decoding, harmonise label-blind
+(`combat_mod = {}`) and do it inside the cross-validation structure — see
+`LaBGAScore_decoding_SVM_between_subjects.m`, which does exactly that.
+
+Per-image z-scoring (`myscaling_glm = 'scaled'`) removes each subject's global signal scale, which
+is often the largest single site difference, so it does part of ComBat's job before ComBat runs.
+Expect the scaling choice to affect results at least as much as the ComBat placement does.
 
 ## Script reference
 
@@ -100,7 +137,7 @@ One exception worth knowing: `h_signature_responses_group_diff.m` has no dedicat
 
 ### Group 2
 
-Always copied in alongside Group 1: `prep_2_load_image_data_and_save.m`, `prep_3_calc_univariate_contrast_maps_and_save.m`. The remaining 12 are added per model as needed.
+Always copied in alongside Group 1: `prep_2_load_image_data_and_save.m`, `prep_3_calc_univariate_contrast_maps_and_save.m`. The remaining 13 are added per model as needed.
 
 | Script                                                 | Category         | Role                                                                                                                                                                                                                                                                                                                                                       | Key options (in`a2_set_default_options.m`)                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -114,11 +151,44 @@ Always copied in alongside Group 1: `prep_2_load_image_data_and_save.m`, `prep_3
 | `prep_3g_create_fmri_data_runwise_contrast_object.m` | `prep_`        | Builds an`fmri_data_st` object of runwise contrasts from condition betas, attaching runwise phenotype metadata read from a CSV in the BIDS subdataset.                                                                                                                                                                                                   | `phenofile_dat_rw`, `cons2include_dat_rw`, `behav_outcome_dat_rw`, `subj_identifier_dat_rw`, `run_included_dat_rw`, `group_identifier_dat_rw` (optional)                                                                                                                                                                                                                                                                              |
 | `c2f_run_MVPA_regression_single_trial.m`             | lettered (`c`) | MVPA regression (default cross-validated PCR) predicting a continuous outcome from the`prep_3f_` single-trial object; optional bootstrapping, permutation testing, and source reconstruction ("structure coefficients").                                                                                                                                 | `ml_method_mvpa_reg_st`, `algorithm_mvpa_reg_st`, `holdout_set_method_mvpa_reg_st`, `nfolds_mvpa_reg_st`, `zscore_outcome_mvpa_reg_st`, `maskname_mvpa_reg_st`, `myscaling_mvpa_reg_st`, `dobootstrap_mvpa_reg_st` (+ boot_n/parallel), `doperm_mvpa_reg_st` (+ perm_n/sidedness), `dosourcerecon_mvpa_reg_st` (+ perm variant), `q_threshold_mvpa_reg_st`, `k_threshold_mvpa_reg_st`, `domultilevel_mvpa_reg_st` (WIP) |
 | `c2g_run_multivariate_mediation_single_trial.m`      | lettered (`c`) | Multivariate (PDM) mediation analysis on a continuous outcome, on the`prep_3f_` single-trial object.                                                                                                                                                                                                                                                     | `save_figures_pdm`, `zscore_outcome_pdm`, `maskname_pdm`, `myscaling_pdm`, `nPDM`, `dobootstrap_pdm` (+ boot_n/k_threshold), `dosourcerecon_pdm`, `dosavepdmstats`                                                                                                                                                                                                                                                                |
+| `c2h_run_multivariate_mediation.m`                   | lettered (`c`) | Single-level multivariate (PDM) mediation on second-level CONTRAST images: does a brain pattern mediate the effect of a between-person X (group, from `DAT.BETWEENPERSON.group`) on a between-person outcome Y? The single-level counterpart of `c2g_`, and unlike `c2g_` it needs no `prep_` step of its own — contrast images are already part of the standard pipeline, so it reads what `prep_3` saved and the design `prep_1b` built. Y is resolved in order from a column of `DAT.BETWEENPERSON.contrasts{c}`, a field of `DAT.BETWEENPERSON`, then `BIDS/phenotype.csv`; the first two are aligned to image order by construction, the third relies on row order. `maskname_pdm` masks the mediator BEFORE the PDM, because the mask defines the feature space the components are estimated in — an analysis decision here, not a display one. | `myscaling_pdm` selects the same object `myscaling_glm` does in `prep_3a`, so the mediation runs on the images its GLM ran on |
 | `prep_4_apply_signatures_and_save.m`                 | `prep_`        | Applies selected CANlab signature patterns (e.g. NPS, SIIPS1) to conditions and contrasts via`apply_all_signatures`, saving results into `DAT.SIG_conditions`/`DAT.SIG_contrasts`; computes NPS subregion responses when `nps`/`'all'` is among the selected signatures. Appends to `image_names_and_setup.mat` (`git annex unannex` first). | `myscaling_sigs`, `similarity_metric_sigs`, `keyword_sigs`                                                                                                                                                                                                                                                                                                                                                                                  |
 | `d_signature_responses_generic.m`                    | lettered (`d`) | Plots and tests significance of signature responses from`prep_4_`, for individual signatures or groups, via `plugin_signature_condition_contrast_plot`.                                                                                                                                                                                                | `signatures_to_plot` (shared with `d10`)                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `d10_signature_riverplots.m`                         | lettered (`d`) | Cosine-similarity riverplots of signature responses vs. conditions/contrasts. Unlike`d_signature_responses_generic.m`, only works on signature *groups* as defined by `load_image_set`, not individual signatures.                                                                                                                                   | `signatures_to_plot` (shared with `d`)                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `h_signature_responses_group_diff.m`                 | lettered (`h`) | Two-sample t-test per contrast on signature responses (one figure per contrast, loops over signatures), plus NPS-subregion group differences. Group membership from`DAT.BETWEENPERSON.group` or the condition/contrast-specific fields set in `prep_1b_prep_behavioral_data.m`. Requires `prep_1b` to have been run with a real group variable.      | Reuses`keyword_sigs`/`myscaling_sigs`/`similarity_metric_sigs` from the `prep_4` section — no dedicated section (see [above](#a2_set_default_optionsm-and-the-capitalization-convention))                                                                                                                                                                                                                                                 |
+| `h_signature_responses_group_diff.m`                 | lettered (`h`) | Two-sample t-test per contrast on signature responses (one figure per contrast, loops over signatures), optionally repeated adjusted for covariates named in `adjust_for_covs`. Corrects across the signature family with the methods listed in `corrections_i_want` (BH and Storey by default; `adaptiveFDR`, `BKY` and the FWER `holmSidak` are opt-in), and writes a summary table — per-signature means, difference, t, Cohen's d and every requested correction — to `.csv` and `.mat`, plus violin panels of the unadjusted and adjusted responses. NPS-subregion group-difference code is present but commented out. Group membership from`DAT.BETWEENPERSON.group` or the condition/contrast-specific fields set in `prep_1b_prep_behavioral_data.m`. Requires `prep_1b` to have been run with a real group variable.      | Reuses`keyword_sigs`/`myscaling_sigs`/`similarity_metric_sigs` from the `prep_4` section — no dedicated section (see [above](#a2_set_default_optionsm-and-the-capitalization-convention))                                                                                                                                                                                                                                                 |
 | `e1_corr_patterns.m`                                 | lettered (`e`) | Pairwise searchlight correlation maps between all condition or contrast images (`searchlight_correlation()`), optionally masked/restricted to an atlas. Independent of `prep_4`/signatures.                                                                                                                                                            | `r_threshold_corr`, `corr_type`                                                                                                                                                                                                                                                                                                                                                                                                               |
+
+## What you need on the MATLAB path
+
+None of these dependencies is vendored, and none is installed by a package manager —
+clone each one and put it on the path before running anything. `a_set_up_paths_always_run_first`
+clones and adds four of them if they are missing (CanlabCore, CanlabPrivate,
+CANlab_help_examples, canlab_single_trials); the rest are on you.
+
+The table is **derived from [`DEPENDENCIES.md`](DEPENDENCIES.md)**, which is generated by
+static analysis of the 20 documented scripts — so it reflects what the code actually calls,
+not what someone remembered to write down. Regenerate both when the documented set changes.
+
+| Repository | Needed for | Call edges |
+|---|---|---:|
+| **CanlabCore** | everything — the `fmri_data`/`statistic_image`/`atlas` object model the whole framework is built on | 170 |
+| **LaBGAScore** | directory setup, first-level `DSGN`, atlas/ROI masks, TFCE, parallel pool, region tables — see [below](#the-labgascore-dependency) | 25 |
+| **ooFmriDataObjML** | `prep_3c_run_SVMs_on_contrasts_masked`, `c2f_run_MVPA_regression_single_trial` (only with `ml_method_svm = 'oofmridataobj'`) | 15 |
+| **canlab_single_trials** | `prep_2`, `prep_3f`, `prep_3g` — the `fmri_data_st` subclass | 4 |
+| **MediationToolbox** | the two PDM mediation scripts, `c2g_` and `c2h_` | 3 |
+| **SPM12** | `prep_2` (image reading); should be FIRST on the path | 3 |
+| **ComBatHarmonization** | `prep_2` and `prep_3`, only when a ComBat switch is on — see [Site harmonisation with ComBat](#site-harmonisation-with-combat) | 2 |
+| **MasksPrivate**, **Neuroimaging_Pattern_Masks** | `prep_4_apply_signatures_and_save` — the signature patterns themselves | 1 each |
+| **CanlabPrivate** | cloned by `a_set_up_paths_...`; no direct call edge from the documented 20, but several CanlabCore paths reach into it | — |
+
+A script only needs the dependencies of the analyses you actually run: a model that does no
+mediation needs no MediationToolbox, and a model with every ComBat switch off needs no
+ComBatHarmonization. The per-script rows in `DEPENDENCIES.md` say which is which.
+
+`DEPENDENCIES.md` also records, per call, how confidently the name was resolved
+(`resolved` / `ambiguous` / `dotcall` / `dynamic` / `unparseable`). Read the caveat count in
+its summary table before treating any row as exhaustive — MATLAB makes some of this
+genuinely undecidable, and the tooling reports that rather than guessing.
 
 ## The `LaBGAScore` dependency
 
@@ -152,7 +222,7 @@ One point from that guide matters directly here: the `con_000N` numbering that `
 ## Dependency and provenance documentation
 
 [`DEPENDENCIES.md`](DEPENDENCIES.md) documents what each script calls and which repository
-each of those lives in. It covers exactly the **19 scripts listed above** (4 Group 1 + 15
+each of those lives in. It covers exactly the **20 scripts listed above** (4 Group 1 + 16
 Group 2) — the set LaBGAS actively uses and maintains — not the ~113 scripts in this
 folder, the rest of which are generic CANlab machinery LaBGAS does not document.
 
@@ -195,7 +265,7 @@ for the full guide.
 
 ## Out of scope
 
-This README documents only the 4 Group 1 + 15 Group 2 scripts listed above. The rest of `core_scripts_to_run_without_modifying/` and `b_copy_to_local_scripts_dir_and_modify/` — including `prep_3d_run_SVMs_betweenperson_contrasts.m`, the `z_batch_publish_*` orchestration scripts, all `plugin_*` internal helpers, and the many other `b1`/`c3`–`c5`/`d1`–`d15` (except `d10`)/`f2`/`g2`/`h1`–`h3`/`j1`/`k1`–`k2` scripts — is generic CANlab machinery LaBGAS does not currently document here. See `list_of_scripts_and_workflow.m` for the full menu and `a0_begin_here_readme.m` for the generic template's own walkthrough.
+This README documents only the 4 Group 1 + 16 Group 2 scripts listed above. The rest of `core_scripts_to_run_without_modifying/` and `b_copy_to_local_scripts_dir_and_modify/` — including `prep_3d_run_SVMs_betweenperson_contrasts.m`, the `z_batch_publish_*` orchestration scripts, all `plugin_*` internal helpers, and the many other `b1`/`c3`–`c5`/`d1`–`d15` (except `d10`)/`f2`/`g2`/`h1`–`h3`/`j1`/`k1`–`k2` scripts — is generic CANlab machinery LaBGAS does not currently document here. See `list_of_scripts_and_workflow.m` for the full menu and `a0_begin_here_readme.m` for the generic template's own walkthrough.
 
 ---
 
@@ -225,7 +295,8 @@ map. Cluster-size distributions from TFCE tend to be strongly bimodal — in ano
 clusters held 91.5% of surviving voxels and the fifth was 29 voxels — so an extent
 threshold buys almost nothing and can cost everything.
 
-**Nuisance covariates must be declared.** `prep_3a` passes `X(:,wh_nuisance)` to the
+**Nuisance covariates must be declared.** `a2_set_default_options` defines `nuisance_covs = {}`,
+so the default state is *unset*. `prep_3a` passes `X(:,wh_nuisance)` to the
 permutation test only when `nuisance_covs` is set; leaving it unset silently runs the TFCE
 with **no covariates at all**, even though the voxelwise GLM still adjusts for them, and
 even though the report may look fine. Check `tfce_info.nuisance_rank` in the saved results:

@@ -86,10 +86,11 @@ So:
 | `prep_3g_create_fmri_data_runwise_contrast_object.m` | Builds an `fmri_data_st` object of runwise contrasts from condition betas, attaching runwise phenotype metadata |
 | `c2f_run_MVPA_regression_single_trial.m` | MVPA regression (default PCR) on a continuous outcome, on the single-trial object from `prep_3f_...` |
 | `c2g_run_multivariate_mediation_single_trial.m` | Multivariate mediation (PDM) analysis on a continuous outcome, on the single-trial object from `prep_3f_...` |
+| `c2h_run_multivariate_mediation.m` | Single-level multivariate mediation (PDM) on second-level CONTRAST images: X = group from `DAT.BETWEENPERSON.group`, M = the subject's contrast image, Y = a between-person outcome. The single-level counterpart of `c2g_...`, needing no `prep_` step of its own because contrast images are already part of the standard pipeline |
 | `prep_4_apply_signatures_and_save.m` | Applies selected CANlab signature patterns to conditions/contrasts, saves to `DAT.SIG_conditions`/`DAT.SIG_contrasts` |
 | `d_signature_responses_generic.m` | Plots and tests signature responses from `prep_4_...` |
 | `d10_signature_riverplots.m` | Riverplots of signature responses (cosine similarity) from `prep_4_...`; works only on signature *groups*, not individual signatures |
-| `h_signature_responses_group_diff.m` | Group comparison of signature responses (cosine similarity) from `prep_4_...` |
+| `h_signature_responses_group_diff.m` | Group comparison of signature responses from `prep_4_...`, unadjusted and optionally covariate-adjusted; corrects across the signature family with the methods named in `corrections_i_want` and writes a summary table plus violin panels |
 | `e1_corr_patterns.m` | Pairwise searchlight correlation maps between condition/contrast images (`searchlight_correlation()`) |
 
 Minor naming mismatches worth noting in the eventual README (not bugs to fix): `c2g_run_multivariate_mediation_single_trial.m`'s own section header in `a2_set_default_options.m` says "MULTILEVEL_MEDIATION"; `e1_corr_patterns.m`'s internal `%%` title says `e1_corr_patterns_conds.m`.
@@ -128,9 +129,37 @@ The last three were found by LaBGAScore's dependency tooling and were previously
 
 Document this dependency at a high level (what's called and why) rather than diving into LaBGAScore's own internals.
 
-`DEPENDENCIES.md` in THIS folder (not the repo root — it documents this folder, so it lives here) is the **generated**, authoritative version of the above, produced by `LaBGAScore_dep_report`. It covers exactly the 19 scripts in README.md's Script reference (4 Group 1 + 15 Group 2), not all ~113 in this folder. Regenerate with the file list from that table; do not hand-edit it, `dependencies.tsv` or `dependencies.yml`.
+`DEPENDENCIES.md` in THIS folder (not the repo root — it documents this folder, so it lives here) is the **generated**, authoritative version of the above, produced by `LaBGAScore_dep_report`. It covers exactly the 20 scripts in README.md's Script reference (4 Group 1 + 16 Group 2), not all ~113 in this folder. Regenerate with the file list from that table; do not hand-edit it, `dependencies.tsv` or `dependencies.yml`.
 
 Provenance — which commit of CanlabCore et al. produced a given result — is recorded by LaBGAScore's `clean/LaBGAScore_prov_*` tooling, not by anything here. See `clean/README_provenance.md` in LaBGAScore.
+
+**Adapting these templates is where studies actually go wrong**, and the catalogue of how
+lives in LaBGAScore too: *"Ten traps when adapting a template"* in
+`LaBGAS_fMRI_analysis_workflow.md`. Every entry is a real wrong-but-clean run. Two of them
+are now automated by checkers in LaBGAScore's `clean/`, which should be run on a study's
+model script directory before any long chain:
+
+- `use_before_def.py` — an option read ABOVE the line that defines it (the script dies
+  late, after the expensive work, having saved nothing).
+- `set_after_use.py` — an option set BELOW the line that already consumed it (nothing
+  errors; the default silently wins). Advisory, not a gate.
+
+`checkcode` reports zero messages on either checker's positive control, which is why they
+exist alongside it. Three traps are specific to scripts in THIS folder and worth knowing
+before you edit one:
+
+- **`covs2use` also gates `roi_means_table`** in `prep_3a_...`, not just the design. A
+  `prep_3a` run that exists only to generate features for the PLS-DA / Elastic Net pipeline
+  must therefore name the covariates those pipelines residualise, or they fail with
+  *"covariate_names not found in roi_stats table"*.
+- **A constant column in a `custom` design** is read as a manual intercept: `prep_3a`
+  prints *"Skipping this contrast"*, saves EMPTY results and exits 0. This bites whenever a
+  subject filter makes a site dummy constant.
+- **`prep_2` and `prep_1b` must agree on whose sample the design describes.** `prep_2`
+  subsets `DAT.BETWEENPERSON.group` itself but never touches
+  `.conditions{}`/`.contrasts{}`. Since v2.6 it decides by length and errors with both
+  counts named; before that, a model whose sample was itself a subset (patients only, one
+  site only) either crashed inside `prep_2` or mis-aligned silently.
 
 ## Where to look for more detail
 
