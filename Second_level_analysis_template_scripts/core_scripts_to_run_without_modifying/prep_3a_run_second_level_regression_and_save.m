@@ -2651,6 +2651,51 @@ for c = 1:kc
                 printhdr('Cross-validation fold selection');
                 fprintf('\n\n');
 
+                % Guarded defaults, so a study a2 that predates these options still runs.
+                if ~exist('cv_seed_mvpa_reg_cov','var'),       cv_seed_mvpa_reg_cov = []; end
+                if ~exist('cv_strata_mvpa_reg_cov','var'),     cv_strata_mvpa_reg_cov = {}; end
+                if ~exist('nperm_mvpa_reg_cov','var') || isempty(nperm_mvpa_reg_cov), nperm_mvpa_reg_cov = 0; end
+                if ~exist('parallel_perm_mvpa_reg_cov','var'), parallel_perm_mvpa_reg_cov = true; end
+                if ~exist('numcomponents_mvpa_reg_cov','var'),  numcomponents_mvpa_reg_cov = []; end
+
+                % GUARD: cv_pls is unusable at its default.
+                % predict()'s cv_pls calls plsregress(X,Y) with no ncomp when
+                % 'numcomponents' is absent, and MATLAB then uses the MAXIMUM,
+                % min(n-1, p). For PLS the component count IS the regularisation,
+                % so "max possible" means none: the model interpolates the training
+                % fold and generalises at chance. Measured on synthetic data whose
+                % signal sits in the leading component, n = 60, 5-fold:
+                %
+                %   numcomponents   1     2     3     5    10    20   default(max)
+                %   r            0.70  0.72  0.73  0.73  0.73  0.73        -0.12
+                %   cv_pcr reference r = 0.73
+                %
+                % Regularised PLS matches PCR exactly; the default returns worse
+                % than chance. Refuse it rather than let it look like a null result.
+                if strcmpi(algorithm_mvpa_reg_cov, 'cv_pls') && isempty(numcomponents_mvpa_reg_cov)
+                    error(['\nalgorithm_mvpa_reg_cov = ''cv_pls'' requires ' ...
+                           'numcomponents_mvpa_reg_cov to be set.\n\n' ...
+                           'predict()''s cv_pls defaults to the MAXIMUM number of ' ...
+                           'components, which removes all regularisation and gives\n' ...
+                           'chance performance. Set a small number (1-10 is usually ' ...
+                           'plenty; it matched cv_pcr at 3 in testing), or use\n' ...
+                           'cv_pcr, which needs no such choice.\n']);
+                end
+
+                % SEED THE PARTITION.
+                % cvpartition draws from the global stream, so without this the fold
+                % split - and therefore pred_outcome_r - differs on every run and the
+                % result is not reproducible. Unseeded runs are still allowed, but they
+                % say so, because a number nobody can reproduce should not be quiet.
+                if ~isempty(cv_seed_mvpa_reg_cov)
+                    rng(cv_seed_mvpa_reg_cov, 'twister');
+                    fprintf('\nCV partition seeded with %d\n', cv_seed_mvpa_reg_cov);
+                else
+                    fprintf(['\nWARNING: cv_seed_mvpa_reg_cov is empty, so the fold split is NOT\n' ...
+                             '         reproducible and pred_outcome_r will differ between runs.\n' ...
+                             '         Set it before reporting anything from this analysis.\n']);
+                end
+
                 switch holdout_set_method_mvpa_reg_cov
 
                     case 'no_group'
@@ -2667,6 +2712,52 @@ for c = 1:kc
                                 fold_labels(cv.test(subj)) = subj;
                             end
                         clear subj
+
+                    case 'strata'
+
+                        % BALANCE THE FOLDS ON NAMED PHENOTYPE COLUMNS.
+                        % 'no_group' stratifies on nothing and 'group' stratifies on a
+                        % grouping FACTOR, so neither can balance a continuous-outcome
+                        % analysis on site - which is what a multi-centre study needs.
+                        % This mirrors cv_strata_vars in the decoding scripts: build one
+                        % composite key from the named columns and hand that to
+                        % cvpartition, which stratifies on it.
+                        if isempty(cv_strata_mvpa_reg_cov)
+                            error(['\nholdout_set_method_mvpa_reg_cov = ''strata'' requires ' ...
+                                   'cv_strata_mvpa_reg_cov to name at least one column.\n']);
+                        end
+                        Tstrat = DAT.BETWEENPERSON.(mygroupnamefield){c};
+                        if ~istable(Tstrat)
+                            error('\nDAT.BETWEENPERSON.%s{%d} is not a table, so strata cannot be read.\n', ...
+                                  mygroupnamefield, c);
+                        end
+                        missingstrat = cv_strata_mvpa_reg_cov(~ismember(cv_strata_mvpa_reg_cov, ...
+                                          Tstrat.Properties.VariableNames));
+                        if ~isempty(missingstrat)
+                            error('\ncv_strata_mvpa_reg_cov names column(s) not in the design: %s\n', ...
+                                  strjoin(missingstrat, ', '));
+                        end
+                        strat_key = strings(height(Tstrat), 1);
+                        for v = 1:numel(cv_strata_mvpa_reg_cov)
+                            col = Tstrat.(cv_strata_mvpa_reg_cov{v});
+                            strat_key = strat_key + "|" + string(col(:));
+                        end
+                        if numel(strat_key) ~= size(mvpa_dat.dat,2)
+                            error(['\nstrata has %d entries but the mvpa object has %d image(s); ' ...
+                                   'the design and the data disagree.\n'], ...
+                                   numel(strat_key), size(mvpa_dat.dat,2));
+                        end
+                        cv = cvpartition(strat_key, 'KFold', nfolds_mvpa_reg_cov);
+                        fold_labels = zeros(size(mvpa_dat.dat,2),1);
+                            for subj = 1:cv.NumTestSets
+                                fold_labels(cv.test(subj)) = subj;
+                            end
+                        clear subj
+                        fprintf('\nfolds stratified on: %s\n', strjoin(cv_strata_mvpa_reg_cov, ', '));
+                        uk = unique(strat_key);
+                        fprintf('  %d stratum/strata, sizes: %s\n', numel(uk), ...
+                            strjoin(arrayfun(@(u) sprintf('%d', sum(strat_key==u)), uk, ...
+                            'UniformOutput', false)', ', '));
 
                     case 'group'
                         
@@ -2708,9 +2799,17 @@ for c = 1:kc
                             'nfolds', fold_labels, 'error_type', 'mse', 'EstimateParams', 'parallel', 'verbose', 0);
                                 
                     otherwise
-                        
+
+                        % numcomponents is forwarded when set: cv_pls REQUIRES it
+                        % (see the guard above) and cv_pcr / cv_lassopcr accept it
+                        % as a component cap.
+                        extra_mvpa_args = {};
+                        if ~isempty(numcomponents_mvpa_reg_cov)
+                            extra_mvpa_args = {'numcomponents', numcomponents_mvpa_reg_cov};
+                        end
+
                         [mvpa_cverr, mvpa_stats, mvpa_optout] = predict(mvpa_dat, 'algorithm_name', algorithm_mvpa_reg_cov, ...
-                            'nfolds', fold_labels, 'error_type', 'mse', 'parallel', 'verbose', 0);
+                            'nfolds', fold_labels, 'error_type', 'mse', 'parallel', 'verbose', 0, extra_mvpa_args{:});
                         
                 end
 
@@ -2718,6 +2817,121 @@ for c = 1:kc
                 
                 mvpa_stats.Y_names = mvpa_dat.Y_names;
                 mvpa_stats.contrastname = cat_obj.image_names{c};
+
+                % ---- PERMUTATION TEST ON THE CROSS-VALIDATED PREDICTION --------
+                % predict() returns pred_outcome_r, mse, rmse, meanabserr and cverr,
+                % and NOTHING inferential - there is no p-value anywhere in its output
+                % struct. Without this block the option yields a correlation that
+                % cannot be tested, which is how it stood until 2026/09/23.
+                %
+                % The null permutes the OUTCOME and re-runs the WHOLE cross-validation
+                % each time. Permuting the predictions instead, or reusing the fitted
+                % model, would leave the training-set structure intact and give an
+                % anti-conservative null.
+                %
+                % Fold labels are held FIXED across permutations: the question is
+                % whether the brain predicts THIS outcome better than a random one
+                % through the same CV structure. Redrawing folds would mix the fold
+                % draw into the null and answer a different question.
+                mvpa_stats.perm = struct('n', 0, 'p', NaN, 'null_r', [], ...
+                                         'seed', cv_seed_mvpa_reg_cov);
+
+                if nperm_mvpa_reg_cov > 0
+
+                    fprintf('\n\n');
+                    printhdr('PERMUTATION TEST ON pred_outcome_r');
+                    fprintf('\n\n');
+
+                    obs_r = corr(mvpa_stats.yfit, mvpa_dat.Y);
+                    fprintf('observed pred_outcome_r = %+.4f\n', obs_r);
+                    fprintf('running %d permutation(s), one full CV each (~%.1f s per fit)\n', ...
+                        nperm_mvpa_reg_cov, t_end);
+                    fprintf('ESTIMATED SERIAL TIME: %.1f min\n\n', nperm_mvpa_reg_cov * t_end / 60);
+
+                    Yobs  = mvpa_dat.Y;
+                    nsub  = numel(Yobs);
+                    algo  = algorithm_mvpa_reg_cov;
+                    flabs = fold_labels;
+
+                    % Draw every permutation UP FRONT from the seeded stream, so the
+                    % null is reproducible and independent of parfor scheduling - a
+                    % client-side rng() never reaches the workers.
+                    permidx = zeros(nsub, nperm_mvpa_reg_cov);
+                    for pp = 1:nperm_mvpa_reg_cov
+                        permidx(:,pp) = randperm(nsub)';
+                    end
+
+                    null_r = nan(nperm_mvpa_reg_cov, 1);
+                    tperm  = tic;
+
+                    % Branch on a COMPUTED condition, not on the option alone. Two
+                    % reasons: spinning up a parfor for a single permutation costs more
+                    % than it saves, and a bare `if option` whose only visible assignment
+                    % is `= true` lets the Code Analyzer constant-fold the test and
+                    % report the serial branch as unreachable.
+                    use_par_perm = parallel_perm_mvpa_reg_cov && nperm_mvpa_reg_cov > 1;
+
+                    if use_par_perm
+                        parfor pp = 1:nperm_mvpa_reg_cov
+                            dperm = mvpa_dat;
+                            dperm.Y = Yobs(permidx(:,pp));
+                            try
+                                [~, sperm] = predict(dperm, 'algorithm_name', algo, ...
+                                    'nfolds', flabs, 'error_type', 'mse', 'verbose', 0);
+                                null_r(pp) = corr(sperm.yfit, dperm.Y);
+                            catch
+                                null_r(pp) = NaN;   % a failed fit must not count as 0
+                            end
+                        end
+                    else
+                        % NOTE: a different loop variable from the parfor above. A parfor
+                        % index is a temporary variable, and reusing the same name in the
+                        % sibling serial loop makes the Code Analyzer report the whole
+                        % else-branch as unreachable.
+                        for qq = 1:nperm_mvpa_reg_cov
+                            dperm = mvpa_dat;
+                            dperm.Y = Yobs(permidx(:,qq));
+                            try
+                                [~, sperm] = predict(dperm, 'algorithm_name', algo, ...
+                                    'nfolds', flabs, 'error_type', 'mse', 'verbose', 0);
+                                null_r(qq) = corr(sperm.yfit, dperm.Y);
+                            catch
+                                null_r(qq) = NaN;
+                            end
+                        end
+                    end
+
+                    nfail = sum(isnan(null_r));
+                    if nfail > 0
+                        fprintf('WARNING: %d of %d permutation(s) failed and are excluded\n', ...
+                            nfail, nperm_mvpa_reg_cov);
+                    end
+                    nullv = null_r(~isnan(null_r));
+
+                    % One-tailed: the hypothesis is that the brain predicts the outcome
+                    % BETTER than chance. The +1 correction keeps p strictly positive -
+                    % p = 0 is not attainable from a finite permutation set.
+                    p_perm = (sum(nullv >= obs_r) + 1) / (numel(nullv) + 1);
+
+                    mvpa_stats.perm = struct('n', numel(nullv), 'p', p_perm, ...
+                                             'null_r', nullv, 'seed', cv_seed_mvpa_reg_cov, ...
+                                             'observed_r', obs_r, 'n_failed', nfail);
+
+                    fprintf('\npermutation null: n = %d, mean %+.4f, sd %.4f\n', ...
+                        numel(nullv), mean(nullv), std(nullv));
+                    fprintf('observed r sits at percentile %.2f of the null\n', ...
+                        100*mean(nullv < obs_r));
+                    fprintf('\npred_outcome_r = %+.4f, permutation p = %.4f (one-tailed, %d perms)\n', ...
+                        obs_r, p_perm, numel(nullv));
+                    if abs(mean(nullv)) > 0.10
+                        fprintf(['\nWARNING: the null is not centred near zero (mean %+.4f).\n' ...
+                                 '         A permuted outcome should not be predictable;\n' ...
+                                 '         check the fold structure before trusting this p.\n'], ...
+                                 mean(nullv));
+                    end
+                    fprintf('\npermutations took %.1f min\n', toc(tperm)/60);
+
+                end
             
             % VISUALIZE UNTHRESHOLDED RESULTS
             % -------------------------------

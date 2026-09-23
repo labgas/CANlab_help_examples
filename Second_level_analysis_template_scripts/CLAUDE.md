@@ -155,11 +155,80 @@ before you edit one:
 - **A constant column in a `custom` design** is read as a manual intercept: `prep_3a`
   prints *"Skipping this contrast"*, saves EMPTY results and exits 0. This bites whenever a
   subject filter makes a site dummy constant.
+- **Region-table peaks are clipped at 7.0345 unless the vendored table is used.** CanlabCore's
+  `@region/table` ends `get_signed_max` with `maxZ = norminv(1 - 1E-12)` and clips every value
+  above it, not only the infinities its own comment describes. `c2a` passes a table function
+  handle to `LaBGAScore_region_table_safe`; until v8.5 the FDR, uncorrected and Bayesian
+  branches passed `@table` and only the TFCE branches passed `@LaBGAScore_region_table`. The
+  giveaway is a column of identical `7.0345` values. Inference is never affected - it is the
+  printed peak only - but the column is worthless above the ceiling, which t-maps and
+  especially Bayes factor maps (stored as `2*ln(BF)`) do exceed.
 - **`prep_2` and `prep_1b` must agree on whose sample the design describes.** `prep_2`
   subsets `DAT.BETWEENPERSON.group` itself but never touches
   `.conditions{}`/`.contrasts{}`. Since v2.6 it decides by length and errors with both
   counts named; before that, a model whose sample was itself a subset (patients only, one
   site only) either crashed inside `prep_2` or mis-aligned silently.
+
+## Deferred: migrate the MVPA paths to @predictive_model
+
+`prep_3a`'s `domvpa_reg_cov` block and `prep_3c`'s SVM both call
+`fmri_data.predict`, whose return struct carries **no inferential quantity at
+all** for a continuous outcome - `pred_outcome_r`, `mse`, `rmse`, `meanabserr`,
+`cverr`, and nothing else. As of 2026/09/23 `prep_3a` supplies the missing
+pieces itself: `cv_seed_mvpa_reg_cov`, `cv_strata_mvpa_reg_cov` (fold balancing
+on named design columns), `nperm_mvpa_reg_cov` (permutation test that re-runs
+the whole CV per permutation), and `numcomponents_mvpa_reg_cov`.
+
+That is a stopgap. CanlabCore now ships **`@predictive_model`**
+(`CanlabCore/@predictive_model`, tutorials in
+`docs/markdown_tutorials/multivariate_classification_with_SVM`, parts 1-5),
+which already has all of it and more:
+
+| hand-rolled here | `@predictive_model` |
+|---|---|
+| permutation test | `permutation_test` with `free` / `between_subjects` / `within_subjects` schemes, `auto`-detected, and an explicit warning that free shuffling of grouped data inflates false positives |
+| `cv_seed_*` | `random_state` |
+| `cv_strata_*` | `cv_splitter` (kfold, stratified, group, stratified-group, LOGO, holdout, shuffle-split, repeated, `custom_partition`) |
+| - | `grid_search`, `stability_selection`, `bootstrap`, `calibrate` |
+
+It also removes two live hazards. Its `svr` runs on MATLAB's `fitrsvm` rather
+than the unmaintained Spider copy vendored in `CanlabCore/External/spider`, and
+its `pcr`/`lassopcr` take `{'numcomponents', k}` properly - see the `cv_pls`
+trap below.
+
+**Scope, if picked up:** `crossval` wants `X = double(obj.dat')` and a plain `Y`,
+not an `fmri_data` object; site stratification needs fold labels built by hand
+and passed through `cv_splitter.custom_partition`; and `c2a`'s MVPA section
+reads `mvpa_stats.weight_obj` / `.yfit` / `.pred_outcome_r`, so the saved-results
+schema changes and `c2a` has to move with it. Roughly a day across both
+templates, and it needs **its own positive control** rather than being validated
+incidentally by whatever study migrates first.
+
+### The cv_pls trap (fixed, do not re-introduce)
+
+`predict()`'s `cv_pls` calls `plsregress(X,Y)` with no `ncomp` when
+`'numcomponents'` is absent, and MATLAB then uses the **maximum**,
+`min(n-1, p)`. For PLS the component count *is* the regularisation, so the
+default is no regularisation: the model interpolates the training fold and
+generalises at chance. Measured on synthetic data with the signal in the leading
+component, n = 60, 5-fold:
+
+```
+numcomponents   1     2     3     5    10    20   default(max)
+r            0.70  0.72  0.73  0.73  0.73  0.73        -0.12
+cv_pcr reference r = 0.73
+```
+
+Regularised PLS equals PCR from 3 components up; the default is worse than
+chance. `prep_3a` now refuses `cv_pls` unless `numcomponents_mvpa_reg_cov` is
+set. LaBGAScore's own ROI PLSR pipeline was checked and is clean - it always
+passes an explicit `lv`, bounded by `capLV.m` and chosen by nested inner-fold CV.
+
+A second finding from the same testing, worth keeping: at n = 60-90, when the
+predictive direction is orthogonal to the dominant variance components, **no**
+algorithm recovers it - `cv_pcr` r = 0.13, `cv_pls` -0.12, `cv_svr` 0.16, none
+significant. A null from voxel-wise MVPA at these sample sizes therefore does not
+license "no diffuse association exists".
 
 ## Where to look for more detail
 

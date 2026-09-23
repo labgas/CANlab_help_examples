@@ -177,6 +177,26 @@ domvpa_reg_cov = false;                                                 % run MV
                                                                                     % subject (i.e.leave whole subject out) since data is purely between-subject
     nfolds_mvpa_reg_cov = 5;                                                % default 5; number of cross-validation folds for kfold
     zscore_outcome_mvpa_reg_cov = false;                                    % default false; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
+    cv_seed_mvpa_reg_cov = [];                                              % default empty = unseeded, so the fold split - and therefore pred_outcome_r - changes
+                                                                            % every run. Set an integer to make the analysis reproducible. Left empty by
+                                                                            % default only for backward compatibility; set it for anything you report.
+    cv_strata_mvpa_reg_cov = {};                                            % default empty. Names of columns in DAT.BETWEENPERSON.(mygroupnamefield){c} to
+                                                                            % balance the CV folds on, e.g. {'center'}. Used when
+                                                                            % holdout_set_method_mvpa_reg_cov = 'strata'. The other two methods stratify on
+                                                                            % nothing ('no_group') or on a grouping factor ('group'); neither can balance a
+                                                                            % continuous-outcome analysis on site.
+    nperm_mvpa_reg_cov = 0;                                                 % default 0 = NO significance test. predict() returns pred_outcome_r, mse, rmse and
+                                                                            % meanabserr and NOTHING inferential - there is no p-value anywhere in its output.
+                                                                            % Set >0 (1000 for screening, 5000+ to report) to permute the outcome and rebuild
+                                                                            % the null by re-running the whole CV loop each time. EXPENSIVE: cost is
+                                                                            % nperm x one full cross-validation.
+    parallel_perm_mvpa_reg_cov = true;                                      % default true; run the permutations over a parfor. Turn off to debug.
+    numcomponents_mvpa_reg_cov = [];                                        % default empty. Component cap forwarded to predict(). OPTIONAL for cv_pcr and
+                                                                            % cv_lassopcr; MANDATORY for cv_pls, which prep_3a refuses to run without it.
+                                                                            % predict()'s cv_pls calls plsregress with no ncomp and MATLAB then uses the
+                                                                            % maximum, min(n-1,p) - no regularisation at all, and chance performance.
+                                                                            % Measured: regularised PLS matches cv_pcr from 3 components up (r = 0.73),
+                                                                            % the unregularised default gives r = -0.12 on the same data.
 
     
 %% C2A_SECOND_LEVEL_REGRESSION
