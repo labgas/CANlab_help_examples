@@ -1706,7 +1706,15 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             mvpa_fmri_dats{covar} = mvpa_dats{c,covar};
         end
         
-        if isempty(cons2boot) || ismember(c,cons2boot)
+        % cons2boot_mvpa_reg_cov is documented as an option set in THIS script,
+        % so it may legitimately be absent - hence the guarded default, placed
+        % immediately above its first read. The reads below named a bare
+        % cons2boot, which is defined nowhere, so the whole MVPA bootstrap
+        % branch died on 'Unrecognized function or variable' the first time a
+        % model set dobootstrap_mvpa_reg_cov = true. Empty means 'all'.
+        if ~exist('cons2boot_mvpa_reg_cov','var'), cons2boot_mvpa_reg_cov = []; end
+
+        if isempty(cons2boot_mvpa_reg_cov) || ismember(c,cons2boot_mvpa_reg_cov)
         
             mvpa_num_effects = size(mvpa_results,2);
 
@@ -1807,7 +1815,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
             clear o2, clear figtitle, clear j, clear tj
         
-        end % if loop exist cons2boot
+        end % if loop exist cons2boot_mvpa_reg_cov
         
     end % if loop bootstrap
    

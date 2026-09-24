@@ -287,9 +287,34 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v9.2
+% prep_3a_run_second_level_regression_and_save.m         v9.3
 %
-% last modified: 2026/08/14
+% last modified: 2026/09/23
+%
+% v9.3  Two changes, both for CONTINUOUS covariates.
+%
+%       1. domvpa_reg_cov gains inference and reproducibility. predict()
+%          returns pred_outcome_r, mse, rmse, meanabserr and cverr for a
+%          continuous outcome and NOTHING inferential, so the option produced
+%          a correlation that could not be tested. New options:
+%          nperm_mvpa_reg_cov (permutation test that re-runs the whole CV per
+%          permutation), cv_seed_mvpa_reg_cov (the fold split was previously
+%          redrawn every run), cv_strata_mvpa_reg_cov with a new 'strata'
+%          holdout method (balance folds on named design columns - neither
+%          'no_group' nor 'group' could do that for a continuous outcome), and
+%          numcomponents_mvpa_reg_cov. cv_pls is REFUSED without the last of
+%          these: its predict() default uses the maximum number of components,
+%          i.e. no regularisation, giving r = -0.12 where cv_pcr gives 0.73.
+%
+%       2. The neurotransmitter group comparison is gated on the regressor
+%          being CATEGORICAL, not merely present. The old test was
+%          ~isempty(DAT.BETWEENPERSON.group), which a continuous covariate
+%          passes; compareGroups then ran a one-way ANOVA with one group per
+%          subject and multcompare threw "Cannot compare means with 0 degrees
+%          of freedom for error", killing the script after the GLM and before
+%          anything was saved. Affects BOTH metric branches, correlation and
+%          cosine_similarity. The similarity profile is still computed; only
+%          the between-group test is skipped, with a printed note.
 %
 %
 %% GET AND SET OPTIONS
@@ -901,9 +926,42 @@ end
 
 if doneurotransmitter_maps
     
+    % CAN WE COMPARE GROUPS ON THE NEUROTRANSMITTER PROFILES?
+    %
+    % The old gate was ~isempty(DAT.BETWEENPERSON.group), which tests whether a
+    % regressor is PRESENT, not whether it is CATEGORICAL. A continuous covariate
+    % in that field passes it; compareGroups is then handed one "group" per
+    % subject and image_similarity_plot runs a one-way ANOVA with n groups over n
+    % observations - zero error df, and multcompare throws
+    %     "Cannot compare means with 0 degrees of freedom for error."
+    % killing prep_3a after the GLM but before anything is saved. Found in
+    % discoverie model_2j (continuous comorbidity score, 91 distinct values).
+    %
+    % This is the same distinction the ROI block already makes correctly a few
+    % hundred lines above, where numel(unique(...)) == 2 chooses between
+    % cohens_d and partial_r. The similarity PROFILE is computed either way;
+    % only the between-group comparison is conditional.
+    do_nt_groupcompare = false;
+    if isequal(design_matrix_type,'group') || ...
+            (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
+        gvals = DAT.BETWEENPERSON.group;
+        if isnumeric(gvals)
+            glev = unique(gvals(~isnan(gvals)));
+        else
+            glev = unique(gvals);
+        end
+        do_nt_groupcompare = numel(glev) == 2;
+        if ~do_nt_groupcompare
+            fprintf(['\nneurotransmitter GROUP COMPARISON SKIPPED: DAT.BETWEENPERSON.group has ' ...
+                     '%d distinct value(s),\nso it is not a 2-level factor and a between-group ' ...
+                     'test is not defined. The similarity\nprofile itself is still computed and ' ...
+                     'saved; only the comparison is skipped.\n'], numel(glev));
+        end
+    end
+
     neurotransmitter_stats = cell(1,kc);
     
-    if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
+    if do_nt_groupcompare
         
         neurotransmitter_group_stats = cell(1,kc);
         neurotransmitter_group_tables = cell(1,kc);
@@ -1763,7 +1821,7 @@ for c = 1:kc
                         plugin_set_figure_size;
                         drawnow,snapnow;
 
-                        if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
+                        if do_nt_groupcompare
                             
                             if exist('glmmask','var')
                                 [neurotransmitter_group_stats{c},~,~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'doAverage','compareGroups',DAT.BETWEENPERSON.group, 'mask',glmmask);
@@ -1789,7 +1847,7 @@ for c = 1:kc
                         plugin_set_figure_size;
                         drawnow,snapnow;
 
-                        if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
+                        if do_nt_groupcompare
                             
                             if exist('glmmask','var')
                                 [neurotransmitter_group_stats{c},~,~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'cosine_similarity','doAverage','compareGroups',DAT.BETWEENPERSON.group, 'mask', glmmask);
@@ -1825,7 +1883,7 @@ for c = 1:kc
                         plugin_set_figure_size;
                         drawnow,snapnow;
 
-                        if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
+                        if do_nt_groupcompare
 
                             if exist('glmmask','var')
                                 [neurotransmitter_group_stats{c},~,~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'doAverage','compareGroups',DAT.BETWEENPERSON.group, 'mask',glmmask);
@@ -1851,7 +1909,7 @@ for c = 1:kc
                         plugin_set_figure_size;
                         drawnow,snapnow;
 
-                        if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
+                        if do_nt_groupcompare
 
                             if exist('glmmask','var')
                                 [neurotransmitter_group_stats{c},~,~,~,neurotransmitter_group_tables{c},neurotransmitter_multcomp_group{c}] = hansen_neurotransmitter_maps(cat_obj,'cosine_similarity','doAverage','compareGroups',DAT.BETWEENPERSON.group, 'mask', glmmask);
@@ -2734,8 +2792,14 @@ for c = 1:kc
                         missingstrat = cv_strata_mvpa_reg_cov(~ismember(cv_strata_mvpa_reg_cov, ...
                                           Tstrat.Properties.VariableNames));
                         if ~isempty(missingstrat)
-                            error('\ncv_strata_mvpa_reg_cov names column(s) not in the design: %s\n', ...
-                                  strjoin(missingstrat, ', '));
+                            % Name what IS there. Without it this error costs a full
+                            % re-run to discover that the column is called num_center
+                            % and not center. Note Tstrat is the UNFILTERED table, so
+                            % a column omitted from covs2use is still available here.
+                            error(['\ncv_strata_mvpa_reg_cov names column(s) not in the design: %s\n' ...
+                                   'available columns are: %s\n'], ...
+                                  strjoin(missingstrat, ', '), ...
+                                  strjoin(Tstrat.Properties.VariableNames, ', '));
                         end
                         strat_key = strings(height(Tstrat), 1);
                         for v = 1:numel(cv_strata_mvpa_reg_cov)
@@ -3087,8 +3151,15 @@ if doneurotransmitter_maps
     % The p-value sits at {2,6} of each ANOVA cell (row 'Groups', column
     % 'Prob>F'); a map whose table is missing or malformed yields NaN and is
     % excluded rather than silently scored.
-    neurotransmitter_group_fdr = cell(1, numel(neurotransmitter_group_tables));
+    % The initialisation belongs INSIDE the guard, not above it: with a
+    % continuous regressor do_nt_groupcompare is false, the group branch never
+    % runs, and neurotransmitter_group_tables is never assigned - so reading it
+    % on the line above the exist() check died on 'Unrecognized function or
+    % variable'. Classic use-before-def; clean/use_before_def.py catches it.
+    % Nothing downstream needs the variable in that case: the save below is
+    % already gated on do_nt_groupcompare.
     if exist('neurotransmitter_group_tables','var') && ~all(cellfun(@isempty, neurotransmitter_group_tables))
+        neurotransmitter_group_fdr = cell(1, numel(neurotransmitter_group_tables));
         fprintf('\n\n');
         printhdr('FDR CORRECTION ACROSS NEUROTRANSMITTER MAPS');
         fprintf('\n\n');
@@ -3134,12 +3205,61 @@ if doneurotransmitter_maps
         end
     end
 
+    % FDR ACROSS MAPS FOR THE NON-GROUP (SIMILARITY PROFILE) BRANCH
+    % ---------------------------------------------------------------------
+    % The block above corrects the GROUP COMPARISON tables, so it runs only
+    % when do_nt_groupcompare is true. A continuous regressor skips the group
+    % comparison entirely, which left the similarity profile - a family of ~30
+    % one-sample t-tests, one per PET map - reported with no multiplicity
+    % control at all.
+    %
+    % It is not enough to rely on the q column image_similarity_plot prints.
+    % That column applies Storey and then clamps q >= p; when pi0 is estimated
+    % low the clamp binds on EVERY map and the column collapses to the raw
+    % p-values, so a table headed 'q_Storey' is in fact uncorrected. Observed
+    % directly in model_2j s6, where q equalled p to four decimals in all rows.
+    %
+    % Note what these tests are: for each PET map, a one-sample t-test across
+    % SUBJECTS of the spatial similarity between that subject's contrast image
+    % and the map. They describe the CONTRAST, not any covariate - the design
+    % matrix never enters here - so they must not be read as an association
+    % with the regressor of interest.
+    neurotransmitter_fdr = {};
+    if ~do_nt_groupcompare && exist('neurotransmitter_stats','var')
+        fprintf('\n\n');
+        printhdr('FDR ACROSS NEUROTRANSMITTER MAPS (SIMILARITY PROFILE)');
+        fprintf('\n\n');
+        neurotransmitter_fdr = cell(1, numel(neurotransmitter_stats));
+        for cnt = 1:numel(neurotransmitter_stats)
+            Snt = neurotransmitter_stats{cnt};
+            if isempty(Snt) || ~isfield(Snt,'p'), continue, end
+            pv = Snt(1).p(:);
+            ok = ~isnan(pv);
+            if ~any(ok)
+                fprintf('contrast %d: no usable p-values\n', cnt);
+                continue
+            end
+            [q_st, pi0, info_st] = LaBGAScore_Storey_FDR(pv(ok));
+            q_bh = info_st.q_BH(:);
+            nm = {};
+            if isfield(Snt(1),'networknames'), nm = Snt(1).networknames; end
+            neurotransmitter_fdr{cnt} = struct('p',pv(ok),'q_BH',q_bh,'q_Storey',q_st(:), ...
+                'pi0',pi0,'storey_reliable',info_st.reliable,'names',{nm});
+            fprintf('\ncontrast %d: %d map(s)\n', cnt, sum(ok));
+            fprintf('  %d at q_BH < .05, %d at q_Storey < .05 (pi0 = %.3f)\n', ...
+                sum(q_bh < .05), sum(q_st < .05), pi0);
+            if ~info_st.reliable
+                fprintf('  pi0 not identifiable at this m, so q_Storey tracks q_BH - read q_BH\n');
+            end
+        end
+    end
+
     savefilenamedata_nt = fullfile(resultsdir, ['neurotransmitter_stats_', mygroupnamefield, '_', scaling_string, '_', results_suffix, '.mat']);
     
-    if isequal(design_matrix_type,'group') || (isequal(design_matrix_type,'custom') && ~isempty(DAT.BETWEENPERSON.group))
+    if do_nt_groupcompare
         save(savefilenamedata_nt, 'neurotransmitter_stats', 'neurotransmitter_group_stats', 'neurotransmitter_group_tables', 'neurotransmitter_multcomp_group', 'neurotransmitter_group_fdr', '-v7.3');
     else
-        save(savefilenamedata_nt, 'neurotransmitter_stats', '-v7.3');
+        save(savefilenamedata_nt, 'neurotransmitter_stats', 'neurotransmitter_fdr', '-v7.3');
     end
         
     fprintf('\nSaved neurotransmitter_stats for %s\n', mygroupnamefield);
