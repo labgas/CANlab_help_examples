@@ -206,3 +206,67 @@ least-squares fits.
 This holds for `pcr` only — PLS components are derived from `Y`, and SVR refits
 entirely, so both genuinely need the full loop. Worth raising upstream rather
 than working around here.
+
+## Three engines, and why (added 2026-09-24)
+
+The port now carries three implementations of the MVPA-on-covariate fit. They
+differ in ONE thing that matters: how the inner CV for hyperparameter tuning is
+constructed.
+
+| engine | file | inner CV | structure-aware? |
+|---|---|---|---|
+| legacy `predict()` | (in prep_3a) | reuses the OUTER partition | yes, but inner k welded to outer k |
+| `@predictive_model`, as shipped | `mvpa_reg_cov_predictive_model.m` | `estimateparam` -> round-robin over ROW INDEX | **no** |
+| `@predictive_model`, tutorial pattern | `mvpa_reg_cov_tuned_nested.m` | rebuilt from the training subset's strata | yes |
+| `ooFmriDataObjML` | `mvpa_reg_cov_oofmri.m` | partitioner HANDLE re-derived per level | yes, by construction |
+
+### The defect in the shipped class path
+
+`fit_lassopcr` tunes lambda with `cv_assignment = mod(0:n-1,5)'+1` - a
+deterministic round-robin over row index. Under exchangeable rows that is a
+valid partition. With GROUPED data it splits a dependent cluster across inner
+folds and leaks; with STRATIFIED outer folds it selects lambda under a different
+sampling model than the one being estimated. The function accepts a
+`cv_assignment` argument that would fix this, but nothing supplies it - `fit.m`
+calls it with three arguments. Note the docstring claims the implementation is
+"faithful to the legacy fmri_data.predict cv_lassopcr"; on this point it is not.
+
+CanlabCore's own tutorials do NOT use `estimateparam`. Part 3 builds the inner
+splitter explicitly (`cv_splitter.stratified_group_kfold(4)` with `groups`
+sliced to the training rows) and recommends tuning lasso-PCR via `lasso_num`
+through `grid_search`. `mvpa_reg_cov_tuned_nested.m` implements that pattern.
+
+### Two gaps the tutorial pattern does NOT close
+
+1. **No composable tuned-estimator object.** `grid_search` returns a model with
+   fixed `modeloptions`; there is no object representing "estimator + its tuning
+   procedure". Because `permutation_test` and `bootstrap` call `crossval`
+   internally, they cannot wrap a tuned model - a permutation test of a tuned
+   model is not expressible in the API, which is why
+   `mvpa_reg_cov_tuned_nested.m` has to permute the whole nested procedure
+   itself.
+2. **`select_features` is not refit per fold.** `crossval` clones and refits per
+   fold, and `fit` standardises internally, so SCALING is not leaked. But
+   `select_features` is applied to the full data and carried via
+   `omitted_features`, so calling it before `crossval` leaks the outcome into
+   feature selection. Neither engine here uses it.
+
+`ooFmriDataObjML` closes both: `gridSearchCV(est, grid, innercv)` returns an
+estimator, so `crossValScore(gs, outercv, scorer)` nests by composition, and its
+`pipeline` refits every transformer per fold.
+
+### Upstream proposal
+
+Give `@predictive_model` a tuned-estimator wrapper holding (base model, inner
+splitter, grid) whose `fit()` runs the inner search. That is `bayesOptCV`'s
+design, it makes `crossval` / `permutation_test` / `bootstrap` compose over
+tuned models for free, and it subsumes the narrower point that `cv_assignment`
+should accept a SPLITTER rather than a vector - a vector is a partition of one
+particular dataset and cannot re-derive itself for a subset.
+
+### Status
+
+None of the three has been run on real data yet. `ooFmriDataObjML` is
+UNMAINTAINED (last commit 2024-08-23) but is already a fork dependency via
+`prep_3c` and `c2f`; treat it as a reference implementation and a cross-check,
+not as the default.
