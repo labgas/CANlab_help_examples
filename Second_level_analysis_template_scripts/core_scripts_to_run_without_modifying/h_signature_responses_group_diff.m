@@ -132,6 +132,41 @@ end
 % (signature ~ group + covariates) and a companion barplot of the adjusted
 % responses, so the adjusted and unadjusted results sit side by side.
 adjust_for_covs = {};   % names of DAT.BETWEENPERSON.contrasts{i} columns to adjust for; {} for none.
+
+% TEST TYPE: 'group' (default) or 'continuous'.
+%
+% 'group'      two-sample t-test of the signature response between the two
+%              levels of DAT.BETWEENPERSON.group. Unchanged behaviour - every
+%              existing study copy keeps working without edits.
+% 'continuous' linear regression of the signature response on a CONTINUOUS
+%              predictor named by sig_covariate_name. Reports beta, t and
+%              partial r instead of a mean difference and Cohen's d.
+%
+% Everything downstream - the correction family across signatures, the summary
+% table, the subregion pass - is shared. Only the test and the plot differ.
+% prep_4 is untouched: it computes the signature responses either way.
+sig_test_type = 'group';
+
+% For sig_test_type = 'continuous': the column of
+% DAT.BETWEENPERSON.contrasts{i} (or .conditions{i}) holding the predictor.
+sig_covariate_name = '';
+
+% Validate the test type before any analysis runs, so a typo or a missing
+% predictor fails immediately rather than part way through the signature loop.
+sig_test_type = lower(char(sig_test_type));
+if ~ismember(sig_test_type, {'group','continuous'})
+    error('sig_test_type must be ''group'' or ''continuous'', not ''%s''.', sig_test_type);
+end
+if isequal(sig_test_type,'continuous')
+    if isempty(sig_covariate_name)
+        error(['sig_test_type = ''continuous'' requires sig_covariate_name to name ' ...
+               'a column of DAT.BETWEENPERSON.%s{:}.'], mygroupnamefield);
+    end
+    fprintf('\nTEST TYPE: continuous - regression on %s\n', sig_covariate_name);
+else
+    fprintf('\nTEST TYPE: group - two-sample t-test\n');
+end
+
                         % ComBat already removed centre from the condition images, and the
                         % corresponding GLM arm (nocov) does not covary centre either. Adjusting
                         % here would correct twice for the same thing and would make the
@@ -207,9 +242,13 @@ group = DAT.BETWEENPERSON.group;
 
 %% LOOP THROUGH SIGNATURES, TEST GROUP DIFFERENCE, CREATE ONE PLOT PER CONTRAST
 % -------------------------------------------------------------------------
+% The field list must match the records appended below EXACTLY, including the
+% continuous-only fields, or the first append fails with "Subscripted
+% assignment between dissimilar structures". They are populated for both test
+% types - NaN under 'group' - so one record shape serves both.
 sig_fdr = struct('name',{},'contrast',{},'p_unadj',{},'p_adj',{}, ...
                  'y1',{},'y2',{},'t',{},'df',{},'d',{},'diff_adj',{},'t_adj',{}, ...
-                 'y1_adj',{},'y2_adj',{});
+                 'y1_adj',{},'y2_adj',{},'beta',{},'r_partial',{},'n_cont',{});
 
 for s = 1:length(mysignature)
     
@@ -261,25 +300,44 @@ for s = 1:length(mysignature)
                 if length(groupcolors) < 2, groupcolors = seaborn_colors(2); end
                 if length(groupnames) < 2, groupnames = {'High' 'Low'}; end
 
-                % Must code data with pos or neg values
-                y = {contrastdata(group > 0, i) contrastdata(group < 0, i)};
-
-                subplot(1, kc, i)
-
-                printstr(' ');
-                printstr(sprintf('Group differences: %s, %s', signature, DAT.contrastnames{i}));
-                printstr(dashes)
-
-                barplot_columns(y, 'nofig', 'colors', groupcolors, 'names', groupnames);
-
-                title(DAT.contrastnames{i})
-                xlabel('Group');
-                ylabel(sprintf('%s Response', signature));
-
-                printstr('Between-groups test:');
-
-                [H,p,ci,stats] = ttest2_printout(y{1}, y{2});
-                p_unadj_this = p;
+                if isequal(sig_test_type,'continuous')
+                
+                    % CONTINUOUS BRANCH. y is left empty on purpose: the group summary
+                    % columns (n_g1, mean_g1, ...) are undefined for a regression, and the
+                    % table block below branches on sig_test_type rather than trying to
+                    % synthesise them.
+                    xv = h_sig_get_covariate(DAT, mygroupnamefield, i, sig_covariate_name);
+                    [cm, cn] = h_sig_get_covmat(DAT, mygroupnamefield, i, adjust_for_covs);
+                    cont_this = h_sig_continuous_test(contrastdata(:,i), xv, cm, cn, ...
+                                    signature, DAT.contrastnames{i}, kc, i);
+                    y = {[] []};
+                    p_unadj_this = cont_this.p;
+                    stats = struct('tstat', cont_this.t, 'df', cont_this.df);
+                
+                else
+                
+                    % Must code data with pos or neg values
+                    y = {contrastdata(group > 0, i) contrastdata(group < 0, i)};
+                
+                    subplot(1, kc, i)
+    
+                    printstr(' ');
+                    printstr(sprintf('Group differences: %s, %s', signature, DAT.contrastnames{i}));
+                    printstr(dashes)
+    
+                    barplot_columns(y, 'nofig', 'colors', groupcolors, 'names', groupnames);
+    
+                    title(DAT.contrastnames{i})
+                    xlabel('Group');
+                    ylabel(sprintf('%s Response', signature));
+    
+                    printstr('Between-groups test:');
+    
+        [H,p,ci,stats] = ttest2_printout(y{1}, y{2});
+                    p_unadj_this = p;
+                    cont_this = [];
+                
+                end
 
                 printstr(dashes)
 
@@ -306,7 +364,10 @@ for s = 1:length(mysignature)
                     'y1',{y{1}},'y2',{y{2}},'t',stats.tstat,'df',stats.df, ...
                     'd',stats.tstat*sqrt(1/numel(y{1})+1/numel(y{2})), ...
                     'diff_adj',adj_stats_this.diff,'t_adj',adj_stats_this.t, ...
-                    'y1_adj',{y1a},'y2_adj',{y2a}); %#ok<SAGROW>
+                    'y1_adj',{y1a},'y2_adj',{y2a}, ...
+                    'beta',h_sig_field(cont_this,'beta'), ...
+                    'r_partial',h_sig_field(cont_this,'r_partial'), ...
+                    'n_cont',h_sig_field(cont_this,'n')); %#ok<SAGROW>
 
             end % panels
 
@@ -365,25 +426,44 @@ for s = 1:length(mysignature)
             if length(groupcolors) < 2, groupcolors = seaborn_colors(2); end
             if length(groupnames) < 2, groupnames = {'High' 'Low'}; end
 
-            % Must code data with pos or neg values
-            y = {contrastdata(group > 0, i) contrastdata(group < 0, i)};
-
-            subplot(1, kc, i)
-
-            printstr(' ');
-            printstr(sprintf('Group differences: %s, %s', mysignature{s}, DAT.contrastnames{i}));
-            printstr(dashes)
-
-            barplot_columns(y, 'nofig', 'colors', groupcolors, 'names', groupnames);
-
-            title(DAT.contrastnames{i})
-            xlabel('Group');
-            ylabel(sprintf('%s Response', mysignature{s}));
-
-            printstr('Between-groups test:');
-
-            [H,p,ci,stats] = ttest2_printout(y{1}, y{2});
+            if isequal(sig_test_type,'continuous')
+            
+                % CONTINUOUS BRANCH. y is left empty on purpose: the group summary
+                % columns (n_g1, mean_g1, ...) are undefined for a regression, and the
+                % table block below branches on sig_test_type rather than trying to
+                % synthesise them.
+                xv = h_sig_get_covariate(DAT, mygroupnamefield, i, sig_covariate_name);
+                [cm, cn] = h_sig_get_covmat(DAT, mygroupnamefield, i, adjust_for_covs);
+                cont_this = h_sig_continuous_test(contrastdata(:,i), xv, cm, cn, ...
+                                mysignature{s}, DAT.contrastnames{i}, kc, i);
+                y = {[] []};
+                p_unadj_this = cont_this.p;
+                stats = struct('tstat', cont_this.t, 'df', cont_this.df);
+            
+            else
+            
+                % Must code data with pos or neg values
+                y = {contrastdata(group > 0, i) contrastdata(group < 0, i)};
+            
+                subplot(1, kc, i)
+    
+                printstr(' ');
+                printstr(sprintf('Group differences: %s, %s', mysignature{s}, DAT.contrastnames{i}));
+                printstr(dashes)
+    
+                barplot_columns(y, 'nofig', 'colors', groupcolors, 'names', groupnames);
+    
+                title(DAT.contrastnames{i})
+                xlabel('Group');
+                ylabel(sprintf('%s Response', mysignature{s}));
+    
+                printstr('Between-groups test:');
+    
+        [H,p,ci,stats] = ttest2_printout(y{1}, y{2});
                 p_unadj_this = p;
+                cont_this = [];
+            
+            end
 
             printstr(dashes)
 
@@ -408,7 +488,10 @@ for s = 1:length(mysignature)
                     'y1',{y{1}},'y2',{y{2}},'t',stats.tstat,'df',stats.df, ...
                     'd',stats.tstat*sqrt(1/numel(y{1})+1/numel(y{2})), ...
                     'diff_adj',adj_stats_this.diff,'t_adj',adj_stats_this.t, ...
-                    'y1_adj',{y1a},'y2_adj',{y2a}); %#ok<SAGROW>
+                    'y1_adj',{y1a},'y2_adj',{y2a}, ...
+                    'beta',h_sig_field(cont_this,'beta'), ...
+                    'r_partial',h_sig_field(cont_this,'r_partial'), ...
+                    'n_cont',h_sig_field(cont_this,'n')); %#ok<SAGROW>
 
         end % panels
 
@@ -613,6 +696,7 @@ if ~isempty(sig_fdr)
         n1 = nan(n,1); n2 = nan(n,1); dmean = nan(n,1);
         for k = 1:n
             y1 = sig_fdr(sel(k)).y1(:); y2 = sig_fdr(sel(k)).y2(:);
+            if isempty(y1) && isempty(y2), continue, end   % continuous branch: no groups
             m1(k) = mean(y1,'omitnan');  sd1(k) = std(y1,'omitnan');  n1(k) = sum(~isnan(y1));
             m2(k) = mean(y2,'omitnan');  sd2(k) = std(y2,'omitnan');  n2(k) = sum(~isnan(y2));
             dmean(k) = m1(k) - m2(k);
@@ -624,10 +708,22 @@ if ~isempty(sig_fdr)
         % called). Different quantities, not different strengths of the same
         % one - the prefix is there so the table cannot be read as if they were
         % interchangeable.
-        T = table(nms, n1, n2, m1, sd1, m2, sd2, dmean, ...
-                  [sig_fdr(sel).t]', [sig_fdr(sel).d]', pu, ...
-            'VariableNames', {'signature','n_g1','n_g2','mean_g1','sd_g1','mean_g2','sd_g2', ...
-                              'diff_unadj','t_unadj','cohens_d','p_unadj'});
+        % The group summary columns (n_g1, mean_g1, cohens_d, ...) have no meaning
+        % for a regression on a continuous predictor, so the continuous branch
+        % gets its own columns rather than NaN-filled group ones. Everything
+        % after this point - the correction columns, the adjusted block - is
+        % shared, because it only ever touches p-values and t-statistics.
+        if isequal(sig_test_type,'continuous')
+            T = table(nms, [sig_fdr(sel).n_cont]', [sig_fdr(sel).beta]', ...
+                      [sig_fdr(sel).t]', [sig_fdr(sel).r_partial]', pu, ...
+                'VariableNames', {'signature','n','beta_unadj','t_unadj', ...
+                                  'partial_r','p_unadj'});
+        else
+            T = table(nms, n1, n2, m1, sd1, m2, sd2, dmean, ...
+                      [sig_fdr(sel).t]', [sig_fdr(sel).d]', pu, ...
+                'VariableNames', {'signature','n_g1','n_g2','mean_g1','sd_g1','mean_g2','sd_g2', ...
+                                  'diff_unadj','t_unadj','cohens_d','p_unadj'});
+        end
         corr_cols_u = cell(numel(wh_corr),1);
         for z = 1:numel(wh_corr)
             corr_cols_u{z} = [corr_defs{wh_corr(z),3} '_unadj'];
@@ -652,7 +748,16 @@ if ~isempty(sig_fdr)
 
         fprintf('\ncontrast: %s   |   metric: %s   |   scaling: %s\n', ...
             contrasts_done{cc}, simnames{1}, scalenames{1});
-        fprintf('groups: %s (n=%d) vs %s (n=%d)', groupnames{1}, n1(1), groupnames{2}, n2(1));
+        % The group framing is wrong under a continuous predictor, and n1/n2 are
+        % NaN there because the continuous branch leaves y1/y2 empty on purpose.
+        % Printing "high X (n=NaN) vs low X (n=NaN)" above a regression table is
+        % exactly the kind of stale label that survives into a manuscript.
+        if isequal(sig_test_type,'continuous')
+            fprintf('predictor: %s (continuous, n=%d)', sig_covariate_name, ...
+                    max([sig_fdr(sel).n_cont]));
+        else
+            fprintf('groups: %s (n=%d) vs %s (n=%d)', groupnames{1}, n1(1), groupnames{2}, n2(1));
+        end
         if use_adj, fprintf('   |   adjusted for: %s', strjoin(adjust_for_covs, ', ')); end
         fprintf('\n\n');
         % full table is wide; print the requested corrections compactly too
@@ -1072,7 +1177,23 @@ end
 % since each is a family in its own right, and both q_BH and q_Storey are shown
 % for the same reason as above: at 7-8 tests pi0 is barely identifiable.
 
-if isfield(DAT, 'NPSsubregions')
+% The NPS subregion pass is still GROUP-ONLY. Its ten tests are two-sample
+% comparisons and its tables report group means, none of which is defined for a
+% regression on a continuous predictor. Skipping loudly is the honest option:
+% running it with a 91-level "group" would either error deep inside
+% ttest2_printout or, worse, produce a table that looks valid.
+%
+% TODO: give the subregion pass the same branch the signature loop now has.
+if isequal(sig_test_type,'continuous') && isfield(DAT, 'NPSsubregions')
+    fprintf('\n\n');
+    printhdr('NPS SUBREGION ANALYSIS SKIPPED');
+    fprintf('\n');
+    fprintf(['The subregion pass performs two-sample tests and reports group means,\n' ...
+             'which are not defined for sig_test_type = ''continuous''. The signature\n' ...
+             'family above IS analysed continuously; only this section is skipped.\n']);
+end
+
+if ~isequal(sig_test_type,'continuous') && isfield(DAT, 'NPSsubregions')
 
     fprintf('\n\n');
     printhdr('NPS SUBREGIONS: GROUP DIFFERENCES');
@@ -1586,4 +1707,109 @@ end
 function s = ternary_str(c, a, b)
 % tiny helper: MATLAB has no inline conditional expression
 if c, s = a; else, s = b; end
+end
+
+
+function st = h_sig_continuous_test(yv, xv, covmat, covnames, siglabel, contrastname, kc, i)
+% h_sig_continuous_test  Regress a signature response on a continuous predictor.
+%
+% The continuous counterpart of the two-sample branch: same place in the loop,
+% same returned fields, so the correction family and the summary table
+% downstream do not care which test produced them.
+%
+% Returns beta and PARTIAL R rather than a mean difference and Cohen's d.
+% Partial r is computed from t and df, so it is the effect size of the
+% predictor with any nuisance covariates already partialled out, and it is on a
+% bounded, comparable scale across signatures.
+
+ok = ~isnan(yv(:)) & ~isnan(xv(:));
+if ~isempty(covmat), ok = ok & all(~isnan(covmat), 2); end
+
+Y = yv(ok); X = xv(ok);
+if isempty(covmat)
+    mdl = fitlm(X, Y);
+else
+    mdl = fitlm([X, covmat(ok,:)], Y);
+end
+
+% Row 2 is the predictor: row 1 is the intercept and any nuisance covariates
+% follow it, because they were appended AFTER X above.
+b  = mdl.Coefficients.Estimate(2);
+t  = mdl.Coefficients.tStat(2);
+pv = mdl.Coefficients.pValue(2);
+df = mdl.DFE;
+r_partial = sign(t) * sqrt(t^2 / (t^2 + df));
+
+subplot(1, kc, i)
+scatter(X, Y, 36, 'filled', 'MarkerFaceAlpha', 0.6); hold on
+xl = [min(X) max(X)];
+if diff(xl) > 0
+    plot(xl, mdl.Coefficients.Estimate(1) + b*xl, '-', 'LineWidth', 2);
+end
+hold off
+title(contrastname)
+xlabel('predictor');
+ylabel(sprintf('%s Response', siglabel));
+
+% fprintf, not printstr: printstr is an anonymous function created in
+% a_set_up_paths_always_run_first, i.e. a SCRIPT-SCOPE VARIABLE, and local
+% functions cannot see script variables. Calling it here fails with
+% "Undefined function 'printstr'" even though the script body uses it freely.
+fprintf('Regression on continuous predictor:\n');
+fprintf('  n = %d, beta = %.4f, t(%d) = %.3f, p = %.6f, partial r = %.3f\n', ...
+        sum(ok), b, df, t, pv, r_partial);
+if ~isempty(covnames)
+    fprintf('  adjusted for: %s\n', strjoin(covnames, ', '));
+end
+
+st = struct('p', pv, 't', t, 'df', df, 'beta', b, 'r_partial', r_partial, ...
+            'n', sum(ok), 'x', X, 'y', Y);
+end
+
+
+function v = h_sig_field(st, f)
+% h_sig_field  Value of a field of the continuous-test struct, or NaN.
+% The sig_fdr record is built UNCONDITIONALLY for both test types, so the
+% continuous-only fields must resolve to something in the group branch too.
+if isempty(st) || ~isstruct(st) || ~isfield(st, f)
+    v = NaN;
+else
+    v = st.(f);
+end
+end
+
+
+function xv = h_sig_get_covariate(DAT, mygroupnamefield, i, covname)
+% h_sig_get_covariate  Pull the continuous predictor for contrast/condition i.
+T = DAT.BETWEENPERSON.(mygroupnamefield){i};
+if ~istable(T)
+    error('DAT.BETWEENPERSON.%s{%d} is not a table, so ''%s'' cannot be read.', ...
+          mygroupnamefield, i, covname);
+end
+if ~ismember(covname, T.Properties.VariableNames)
+    error(['sig_covariate_name ''%s'' is not a column of DAT.BETWEENPERSON.%s{%d}.\n' ...
+           'available columns are: %s'], covname, mygroupnamefield, i, ...
+           strjoin(T.Properties.VariableNames, ', '));
+end
+xv = double(T.(covname));
+xv = xv(:);
+end
+
+
+function [cm, cn] = h_sig_get_covmat(DAT, mygroupnamefield, i, covnames)
+% h_sig_get_covmat  Nuisance covariate matrix for the continuous regression.
+% Mirrors what h_adjusted_group_test does for the group branch, so
+% adjust_for_covs means the same thing under both test types.
+cm = []; cn = {};
+if isempty(covnames), return, end
+T = DAT.BETWEENPERSON.(mygroupnamefield){i};
+missing = covnames(~ismember(covnames, T.Properties.VariableNames));
+if ~isempty(missing)
+    error('adjust_for_covs names column(s) not in the design: %s', strjoin(missing, ', '));
+end
+cm = zeros(height(T), numel(covnames));
+for k = 1:numel(covnames)
+    cm(:,k) = double(T.(covnames{k}));
+end
+cn = covnames;
 end
