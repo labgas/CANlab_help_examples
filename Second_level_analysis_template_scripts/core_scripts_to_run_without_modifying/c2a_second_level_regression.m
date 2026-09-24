@@ -1735,6 +1735,14 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                 t0_boot = tic;
                 
+                % NOTE ON ENGINES: this bootstrap always uses the LEGACY
+                % fmri_data/predict path, whichever engine prep_3a used for the
+                % fit. That is deliberate and safe - it bootstraps the same
+                % mvpa_dats object - but it means a run with
+                % mvpa_engine = 'predictive_model' gets a legacy bootstrap here.
+                % To bootstrap through the class instead, set nboot_mvpa_reg_cov
+                % in prep_3a, which routes it to @predictive_model/bootstrap, and
+                % leave dobootstrap_mvpa_reg_cov false here.
                 switch algorithm_mvpa_reg_cov   % TO DO: add optimal alpha and lambda lasso parameters from nested cv in predict() run in prep_3a, should be stored in stats.other_output somewhere
                     
                     case 'cv_lassopcr'

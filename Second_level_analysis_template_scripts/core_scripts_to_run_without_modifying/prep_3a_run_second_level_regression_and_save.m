@@ -2710,6 +2710,17 @@ for c = 1:kc
                 fprintf('\n\n');
 
                 % Guarded defaults, so a study a2 that predates these options still runs.
+                % ENGINE: 'legacy' uses fmri_data/predict plus the hand-rolled
+                % permutation loop below; 'predictive_model' delegates the whole
+                % fit, null and weight map to CanlabCore's @predictive_model via
+                % mvpa_reg_cov_predictive_model. Default is 'legacy' so existing
+                % study copies are unaffected.
+                if ~exist('mvpa_engine','var') || isempty(mvpa_engine), mvpa_engine = 'legacy'; end
+                if ~ismember(lower(mvpa_engine), {'legacy','predictive_model'})
+                    error('mvpa_engine must be ''legacy'' or ''predictive_model'', not ''%s''.', mvpa_engine);
+                end
+                if ~exist('nboot_mvpa_reg_cov','var'),         nboot_mvpa_reg_cov = 0; end
+                if ~exist('nstab_mvpa_reg_cov','var'),         nstab_mvpa_reg_cov = 0; end
                 if ~exist('cv_seed_mvpa_reg_cov','var'),       cv_seed_mvpa_reg_cov = []; end
                 if ~exist('cv_strata_mvpa_reg_cov','var'),     cv_strata_mvpa_reg_cov = {}; end
                 if ~exist('nperm_mvpa_reg_cov','var') || isempty(nperm_mvpa_reg_cov), nperm_mvpa_reg_cov = 0; end
@@ -2849,7 +2860,67 @@ for c = 1:kc
                 fprintf('\n\n');
 
                 t0 = tic;
-                
+
+                if isequal(lower(mvpa_engine),'predictive_model')
+
+                % ---- @predictive_model ENGINE -----------------------------------
+                % Delegates fit, permutation null, optional bootstrap and stability
+                % selection. The result is adapted back into the legacy mvpa_stats
+                % shape below, so EVERY downstream consumer - the plotting block,
+                % the save, and c2a - works unchanged. The full object is kept on
+                % mvpa_stats.pm for anything that wants the richer API.
+                %
+                % Algorithm names differ between engines: the legacy path uses
+                % predict()'s 'cv_pcr'/'cv_lassopcr', the class uses 'pcr'/'lassopcr'.
+                % Map here rather than making the caller know which engine it is on.
+                alg_pm = regexprep(lower(algorithm_mvpa_reg_cov), '^cv_', '');
+                mo_pm  = {};
+                if isequal(alg_pm,'lassopcr')
+                    % default cv_lassopcr reduces to PCR unless asked to shrink;
+                    % 'estimateparam' selects the penalty by nested CV.
+                    mo_pm = {'estimateparam'};
+                end
+
+                pm = mvpa_reg_cov_predictive_model(mvpa_dat, fold_labels, ...
+                        'algorithm',     alg_pm, ...
+                        'modeloptions',  mo_pm, ...
+                        'numcomponents', numcomponents_mvpa_reg_cov, ...
+                        'nperm',         nperm_mvpa_reg_cov, ...
+                        'nboot',         nboot_mvpa_reg_cov, ...
+                        'nstab',         nstab_mvpa_reg_cov, ...
+                        'seed',          cv_seed_mvpa_reg_cov, ...
+                        'use_parallel',  true);
+
+                % ---- adapt pm -> legacy mvpa_stats -------------------------------
+                mvpa_stats            = struct();
+                mvpa_stats.yfit       = pm.fitted_values.yfit(:);
+                mvpa_stats.weight_obj = pm.weights.weight_obj;
+                mvpa_stats.pred_outcome_r = corr(mvpa_stats.yfit, mvpa_dat.Y(:));
+                mvpa_stats.pm         = pm;
+                mvpa_stats.engine     = 'predictive_model';
+
+                % .perm carries the same fields the legacy block writes, so any
+                % reader can treat the two engines identically.
+                % isstruct FIRST: permutation_results is empty (not a struct) when
+                % nperm = 0, and isfield() on a non-struct errors rather than
+                % returning false.
+                if isstruct(pm.permutation_results) && isfield(pm.permutation_results,'p_value') ...
+                        && ~isempty(pm.permutation_results.p_value)
+                    nullv = pm.permutation_results.null_scores(:);
+                    mvpa_stats.perm = struct('n', numel(nullv), ...
+                        'p', pm.permutation_results.p_value, 'null_r', nullv, ...
+                        'seed', cv_seed_mvpa_reg_cov, ...
+                        'observed_r', pm.permutation_results.observed, 'n_failed', 0);
+                else
+                    mvpa_stats.perm = struct('n', 0, 'p', NaN, 'null_r', [], ...
+                        'seed', cv_seed_mvpa_reg_cov);
+                end
+
+                mvpa_cverr  = NaN;    % predict()-specific, not produced by the class
+                mvpa_optout = {};
+
+                else
+
                 switch algorithm_mvpa_reg_cov
                     
                     case 'cv_lassopcr'
@@ -2877,6 +2948,8 @@ for c = 1:kc
                         
                 end
 
+                end   % if mvpa_engine
+
                 t_end = toc(t0); 
                 
                 mvpa_stats.Y_names = mvpa_dat.Y_names;
@@ -2900,7 +2973,9 @@ for c = 1:kc
                 mvpa_stats.perm = struct('n', 0, 'p', NaN, 'null_r', [], ...
                                          'seed', cv_seed_mvpa_reg_cov);
 
-                if nperm_mvpa_reg_cov > 0
+                % The predictive_model engine has already run its own null via
+                % permutation_test, and mvpa_stats.perm is populated above.
+                if nperm_mvpa_reg_cov > 0 && ~isequal(lower(mvpa_engine),'predictive_model')
 
                     fprintf('\n\n');
                     printhdr('PERMUTATION TEST ON pred_outcome_r');
