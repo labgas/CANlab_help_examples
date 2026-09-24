@@ -61,12 +61,48 @@ we would have to do, and tuning it on the whole sample would bias the
 cross-validated score. Prefer `linear_svr` (`@fitrlinear`) over `svr` if SVR is
 used at all: `fitrsvm` does not scale comfortably to 150k features.
 
-**Re-benchmark before deciding.** The existing comparison (pcr 0.73, pls 0.73,
-svr 0.68) was measured with the LEGACY Spider-based SVR and the legacy predict()
-path. Those numbers do not transfer to `fitrsvm`/`fitrlinear`. Re-run the
-positive-control design (the latent-score construction that reached r = +0.51)
-under the class, with identical folds, across {`pcr`, `lassopcr`+`estimateparam`,
-`linear_svr`, `ridge`}.
+### Benchmark results (measured 2026-09-24)
+
+Run on model_2j's own MVPA data (n = 91, ~150k voxels, stress vs control), under
+folds rebuilt from s6c's seed and strata - 3 strata of 33/40/18, matching what
+s6c reported.
+
+| algorithm | r | R2 | RMSE | s |
+|---|---|---|---|---|
+| **`lassopcr` + `estimateparam`** | **+0.0786** | **-0.0276** | **1.0286** | 7.2 |
+| `linear_svr` | +0.0461 | -0.1341 | 1.0806 | 6.9 |
+| `ridge` | +0.0461 | -0.1341 | 1.0806 | 6.3 |
+| `pcr` | +0.0199 | -0.2425 | 1.1311 | 6.9 |
+
+**The port is faithful.** `pcr` reproduces the legacy `pred_outcome_r` of
++0.0199 exactly, so `crossval` + `cv_splitter.custom_partition(fold_labels)` is
+equivalent to `predict(..., 'nfolds', fold_labels)`. Checklist items 1 and 2
+below are closed by this run.
+
+**The ordering is the regularisation gradient**: nested-CV-tuned lasso-PCR >
+ridge at defaults > unregularised PCR. R2 improves from -0.24 to -0.03. Since
+default `cv_lassopcr` reduces to PCR, the bottom row IS the CANlab default, and
+the default leaves real performance on the table. This is the measured basis for
+defaulting to `lassopcr` + `estimateparam`.
+
+**`linear_svr` and `ridge` returned byte-identical results** - 0.0460891891816982
+for both, every digit. Both dispatch to `@fitrlinear`, whose default `Learner` is
+`'svm'` and whose default regularisation for an SVM learner is ridge, so the
+registry's `linear_svr` (defaults `{{}}`) and `ridge`
+(`{{'Regularization','ridge'}}`) describe the SAME model. Worth reporting
+upstream: two registry rows that look like different algorithms and are not.
+
+**All four have R2 < 0** - every estimator predicts worse than the sample mean.
+The algorithm was never what limited this analysis.
+
+Limits: only `estimateparam` had its hyperparameter tuned, since its nesting is
+internal and `grid_search` cannot nest yet, so the other rows are lower bounds
+rather than a fair head-to-head. `svr` (`@fitrsvm`) was NOT included, so its
+scalability at ~150k features remains untested.
+
+Superseded note: the earlier comparison (pcr 0.73, pls 0.73, svr 0.68) was
+measured with the LEGACY Spider-based SVR on positive-control data and does not
+transfer to `fitrsvm`/`fitrlinear`.
 
 ## Two kinds of pattern inference, not one
 
