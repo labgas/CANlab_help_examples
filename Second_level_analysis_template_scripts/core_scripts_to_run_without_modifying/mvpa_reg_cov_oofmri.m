@@ -73,6 +73,17 @@ p.addParameter('n_parallel', 5, @isscalar);
 p.parse(varargin{:});
 o = p.Results;
 
+% PATH ORDER MATTERS HERE. CanlabCore defines its OWN @pipeline class, and
+% addpath PREPENDS, so whichever of the two is added LAST wins. ooFmriDataObjML
+% must come after CanlabCore or `pipeline` resolves to CanlabCore's and fails
+% with an unrelated error inside normalize_step.
+pw = which('pipeline');
+if isempty(strfind(pw, 'ooFmriDataObjML'))
+    error(['`pipeline` resolves to %s, not ooFmriDataObjML''s.\n' ...
+           'addpath(genpath(''/data/master_github_repos/ooFmriDataObjML'')) ' ...
+           'AFTER CanlabCore.'], pw);
+end
+
 if isempty(which('crossValScore'))
     error(['ooFmriDataObjML is not on the path. Add it with\n' ...
            '  addpath(genpath(''/data/master_github_repos/ooFmriDataObjML''))\n']);
@@ -93,7 +104,20 @@ dat.metadata_table.strata = strata(:);
 est = pipeline({{'featurizer', fmri2VxlFeatTransformer()}, ...
                 {'model',      pcrRegressor()}});
 
-grid = table(o.grid(:), 'VariableNames', {'numcomponents'});
+% The grid column must be named as pipeline.get_params() reports it:
+% STEP-PREFIXED with a double underscore, i.e. 'model__numcomponents' for the
+% step named 'model'. A bare 'numcomponents' fails inside gridSearchCV with
+%   optimizableVariable names must match pipeline.get_params()
+% Verified by calling get_params() on the constructed pipeline rather than
+% guessing; rename the step and this name changes with it.
+gridname = 'model__numcomponents';
+gp = est.get_params();
+if ~ismember(gridname, gp)
+    error(['grid name %s is not in pipeline.get_params(): %s\n' ...
+           'Name the grid column exactly as get_params() reports it.'], ...
+           gridname, strjoin(gp, ', '));
+end
+grid = table(o.grid(:), 'VariableNames', {gridname});
 
 innercv = @(X,Y) cvpartition2(X.metadata_table.strata, 'KFold', o.inner_k);
 outercv = @(X,Y) cvpartition2(X.metadata_table.strata, 'KFold', o.outer_k);
