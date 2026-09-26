@@ -1,10 +1,18 @@
-function pm = mvpa_reg_cov_stability_from_boot(pm, X, Y, mvpa_dat, varargin)
+function ss = mvpa_reg_cov_stability_from_boot(pm, X, Y, mvpa_dat, varargin)
 % mvpa_reg_cov_stability_from_boot  Stability selection from existing bootstrap weights.
 %
 % :Usage:
 % ::
-%     pm = mvpa_reg_cov_stability_from_boot(pm, X, Y, mvpa_dat, ...
+%     ss = mvpa_reg_cov_stability_from_boot(pm, X, Y, mvpa_dat, ...
 %              'nstab', 5000, 'k', [], 'threshold', 0.9);
+%
+% RETURNS A STRUCT, AND DOES NOT MUTATE pm. predictive_model declares
+% diagnostics, weights and most other fitted state under
+% properties (SetAccess = protected), so only class methods may write them - an
+% external function assigning pm.diagnostics.stability_selection fails with
+% "Unable to set the 'diagnostics' property ... because it is read-only".
+% The frequency map is therefore built by COPYING pm.weights.weight_obj, which is
+% already a statistic_image in the right space, and replacing its .dat.
 %
 % For a predictive_model that has ALREADY been bootstrapped, derive stability
 % selection from pm.weights.boot_w instead of refitting.
@@ -36,9 +44,8 @@ function pm = mvpa_reg_cov_stability_from_boot(pm, X, Y, mvpa_dat, varargin)
 %   **'threshold':** 'stable' if selected in >= this fraction; default 0.9
 %
 % :Outputs:
-%   **pm:** with pm.diagnostics.stability_selection holding .selection_count,
-%           .selection_freq, .stable, .n_stable, .valid_boots, .k, .threshold,
-%           .derived_from_bootstrap and .freq_obj (the frequency map)
+%   **ss:** struct with .selection_count, .selection_freq, .stable, .n_stable,
+%           .valid_boots, .k, .threshold, .derived_from_bootstrap and .freq_obj
 %
 % ..
 %     Copyright (C) 2026 Lukas Van Oudenhove. GPLv3.
@@ -87,7 +94,6 @@ if have_boot && nstab > 0
     ss.k               = o.k;
     ss.threshold       = o.threshold;
     ss.derived_from_bootstrap = true;
-    pm.diagnostics.stability_selection = ss;
 
     fprintf(['stability selection derived from %d existing bootstrap weight ' ...
              'vector(s), no refits\n'], ss.valid_boots);
@@ -100,22 +106,37 @@ else
     end
     fprintf(['no bootstrap weights on pm - falling back to ' ...
              'stability_selection(), which REFITS %d time(s) serially\n'], nstab);
+    % The class METHOD may write diagnostics; read the result back out.
     pm = stability_selection(pm, X, Y, 'nboot', nstab, 'k', o.k, ...
                              'threshold', o.threshold);
+    ss = pm.diagnostics.stability_selection;
+    ss.derived_from_bootstrap = false;
 
 end
 
-% Map the frequencies into voxel space, by the route the method's own docs
-% recommend. Done on a COPY so pm.weights.w keeps the real weights - overwriting
-% them here would silently corrupt every downstream weight map.
-if isfield(pm.diagnostics, 'stability_selection')
-    tmp = pm;
-    tmp.weights.w = pm.diagnostics.stability_selection.selection_freq(:);
-    tmp = weight_map_object(tmp, mvpa_dat);
-    pm.diagnostics.stability_selection.freq_obj = tmp.weights.weight_obj;
-    ev = o.k^2 / ((2*o.threshold - 1) * p_feat);
-    fprintf('  k = %d, pi = %.2f, p = %d -> E(V) <= %.2f (Meinshausen & Buhlmann 2010)\n', ...
-            o.k, o.threshold, p_feat, ev);
+% Frequency map in voxel space. Copy the weight image and swap its .dat rather
+% than round-tripping through weight_map_object on a mutated pm - that path
+% needs to write pm.weights, which is protected. mvpa_dat is accepted for the
+% fallback case where no weight_obj exists yet.
+if isfield(pm.weights,'weight_obj') && ~isempty(pm.weights.weight_obj)
+    fobj = pm.weights.weight_obj;
+else
+    fobj = weight_map_object(pm, mvpa_dat);
+    fobj = fobj.weights.weight_obj;
 end
+if numel(fobj.dat) == numel(ss.selection_freq)
+    fobj.dat = ss.selection_freq(:);
+    if isprop(fobj,'p')   || isfield(struct(fobj),'p'),   fobj.p   = []; end
+    if isprop(fobj,'sig') || isfield(struct(fobj),'sig'), fobj.sig = []; end
+    ss.freq_obj = fobj;
+else
+    warning('mvpa_reg_cov_stability_from_boot:sizeMismatch', ...
+        ['weight image has %d voxel(s) but there are %d selection frequencies; ' ...
+         'no freq_obj returned.'], numel(fobj.dat), numel(ss.selection_freq));
+end
+
+ev = o.k^2 / ((2*o.threshold - 1) * p_feat);
+fprintf('  k = %d, pi = %.2f, p = %d -> E(V) <= %.2f (Meinshausen & Buhlmann 2010)\n', ...
+        o.k, o.threshold, p_feat, ev);
 
 end

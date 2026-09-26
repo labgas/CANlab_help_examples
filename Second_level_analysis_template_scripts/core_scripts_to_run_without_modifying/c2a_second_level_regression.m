@@ -1938,7 +1938,9 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                                  '(algorithm %s) - NOT refitting\n'], mvpa_results{j}.pm.algorithm);
                         pm_bs = bootstrap(mvpa_results{j}.pm, X_pm, Y_pm, ...
                                           'nboot', boot_n_mvpa_reg_cov);
-                        pm_bs = mvpa_reg_cov_stability_from_boot(pm_bs, X_pm, Y_pm, ...
+                        % returns a STRUCT: pm's diagnostics property is protected,
+                        % so an external function cannot attach to it
+                        stab_bs = mvpa_reg_cov_stability_from_boot(pm_bs, X_pm, Y_pm, ...
                                     mvpa_fmri_dats{j}, 'nstab', nstab_mvpa_reg_cov, ...
                                     'k', stab_k_mvpa_reg_cov, ...
                                     'threshold', stab_threshold_mvpa_reg_cov);
@@ -1949,7 +1951,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                                  '- prep_3a used the legacy engine, so the model is REBUILT from the ' ...
                                  'same algorithm (%s) and the same folds before bootstrapping.\n'], ...
                                  c, j, alg_pm);
-                        pm_bs = mvpa_reg_cov_predictive_model(mvpa_fmri_dats{j}, fl_pm, ...
+                        [pm_bs, stab_bs] = mvpa_reg_cov_predictive_model(mvpa_fmri_dats{j}, fl_pm, ...
                                     'algorithm',      alg_pm, ...
                                     'modeloptions',   mo_pm, ...
                                     'nperm',          0, ...
@@ -1966,7 +1968,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     if isfield(pm_bs.weights,'p') && ~isempty(pm_bs.weights.p)
                         wobj.p = pm_bs.weights.p(:);
                     end
-                    mvpa_bs_stats{j} = struct('weight_obj', wobj, 'pm', pm_bs);
+                    mvpa_bs_stats{j} = struct('weight_obj', wobj, 'pm', pm_bs, 'stability', stab_bs);
 
                     % REPORT THE COLLAPSE IF IT HAPPENED. The floor is the tell.
                     if isfield(pm_bs.weights,'p') && ~isempty(pm_bs.weights.p)
@@ -1982,8 +1984,8 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                                      '  SELECTION MAP INSTEAD.\n']);
                         end
                     end
-                    if isfield(pm_bs.diagnostics,'stability_selection')
-                        ssj = pm_bs.diagnostics.stability_selection;
+                    if ~isempty(stab_bs)
+                        ssj = stab_bs;
                         fprintf('stability selection: %d of %d voxel(s) stable at freq >= %.2f (top-k = %d, %d valid boots)\n', ...
                                 ssj.n_stable, numel(ssj.selection_freq), stab_threshold_mvpa_reg_cov, ...
                                 ssj.k, ssj.valid_boots);
@@ -2086,9 +2088,9 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                 has_ss = false(1, mvpa_num_effects);
                 for j = 1:mvpa_num_effects
-                    has_ss(j) = isfield(mvpa_bs_stats{j},'pm') && ...
-                                isfield(mvpa_bs_stats{j}.pm.diagnostics,'stability_selection') && ...
-                                isfield(mvpa_bs_stats{j}.pm.diagnostics.stability_selection,'freq_obj');
+                    has_ss(j) = isfield(mvpa_bs_stats{j},'stability') && ...
+                                ~isempty(mvpa_bs_stats{j}.stability) && ...
+                                isfield(mvpa_bs_stats{j}.stability,'freq_obj');
                 end
 
                 if any(has_ss)
@@ -2104,7 +2106,7 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     row = 0;
                     for j = find(has_ss)
                         row = row + 1;
-                        ssj = mvpa_bs_stats{j}.pm.diagnostics.stability_selection;
+                        ssj = mvpa_bs_stats{j}.stability;
                         fobj = ssj.freq_obj;
                         if apply_mask_before_fdr
                             fobj = apply_mask(fobj, glmmask);

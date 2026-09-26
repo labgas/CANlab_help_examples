@@ -1,4 +1,4 @@
-function pm = mvpa_reg_cov_predictive_model(mvpa_dat, fold_labels, varargin)
+function [pm, stab] = mvpa_reg_cov_predictive_model(mvpa_dat, fold_labels, varargin)
 % mvpa_reg_cov_predictive_model  MVPA regression on a covariate via @predictive_model.
 %
 % Drop-in replacement for the hand-rolled predict()/permutation/bootstrap code
@@ -156,80 +156,25 @@ end
 
 % Stability selection: inference on the RANK of a voxel's weight rather than
 % its magnitude. See NOTE ON WHICH PATTERN INFERENCE above.
+% STABILITY SELECTION IS RETURNED SEPARATELY, NOT ATTACHED TO pm.
+% predictive_model declares diagnostics and weights under
+% properties (SetAccess = protected), so only class methods may write them.
+% An external function assigning pm.diagnostics.stability_selection fails with
+% "Unable to set the 'diagnostics' property ... because it is read-only" - which
+% is what an earlier version of this file did, along with tmp.weights.w = freq,
+% so that path could never have run. Delegated to
+% mvpa_reg_cov_stability_from_boot, which returns a struct and derives the
+% counts from pm.weights.boot_w rather than refitting when it can.
+stab = [];
 if o.nstab > 0
-    % SPEED: DERIVE STABILITY FROM THE BOOTSTRAP WE ALREADY PAID FOR.
-    %
-    % @predictive_model/stability_selection refits a model per resample in a
-    % SERIAL `for b = 1:nboot` loop. @predictive_model/bootstrap does the same
-    % resampling - the two blocks are line-for-line identical, randi(n,[n,1]) or
-    % whole-group sampling, then clone+fit - and it RETAINS every weight vector
-    % in pm.weights.boot_w as [p x nboot].
-    %
-    % CAUTION ON THE PARALLELISM. On this machine bootstrap.m runs its loop under
-    % `parfor`, but that is an UNCOMMITTED working-tree edit in CanlabCore
-    % (for -> parfor, made 2026-07-01; permutation_test.m carries the same edit
-    % from 2026-07-13; stability_selection.m never got it). Upstream both are
-    % serial. Reuse therefore helps EITHER WAY, and more so upstream: with a
-    % parallel bootstrap it converts nstab serial fits into a few sorts, and
-    % with a serial bootstrap it still removes nstab fits entirely. Do not rely
-    % on the parfor being present - check, or commit it.
-    %
-    % Stability selection is then just "how often is each feature in the top-k
-    % by |w|", which is one sort per column of a matrix already in memory. So
-    % when a bootstrap has already run with at least nstab samples, computing it
-    % from boot_w is arithmetically the same estimator (same scheme, same fits)
-    % at a cost of seconds instead of nstab serial model fits.
-    %
-    % Set stab_reuse_boot = false to force the method's own refitting path, e.g.
-    % to validate this against it.
-    did_reuse = false;
-    if o.stab_reuse_boot && o.nboot > 0 && isfield(pm.weights,'boot_w') ...
-            && ~isempty(pm.weights.boot_w) && size(pm.weights.boot_w,2) >= o.nstab
-        bw = pm.weights.boot_w(:, 1:o.nstab);
-        okb = ~all(isnan(bw), 1);                 % same validity test the method uses
-        bw = bw(:, okb);
-        kk = o.stab_k; if isempty(kk), kk = min(2000, size(bw,1)); end
-        cnt = zeros(size(bw,1), 1);
-        for b = 1:size(bw,2)
-            [~, ord] = sort(abs(bw(:,b)), 'descend');
-            cnt(ord(1:kk)) = cnt(ord(1:kk)) + 1;
-        end
-        ss = struct();
-        ss.selection_count = cnt;
-        ss.valid_boots     = size(bw,2);
-        ss.selection_freq  = cnt / max(ss.valid_boots,1);
-        ss.stable          = ss.selection_freq >= o.stab_threshold;
-        ss.n_stable        = sum(ss.stable);
-        ss.k               = kk;
-        ss.threshold       = o.stab_threshold;
-        ss.derived_from_bootstrap = true;
-        pm.diagnostics.stability_selection = ss;
-        did_reuse = true;
-        fprintf(['\nstability selection derived from the existing %d bootstrap ' ...
-                 'weight vectors (no refits)\n'], ss.valid_boots);
-    end
-    if ~did_reuse
-        stabargs = {'nboot', o.nstab, 'threshold', o.stab_threshold};
-        if ~isempty(o.stab_k), stabargs = [stabargs, {'k', o.stab_k}]; end
-        pm = stability_selection(pm, X, Y, stabargs{:});
-    end
+    stab = mvpa_reg_cov_stability_from_boot(pm, X, Y, mvpa_dat, ...
+               'nstab',     o.nstab, ...
+               'k',         o.stab_k, ...
+               'threshold', o.stab_threshold);
 end
 
 % Attach the brain map so montage/surface work downstream.
 pm = weight_map_object(pm, mvpa_dat);
 
-% Map the selection frequencies into voxel space too, by the route the method's
-% own documentation recommends: stash them as a weight vector and re-run
-% weight_map_object. Done on a COPY so pm.weights.w keeps the real weights -
-% overwriting them here would silently corrupt every downstream weight map.
-if o.nstab > 0 && isfield(pm.diagnostics, 'stability_selection')
-    freq = pm.diagnostics.stability_selection.selection_freq;
-    tmp  = pm;
-    tmp.weights.w = freq(:);
-    tmp  = weight_map_object(tmp, mvpa_dat);
-    pm.diagnostics.stability_selection.freq_obj = tmp.weights.weight_obj;
-    fprintf('\nstability selection: %d of %d feature(s) stable at freq >= %.2f\n', ...
-        pm.diagnostics.stability_selection.n_stable, numel(freq), o.stab_threshold);
-end
 
 end
