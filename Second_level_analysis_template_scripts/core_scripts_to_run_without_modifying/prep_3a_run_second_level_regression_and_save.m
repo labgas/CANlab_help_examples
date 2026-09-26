@@ -372,6 +372,7 @@ results_suffix = ''; % adds a suffix of your choice to .mat file with results th
 % first model that needs one.
 if ~exist('nuisance_covs','var'),    nuisance_covs = {};    end
 if ~exist('categorical_covs','var'), categorical_covs = {}; end
+if ~exist('domask_mvpa_reg_cov','var'), domask_mvpa_reg_cov = true; end
 
 
 % NOTES 
@@ -1375,12 +1376,25 @@ for c = 1:kc
     
     if domvpa_reg_cov
         
-        mvpa_data_objects = cell(size(cat_obj.X,2),1);
+        % See master's copy for the full note: cat_obj is UNMASKED, and unlike the
+        % univariate branch (which masks the statistic image after fitting) MVPA
+        % must mask the FEATURES, because the decomposition runs over every
+        % included voxel. 235807 -> 149154 on proj_discoverie model_2k.
+        mvpa_cat_obj = cat_obj;
+        if domask_mvpa_reg_cov && exist('glmmask','var') && ~isempty(glmmask)
+            nvox_before  = size(mvpa_cat_obj.dat,1);
+            mvpa_cat_obj = apply_mask(mvpa_cat_obj, glmmask);
+            fprintf('\nmvpa_reg_cov features masked: %d -> %d voxels (%.1f%% retained)\n', ...
+                    nvox_before, size(mvpa_cat_obj.dat,1), ...
+                    100*size(mvpa_cat_obj.dat,1)/nvox_before);
+        end
         
-        for covar = 1:size(cat_obj.X,2)
+        mvpa_data_objects = cell(size(mvpa_cat_obj.X,2),1);
+        
+        for covar = 1:size(mvpa_cat_obj.X,2)
             
-            mvpa_data_objects{covar} = cat_obj;
-            mvpa_data_objects{covar}.Y = cat_obj.X(:,covar);
+            mvpa_data_objects{covar} = mvpa_cat_obj;
+            mvpa_data_objects{covar}.Y = mvpa_cat_obj.X(:,covar);
             mvpa_data_objects{covar}.Y_names = groupnames{covar};
             
         end
@@ -2715,9 +2729,25 @@ for c = 1:kc
                 % fit, null and weight map to CanlabCore's @predictive_model via
                 % mvpa_reg_cov_predictive_model. Default is 'legacy' so existing
                 % study copies are unaffected.
+                % 'tuned_nested' is the third option: mvpa_reg_cov_tuned_nested,
+                % which implements the nesting CanlabCore's own tutorials teach -
+                % an inner grid search rebuilt from the TRAINING subset's strata,
+                % per outer fold. It is not a variant of 'predictive_model': that
+                % one tunes via @predictive_model's 'estimateparam', a round-robin
+                % over ROW INDEX that is blind to the outer folds' structure.
+                % Measured on proj_discoverie model_2k immune_PC1, GM-masked, same
+                % folds: legacy +0.0158, predictive_model +0.0158, ooFmri +0.1186,
+                % tuned_nested +0.1812. The split is by inner-CV design.
                 if ~exist('mvpa_engine','var') || isempty(mvpa_engine), mvpa_engine = 'legacy'; end
-                if ~ismember(lower(mvpa_engine), {'legacy','predictive_model'})
-                    error('mvpa_engine must be ''legacy'' or ''predictive_model'', not ''%s''.', mvpa_engine);
+                if ~ismember(lower(mvpa_engine), {'legacy','predictive_model','tuned_nested'})
+                    error(['mvpa_engine must be ''legacy'', ''predictive_model'' or ' ...
+                           '''tuned_nested'', not ''%s''.'], mvpa_engine);
+                end
+                if ~exist('grid_mvpa_reg_cov','var') || isempty(grid_mvpa_reg_cov)
+                    grid_mvpa_reg_cov = struct('lasso_num', 1:12);   % what the tutorials tune
+                end
+                if ~exist('inner_k_mvpa_reg_cov','var') || isempty(inner_k_mvpa_reg_cov)
+                    inner_k_mvpa_reg_cov = 4;
                 end
                 if ~exist('nboot_mvpa_reg_cov','var'),         nboot_mvpa_reg_cov = 0; end
                 if ~exist('nstab_mvpa_reg_cov','var'),         nstab_mvpa_reg_cov = 0; end
@@ -2861,7 +2891,65 @@ for c = 1:kc
 
                 t0 = tic;
 
-                if isequal(lower(mvpa_engine),'predictive_model')
+                if isequal(lower(mvpa_engine),'tuned_nested')
+
+                % ---- tuned_nested ENGINE ----------------------------------------
+                % Needs the STRATA as well as the fold labels: the inner splitter is
+                % rebuilt from the training subset of them, which is the whole point
+                % of this engine. cv_strata_mvpa_reg_cov names the column(s); the
+                % composite key is built the same way the fold construction above
+                % builds it, so inner and outer folds respect the same structure.
+                if isempty(cv_strata_mvpa_reg_cov)
+                    error(['mvpa_engine = ''tuned_nested'' needs cv_strata_mvpa_reg_cov ' ...
+                           'to name the column(s) the inner folds must respect.']);
+                end
+                Tstrat_tn = DAT.BETWEENPERSON.(mygroupnamefield){c};
+                strat_tn  = strings(height(Tstrat_tn), 1);
+                for v_tn = 1:numel(cv_strata_mvpa_reg_cov)
+                    col_tn   = Tstrat_tn.(cv_strata_mvpa_reg_cov{v_tn});
+                    strat_tn = strat_tn + "|" + string(col_tn(:));
+                end
+                [~, ~, strat_tn] = unique(strat_tn);    % tuned_nested wants numeric
+
+                o_tn = mvpa_reg_cov_tuned_nested(mvpa_dat, fold_labels, strat_tn, ...
+                            'algorithm', regexprep(lower(algorithm_mvpa_reg_cov),'^cv_',''), ...
+                            'grid',      grid_mvpa_reg_cov, ...
+                            'inner_k',   inner_k_mvpa_reg_cov, ...
+                            'nperm',     nperm_mvpa_reg_cov, ...
+                            'seed',      cv_seed_mvpa_reg_cov);
+
+                % ---- adapt -> legacy mvpa_stats ---------------------------------
+                % .pm is the FULL-DATA refit at the MODAL tuned hyperparameter, which
+                % is what the weight map represents and therefore what c2a should
+                % bootstrap. The per-fold tuned values are kept on .tuned_chosen so a
+                % reader can see how stable the tuning was.
+                mvpa_stats                = struct();
+                mvpa_stats.yfit           = o_tn.yfit(:);
+                mvpa_stats.weight_obj     = o_tn.pm_full.weights.weight_obj;
+                mvpa_stats.pred_outcome_r = o_tn.r;
+                mvpa_stats.pm             = o_tn.pm_full;
+                mvpa_stats.engine         = 'tuned_nested';
+                mvpa_stats.tuned_chosen   = o_tn.chosen(:)';
+                mvpa_stats.tuned_best     = o_tn.best_overall;
+                mvpa_stats.tuned_grid     = grid_mvpa_reg_cov;
+                mvpa_stats.Y              = mvpa_dat.Y(:);
+                mvpa_stats.teIdx          = arrayfun(@(k) fold_labels(:) == k, ...
+                                                unique(fold_labels(:))', 'UniformOutput', false);
+                mvpa_stats.algorithm_name = algorithm_mvpa_reg_cov;
+                mvpa_stats.function_call  = sprintf('tuned_nested:%s grid %s inner_k %d', ...
+                                            regexprep(lower(algorithm_mvpa_reg_cov),'^cv_',''), ...
+                                            strjoin(fieldnames(grid_mvpa_reg_cov)', ','), ...
+                                            inner_k_mvpa_reg_cov);
+                if isstruct(o_tn.perm) && ~isnan(o_tn.perm.p)
+                    mvpa_stats.perm = struct('n', o_tn.perm.n, 'p', o_tn.perm.p, ...
+                                             'null_r', o_tn.perm.null_r(:));
+                end
+                fprintf(['\ntuned_nested: r = %+.4f, tuned %s per fold %s (modal %g), ' ...
+                         'perm p = %s\n'], o_tn.r, strjoin(fieldnames(grid_mvpa_reg_cov)', ','), ...
+                         mat2str(o_tn.chosen(:)'), o_tn.best_overall, ...
+                         num2str(o_tn.perm.p));
+
+                elseif isequal(lower(mvpa_engine),'predictive_model')
 
                 % ---- @predictive_model ENGINE -----------------------------------
                 % Delegates fit, permutation null, optional bootstrap and stability
