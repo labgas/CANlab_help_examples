@@ -169,40 +169,147 @@ before you edit one:
   counts named; before that, a model whose sample was itself a subset (patients only, one
   site only) either crashed inside `prep_2` or mis-aligned silently.
 
-## Deferred: migrate the MVPA paths to @predictive_model
+## The MVPA paths and `@predictive_model` (done for prep_3a/c2a, Sept 2026)
 
-`prep_3a`'s `domvpa_reg_cov` block and `prep_3c`'s SVM both call
-`fmri_data.predict`, whose return struct carries **no inferential quantity at
-all** for a continuous outcome - `pred_outcome_r`, `mse`, `rmse`, `meanabserr`,
-`cverr`, and nothing else. As of 2026/09/23 `prep_3a` supplies the missing
-pieces itself: `cv_seed_mvpa_reg_cov`, `cv_strata_mvpa_reg_cov` (fold balancing
-on named design columns), `nperm_mvpa_reg_cov` (permutation test that re-runs
-the whole CV per permutation), and `numcomponents_mvpa_reg_cov`.
+`fmri_data.predict` returns **no inferential quantity at all** for a continuous
+outcome - `pred_outcome_r`, `mse`, `rmse`, `meanabserr`, `cverr`, and nothing
+else. `prep_3a` supplied the missing pieces itself (`cv_seed_mvpa_reg_cov`,
+`cv_strata_mvpa_reg_cov`, `nperm_mvpa_reg_cov`, `numcomponents_mvpa_reg_cov`).
+That stopgap is now backed by a real migration for the `domvpa_reg_cov` path.
+**`prep_3c`'s SVM still calls `predict` and has NOT been migrated.**
 
-That is a stopgap. CanlabCore now ships **`@predictive_model`**
-(`CanlabCore/@predictive_model`, tutorials in
-`docs/markdown_tutorials/multivariate_classification_with_SVM`, parts 1-5),
-which already has all of it and more:
+### `mvpa_engine` - three engines, and why the choice matters
 
-| hand-rolled here | `@predictive_model` |
+| value | fit | inner CV that tunes the hyperparameter |
+|---|---|---|
+| `'legacy'` (default) | `fmri_data.predict` | `estimateparams`: round-robin over ROW INDEX |
+| `'predictive_model'` | `@predictive_model` via `mvpa_reg_cov_predictive_model` | `estimateparam`: the same round-robin |
+| `'tuned_nested'` | `mvpa_reg_cov_tuned_nested` | inner folds REBUILT from the training subset's strata, per outer fold - the pattern CanlabCore's own tutorials teach |
+
+**This is not a stylistic choice.** Measured on proj_discoverie model_2k
+immune_PC1, identical data, identical outer folds, 149154 grey-matter voxels:
+
+| engine | r |
 |---|---|
-| permutation test | `permutation_test` with `free` / `between_subjects` / `within_subjects` schemes, `auto`-detected, and an explicit warning that free shuffling of grouped data inflates false positives |
-| `cv_seed_*` | `random_state` |
-| `cv_strata_*` | `cv_splitter` (kfold, stratified, group, stratified-group, LOGO, holdout, shuffle-split, repeated, `custom_partition`) |
-| - | `grid_search`, `stability_selection`, `bootstrap`, `calibrate` |
+| `tuned_nested` | **+0.1812** |
+| ooFmriDataObjML (reference cross-check) | +0.1186 |
+| legacy / `estimateparams` | +0.0158 |
+| `predictive_model` / `estimateparam` | +0.0158 |
 
-It also removes two live hazards. Its `svr` runs on MATLAB's `fitrsvm` rather
-than the unmaintained Spider copy vendored in `CanlabCore/External/spider`, and
-its `pcr`/`lassopcr` take `{'numcomponents', k}` properly - see the `cv_pls`
-trap below.
+Engines that rebuild the inner splitter under the outer folds' structural
+constraints find signal; those tuning by a round-robin over row index, blind to
+that structure, find essentially none. The two `estimateparam` rows agree to four
+decimals because they are one engine behind two front-ends. Do NOT rank +0.1186
+against +0.1812 - inner-fold seed alone moves the estimate by ~0.06.
 
-**Scope, if picked up:** `crossval` wants `X = double(obj.dat')` and a plain `Y`,
-not an `fmri_data` object; site stratification needs fold labels built by hand
-and passed through `cv_splitter.custom_partition`; and `c2a`'s MVPA section
-reads `mvpa_stats.weight_obj` / `.yfit` / `.pred_outcome_r`, so the saved-results
-schema changes and `c2a` has to move with it. Roughly a day across both
-templates, and it needs **its own positive control** rather than being validated
-incidentally by whatever study migrates first.
+### Two traps that cost real time here
+
+**MASK THE FEATURES.** `prep_3a` built the MVPA design from the UNMASKED
+`cat_obj`. The univariate branch masks the STATISTIC IMAGE after fitting, which
+is correct there because each voxel's test is independent; it is wrong for MVPA,
+where the decomposition runs over every included voxel. 235807 voxels against
+149154 in grey matter - 36% white matter, CSF and edge. Now behind
+`domask_mvpa_reg_cov` (default true). The TFCE branch already did this correctly,
+so the template encoded the principle; `mvpa_reg_cov` was the one path that missed it.
+
+**ONE SEED CANNOT DRIVE TWO PARTITIONS.** `cv_seed_mvpa_reg_cov` seeded both the
+outer CV partition and `tuned_nested`'s inner folds, so a run that used different
+values for each could not be reproduced from the options. Now
+`tuned_seed_mvpa_reg_cov`, defaulting to `cv_seed_mvpa_reg_cov`. The symptom was
+quiet: the fit still ran and looked reasonable, landing on a different modal
+hyperparameter and r = +0.1998 instead of +0.1812.
+
+### Pattern inference lives in c2a, not prep_3a
+
+`prep_3a` answers *is the model better than chance* (permutation test). Only if
+that is significant is *which voxels does it lean on* worth paying for, so
+bootstrap and stability selection are in `c2a`, opt-in, behind
+`dobootstrap_mvpa_reg_cov`. `mvpa_engine` there selects which bootstrap runs -
+the two are EXCLUSIVE, never both.
+
+c2a prefers the object `prep_3a` saved as `mvpa_stats.pm` and bootstraps THAT,
+rather than refitting and possibly landing on a different penalty. A legacy fit
+has no `.pm` and is rebuilt from the same algorithm and folds, which the report
+states. Folds are recovered from `teIdx`, a CELL of `nfolds` logical `[n x 1]`
+masks - not a matrix, so it cannot be collapsed by multiplication.
+
+**Bootstrap p can collapse.** On a strongly regularised model the weights are
+near-identical across resamples, the empirical p floors at `2/(nboot+1)` for
+every voxel, and the FDR mask becomes meaningless. c2a counts voxels at the floor
+and says so. Stability selection is the recommended inference there.
+
+**Stability selection: k and the threshold are coupled.** Meinshausen & Buhlmann
+(2010) bound `E(V) <= k^2/((2*pi-1)*p)`, valid only for `pi > 0.5`, and `k` enters
+SQUARED where `p` enters linearly. The class default `k = 2000, pi = 0.6` controls
+nothing at brain scale - at `p = 149154` it bounds E(V) at 134, and no valid `pi`
+rescues `k = 2000`. c2a inverts the formula instead,
+`k = sqrt((2*pi-1)*p*E(V))`, giving **k = 345 at pi = 0.9, E(V) = 1**. Options:
+`stab_threshold_mvpa_reg_cov` (0.9), `stab_EV_mvpa_reg_cov` (1),
+`stab_k_mvpa_reg_cov` (empty = derive). The implied E(V) is always printed.
+Caveat: the theorem assumes SUBSAMPLING at n/2; `stability_selection` resamples
+WITH REPLACEMENT (Shah & Samworth 2013 give that case), so the number is the right
+order, not an exact guarantee.
+
+**Speed.** `stability_selection` refits per resample in a SERIAL loop; `bootstrap`
+does the same resampling and RETAINS every weight vector in `pm.weights.boot_w`.
+So stability is one sort per column of a matrix already in memory -
+`stab_reuse_boot`, default true. At 1.02 s per fit on 93 x 149154 that is seconds
+instead of ~85 min at `nstab = 5000`.
+
+### The helper functions that ship alongside
+
+Five files in `core_scripts_to_run_without_modifying/`, called BY `prep_3a` and
+`c2a` rather than run directly, so they are not in the script table:
+
+| file | role |
+|---|---|
+| `mvpa_reg_cov_predictive_model.m` | `mvpa_engine = 'predictive_model'`. Wraps crossval / permutation_test / bootstrap / weight_map_object. Returns `[pm, stab]` - stability comes back as a SECOND OUTPUT, not attached to `pm`, because `pm`'s diagnostics property is protected |
+| `mvpa_reg_cov_tuned_nested.m` | `mvpa_engine = 'tuned_nested'`. Inner grid search rebuilt from the training subset's strata per outer fold. Also carries its own permutation test, which permutes the WHOLE nested procedure because the tuning is part of what is being tested |
+| `mvpa_reg_cov_stability_from_boot.m` | Derives stability selection from `pm.weights.boot_w` instead of refitting. Returns a struct |
+| `mvpa_reg_cov_oofmri.m` | ooFmriDataObjML engine, kept as a reference cross-check rather than a default - that package is UNMAINTAINED (last commit 2024-08-23) |
+| `mvpa_reg_cov_benchmark_algorithms.m` | Compares algorithms under identical folds |
+
+Two traps in `mvpa_reg_cov_oofmri` worth not rediscovering. `get_r` returns
+**1 - r**, a LOSS for `gridSearchCV` to minimise, not a correlation - reading
+`cvGS.scores` as r gives impossible values above 1. And `crossValScore` AVERAGES
+per-fold scores while the other engines POOL all held-out predictions; those are
+different statistics, because correlation is not an additive loss the way MSE is.
+The wrapper now reports the pooled r, with per-fold values as a diagnostic and a
+Fisher-z weighted mean as the defensible average. CanlabCore's `@pipeline` also
+SHADOWS ooFmriDataObjML's, so that package must be added to the path LAST.
+
+### predictive_model's fitted state is PROTECTED
+
+`diagnostics`, `weights`, `fitted_values` and most other fitted state sit under
+`properties (SetAccess = protected)`. Only class methods may write them; an
+external function assigning `pm.diagnostics.stability_selection` fails at RUNTIME
+with *"Unable to set the 'diagnostics' property ... because it is read-only"* -
+`checkcode` passes, so nothing catches it until a job is hours in. The helpers
+here therefore RETURN structs rather than mutating `pm`, and build frequency maps
+by copying `pm.weights.weight_obj` and swapping its `.dat`.
+
+### FDR: voxel and parcel level use BH, deliberately
+
+`threshold(obj, q, 'fdr')` calls CanlabCore's `FDR.m`, which is plain
+**Benjamini-Hochberg** (`pID`, the independence/PRDS form) with no pi0 estimation.
+Every spatial threshold - voxelwise, parcelwise, TFCE, Bayes, MVPA weight maps -
+flows through it, so they are already uniform. Storey appears ONLY in the
+small-`m` tabular contexts (8 ROIs, 30 neurotransmitter maps) via
+`LaBGAScore_Storey_FDR`, reported alongside BH rather than instead of it.
+
+Do not "upgrade" the spatial path to Storey. The binding constraint at voxel
+scale is DEPENDENCE, not m: BH controls FDR under positive regression dependency,
+which is the standard justification for smooth neuroimaging data, whereas
+Storey's pFDR assumes independence. A well-identified pi0 buys nothing if the
+control it feeds is not valid under the dependence actually present.
+
+### Still open
+
+`prep_3c`'s SVM remains on `fmri_data.predict`. `@predictive_model` would also
+remove two live hazards there: its `svr` runs on MATLAB's `fitrsvm` rather than
+the unmaintained Spider copy vendored in `CanlabCore/External/spider`, and its
+`pcr`/`lassopcr` take `{'numcomponents', k}` properly - see the `cv_pls` trap
+below.
 
 ### The cv_pls trap (fixed, do not re-introduce)
 

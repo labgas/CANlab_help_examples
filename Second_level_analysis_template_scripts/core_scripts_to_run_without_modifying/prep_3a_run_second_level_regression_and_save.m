@@ -2749,6 +2749,18 @@ for c = 1:kc
                 if ~exist('inner_k_mvpa_reg_cov','var') || isempty(inner_k_mvpa_reg_cov)
                     inner_k_mvpa_reg_cov = 4;
                 end
+                % SEPARATE SEED FOR THE INNER FOLDS, defaulting to cv_seed so
+                % nothing changes unless it is set. cv_seed_mvpa_reg_cov already
+                % seeds the OUTER partition (rng above); passing it on to
+                % tuned_nested makes one value drive both, which cannot reproduce
+                % a run that used different ones. That is not hypothetical: the
+                % 2000-draw null for model_2k immune_PC1 was produced with outer
+                % folds at 20260923 and tuned_nested at 20260925, and reusing it
+                % needs exactly that pair. Inner-fold randomness moves the point
+                % estimate by ~0.06 here, so the distinction is not cosmetic.
+                if ~exist('tuned_seed_mvpa_reg_cov','var') || isempty(tuned_seed_mvpa_reg_cov)
+                    tuned_seed_mvpa_reg_cov = cv_seed_mvpa_reg_cov;
+                end
                 if ~exist('nboot_mvpa_reg_cov','var'),         nboot_mvpa_reg_cov = 0; end
                 if ~exist('nstab_mvpa_reg_cov','var'),         nstab_mvpa_reg_cov = 0; end
                 if ~exist('cv_seed_mvpa_reg_cov','var'),       cv_seed_mvpa_reg_cov = []; end
@@ -2916,7 +2928,7 @@ for c = 1:kc
                             'grid',      grid_mvpa_reg_cov, ...
                             'inner_k',   inner_k_mvpa_reg_cov, ...
                             'nperm',     nperm_mvpa_reg_cov, ...
-                            'seed',      cv_seed_mvpa_reg_cov);
+                            'seed',      tuned_seed_mvpa_reg_cov);
 
                 % ---- adapt -> legacy mvpa_stats ---------------------------------
                 % .pm is the FULL-DATA refit at the MODAL tuned hyperparameter, which
