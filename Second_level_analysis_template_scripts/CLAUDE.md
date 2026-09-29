@@ -162,7 +162,23 @@ before you edit one:
   branches passed `@table` and only the TFCE branches passed `@LaBGAScore_region_table`. The
   giveaway is a column of identical `7.0345` values. Inference is never affected - it is the
   printed peak only - but the column is worthless above the ceiling, which t-maps and
-  especially Bayes factor maps (stored as `2*ln(BF)`) do exceed.
+  especially Bayes factor maps (stored as `2*ln(BF)`) do exceed. **For BF maps the two
+  defects compound:** a 7.0345 ceiling on a `2*ln` scale caps reported evidence at
+  BF10 = exp(3.517) ~ 34, so a real peak of BF10 = 39591 printed as 7.03.
+- **The Bayes column was also MISLABELLED until 2026-09-25.** `estimateBayesFactor` sets
+  `.type = 'BF'`, and the table builds its header as `['max' Z_descrip]`, so the column read
+  `maxBF` while holding `2*ln(BF10)` - a printed 15.05 is a Bayes factor of **1854**, not 15.
+  `LaBGAScore_region_table` now emits `max_2lnBF` plus `maxBF10 = exp(max_2lnBF/2)`.
+  **Convert with `exp(v/2)`, never `exp(v)`:** the wrong conversion overstates evidence FOR
+  THE NULL, turning model_2c_IOM's true "83% moderate, median BF10 0.16" into a spurious
+  "82% strong, median 0.027". The thresholds themselves were always right - `c2a` uses
+  `2*log(BF_threshold_glm)` and `prep_3a` hardcodes `2.1972`, which is `2*ln(3)` (labelled
+  "|BF| > 3") and NOT ln(9), the misreading that caused this.
+- **The JZS Bayes factor has a sample-size floor.** `t1smpbf(0, n)` bounds attainable
+  evidence for H0: n=70 floors at BF10 = 0.131 (7.6:1), n=93 at 0.115, n=158 at 0.089. Below
+  roughly n=100, **BF10 < 1/10 is unreachable no matter how null the data are**, so "0% strong
+  evidence for the null" in a small sample is a design ceiling, not a weak result. Say so when
+  reporting it.
 - **`prep_2` and `prep_1b` must agree on whose sample the design describes.** `prep_2`
   subsets `DAT.BETWEENPERSON.group` itself but never touches
   `.conditions{}`/`.contrasts{}`. Since v2.6 it decides by length and errors with both

@@ -167,6 +167,17 @@ doneurotransmitter_maps = true;                                         % calcul
     neurotransmitter_maps_metric = 'cosine_similarity';                     % 'cosine_similarity', or 'correlation'
 domvpa_reg_cov = false;                                                 % run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
     % mvpa_reg_covariate options
+    domask_mvpa_reg_cov = true;                                             % default true. MASK THE FEATURES with maskname_glm before fitting.
+                                                                            % prep_3a builds the MVPA design from the UNMASKED cat_obj; the univariate
+                                                                            % branch masks only the STATISTIC IMAGE, after fitting, which is correct
+                                                                            % there because each voxel's test is independent - restricting the map
+                                                                            % afterwards leaves every surviving statistic identical. MVPA IS DIFFERENT:
+                                                                            % lasso-PCR and friends decompose over every included voxel, so out-of-mask
+                                                                            % voxels shape the components, the weights and the cross-validated
+                                                                            % prediction, and no post-hoc mask undoes that. Measured on proj_discoverie
+                                                                            % model_2k: 235807 voxels unmasked vs 149154 in the canlab2023 grey-matter
+                                                                            % mask, i.e. 36.7%% of the features were white matter, CSF and edge.
+                                                                            % Set false only to reproduce a result predating this option.
     algorithm_mvpa_reg_cov = 'cv_pcr';                                      % default cv_pcr, will be passed into predict function (help fmri_data.predict for options)
     holdout_set_method_mvpa_reg_cov = 'no_group';                           % 'no_group', or 'group'
                                                                                 % 'group': use DAT.BETWEENPERSON.group or 

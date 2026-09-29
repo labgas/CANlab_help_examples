@@ -372,6 +372,9 @@ results_suffix = ''; % adds a suffix of your choice to .mat file with results th
 % first model that needs one.
 if ~exist('nuisance_covs','var'),    nuisance_covs = {};    end
 if ~exist('categorical_covs','var'), categorical_covs = {}; end
+% MASK THE MVPA FEATURES, default true. See the block that builds
+% mvpa_data_objects for why this is not the same question as masking the GLM.
+if ~exist('domask_mvpa_reg_cov','var'), domask_mvpa_reg_cov = true; end
 
 
 % NOTES 
@@ -1375,15 +1378,46 @@ for c = 1:kc
     
     if domvpa_reg_cov
         
-        mvpa_data_objects = cell(size(cat_obj.X,2),1);
+        % MASK THE FEATURES BEFORE THEY BECOME THE MVPA DESIGN.
+        %
+        % cat_obj is UNMASKED here - the univariate branch applies glmmask to the
+        % STATISTIC IMAGE after fitting (see "t = apply_mask(t,glmmask)" below),
+        % which is correct and sufficient there, because each voxel's test is
+        % independent: restricting the map afterwards leaves every surviving
+        % statistic identical.
+        %
+        % THAT REASONING DOES NOT CARRY TO MVPA. lasso-PCR (and every other
+        % multivariate algorithm here) runs its decomposition over ALL included
+        % voxels, so out-of-mask voxels shape the components, the weights and the
+        % cross-validated prediction. Masking afterwards cannot undo it. Measured
+        % on proj_discoverie model_2k: 235807 voxels unmasked against 149154 in
+        % the canlab2023 grey-matter mask, i.e. 36.7% of the features were white
+        % matter, CSF and edge.
+        %
+        % Set domask_mvpa_reg_cov = false to restore the old unmasked behaviour.
+        mvpa_cat_obj = cat_obj;
+        if domask_mvpa_reg_cov && exist('glmmask','var') && ~isempty(glmmask)
+            nvox_before  = size(mvpa_cat_obj.dat,1);
+            mvpa_cat_obj = apply_mask(mvpa_cat_obj, glmmask);
+            fprintf('\nmvpa_reg_cov features masked with %s: %d -> %d voxels (%.1f%% retained)\n', ...
+                    mask_string, nvox_before, size(mvpa_cat_obj.dat,1), ...
+                    100*size(mvpa_cat_obj.dat,1)/nvox_before);
+        elseif domask_mvpa_reg_cov
+            warning(['domask_mvpa_reg_cov is true but no glmmask exists (maskname_glm ' ...
+                     'unset), so the MVPA runs on ALL voxels including non-brain.']);
+        end
         
-        for covar = 1:size(cat_obj.X,2)
+        mvpa_data_objects = cell(size(mvpa_cat_obj.X,2),1);
+        
+        for covar = 1:size(mvpa_cat_obj.X,2)
             
-            mvpa_data_objects{covar} = cat_obj;
-            mvpa_data_objects{covar}.Y = cat_obj.X(:,covar);
+            mvpa_data_objects{covar} = mvpa_cat_obj;
+            mvpa_data_objects{covar}.Y = mvpa_cat_obj.X(:,covar);
             mvpa_data_objects{covar}.Y_names = groupnames{covar};
             
         end
+        
+        clear mvpa_cat_obj nvox_before
         
     end
     
