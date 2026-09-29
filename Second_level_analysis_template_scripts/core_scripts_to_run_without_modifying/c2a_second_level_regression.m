@@ -83,6 +83,77 @@
 %     mvpa bootstrapping options
 %
 %       * boot_n_mvpa_reg_cov           number of bootstrap samples
+%       * mvpa_engine                   'legacy' (default) or 'predictive_model'.
+%                                       EXCLUSIVE: selects which bootstrap runs,
+%                                       never both. 'predictive_model' adds
+%                                       stability selection alongside it.
+%       * nstab_mvpa_reg_cov            stability-selection resamples; defaults to
+%                                       boot_n_mvpa_reg_cov, which lets the engine
+%                                       DERIVE stability from the bootstrap weights
+%                                       already computed instead of refitting
+%       * stab_threshold_mvpa_reg_cov   'stable' if selected in >= this fraction
+%                                       of resamples; default 0.9. MUST exceed 0.5
+%       * stab_EV_mvpa_reg_cov          target expected number of FALSE selections;
+%                                       default 1. Used to derive stab_k
+%       * stab_k_mvpa_reg_cov           top-k voxels by |w| per resample. Leave
+%                                       EMPTY to derive it from the threshold and
+%                                       stab_EV. See the note below before setting it
+%
+% *CHOOSING THE STABILITY-SELECTION THRESHOLD*
+%
+% Stability selection fits the model on many resamples, ranks features by |weight|
+% on each, and records which land in the TOP k. A feature's SELECTION FREQUENCY is
+% the fraction of resamples in which it made that cut; the THRESHOLD pi is the
+% frequency above which it is called "stable".
+%
+% THE TWO KNOBS CANNOT BE CHOSEN SEPARATELY. Meinshausen & Buhlmann (2010) Thm 1
+% bounds the expected number of falsely selected features:
+%
+%       E(V) <= k^2 / ((2*pi - 1) * p)
+%
+%   * k  - how permissive each single resample is
+%   * pi - how consistent a feature must be across resamples
+%   * p  - number of features (voxels in the analysis mask)
+%
+% Three consequences:
+%
+%   1. pi MUST EXCEED 0.5. At 0.5 the denominator is zero and the bound undefined;
+%      below it, negative. pi = 0.6 is not wrong in principle but (2*pi-1) = 0.2
+%      sits on the steep part of the curve - about 5x worse than pi = 0.9.
+%
+%   2. k ENTERS SQUARED, p ONLY LINEARLY. This is what breaks at brain scale. The
+%      class default k = 2000 is roughly 20x a typical genetics-scale k, and that
+%      penalty is squared, which the larger p does not offset. Measured at
+%      p = 149154 (canlab2023 grey matter):
+%
+%           k        pi=0.6    pi=0.9
+%           2000      134.1      33.5      <- the class default controls nothing
+%            500        8.4       2.1
+%            345        4.0       1.0
+%
+%      At k = 2000 NO valid pi reaches E(V) <= 1: the algebra demands pi >= 13.9.
+%
+%   3. SO INVERT THE FORMULA. Fix the false-selection budget you will tolerate and
+%      let k follow:  k = sqrt((2*pi - 1) * p * E(V)).  At pi = 0.9, p = 149154,
+%      E(V) = 1 this gives k = 345. That is what this script does when
+%      stab_k_mvpa_reg_cov is left empty.
+%
+% Whichever route is taken, the implied E(V) is PRINTED, so a threshold never
+% appears without its error characteristics. Setting k explicitly is allowed and
+% reports the bound it implies; E(V) > 10 additionally warns and names the k that
+% would give E(V) <= 1 at the chosen pi.
+%
+% CAVEAT TO STATE IN A METHODS SECTION. The theorem assumes SUBSAMPLING at n/2
+% (complementary pairs). @predictive_model/stability_selection resamples WITH
+% REPLACEMENT, as does the boot_w-reuse path in mvpa_reg_cov_predictive_model.
+% Shah & Samworth (2013) derive the bound for that case and it differs. Treat the
+% printed E(V) as the right order of magnitude, not an exact guarantee - which is
+% why it is reported rather than silently trusted.
+%
+% References:
+%   Meinshausen N, Buhlmann P (2010) Stability selection. JRSS-B 72:417-473.
+%   Shah RD, Samworth RJ (2013) Variable selection with error control: another
+%       look at stability selection. JRSS-B 75:55-80.
 %
 %       * parallelstr_mvpa_reg_cov      'parallel'/'noparallel'  
 %
@@ -1735,27 +1806,217 @@ for c = 1:size(results, 2) % number of contrasts or conditions
 
                 t0_boot = tic;
                 
-                switch algorithm_mvpa_reg_cov   % TO DO: add optimal alpha and lambda lasso parameters from nested cv in predict() run in prep_3a, should be stored in stats.other_output somewhere
-                    
-                    case 'cv_lassopcr'
-
-                        [~ , mvpa_bs_stats{j}] = predict(mvpa_fmri_dats{j}, 'algorithm_name', algorithm_mvpa_reg_cov,...
-                            'bootsamples', boot_n_mvpa_reg_cov, 'nfolds', 1, 'error_type', 'mse', ...
-                            parallelstr_mvpa_reg_cov, 'verbose', 0);
-                        
-                    case 'cv_lassopcr_matlab'
-                        
-                        [~ , mvpa_bs_stats{j}] = predict(mvpa_fmri_dats{j}, 'algorithm_name', algorithm_mvpa_reg_cov,...
-                            'bootsamples', boot_n_mvpa_reg_cov, 'nfolds', 1, 'error_type', 'mse', ...
-                            parallelstr_mvpa_reg_cov, 'verbose', 0);
-                        
-                    otherwise
-                        
-                        [~ , mvpa_bs_stats{j}] = predict(mvpa_fmri_dats{j}, 'algorithm_name', algorithm_mvpa_reg_cov,...
-                            'bootsamples', boot_n_mvpa_reg_cov, 'nfolds', 1, 'error_type', 'mse', ...
-                            parallelstr_mvpa_reg_cov, 'verbose', 0);
-                        
+                % PATTERN INFERENCE BELONGS HERE, NOT IN prep_3a.
+                % prep_3a answers "is the MODEL better than chance" with the
+                % permutation test; only if that is significant is there any
+                % point asking "WHICH VOXELS does it lean on", which is what the
+                % bootstrap and stability selection below answer. Keeping them in
+                % c2a means the expensive pattern inference is opt-in after the
+                % cheap model-level result is known, rather than paid up front on
+                % every fit.
+                %
+                % THE TWO ENGINES ARE EXCLUSIVE. mvpa_engine selects which
+                % bootstrap runs; a model gets one or the other, never both, so
+                % there is exactly one set of weight maps to report.
+                if ~exist('mvpa_engine','var') || isempty(mvpa_engine), mvpa_engine = 'legacy'; end
+                if ~ismember(lower(mvpa_engine), {'legacy','predictive_model'})
+                    error('mvpa_engine must be ''legacy'' or ''predictive_model'', not ''%s''.', mvpa_engine);
                 end
+
+                if isequal(lower(mvpa_engine), 'predictive_model')
+
+                    % ---- @predictive_model ENGINE ----------------------------
+                    % Bootstrap gives voxel-wise z/p/FDR; stability selection
+                    % gives how often a voxel is top-k by |w| across resamples.
+                    % They answer different questions and the class documentation
+                    % is explicit that on a strongly regularised model the
+                    % bootstrap z/p COLLAPSES - weights are near-identical across
+                    % resamples, so the empirical p floors at 2/(nboot+1) for
+                    % every voxel and the FDR threshold becomes meaningless.
+                    % Stability selection is the recommended inference there.
+                    % Both are run so the collapse is visible rather than assumed.
+                    if ~exist('nstab_mvpa_reg_cov','var') || isempty(nstab_mvpa_reg_cov)
+                        nstab_mvpa_reg_cov = boot_n_mvpa_reg_cov;   % reuse the boots; see stab_reuse_boot
+                    end
+                    % THRESHOLD AND top-k ARE COUPLED - DO NOT PICK EITHER ALONE.
+                    % Meinshausen & Buhlmann (2010) Thm 1 bounds the expected number
+                    % of falsely selected features by
+                    %     E(V) <= k^2 / ((2*pi_thr - 1) * p)
+                    % valid only for pi_thr > 0.5. The class default (k = 2000,
+                    % pi = 0.6) is NOT a usable operating point on a brain-sized p:
+                    % at p = 149154 it bounds E(V) at 134, and no pi < 1 rescues
+                    % k = 2000 (E(V) <= 1 would need pi >= 13.9). So derive k from a
+                    % target E(V) instead of inheriting a magic number.
+                    %
+                    % CAVEAT: the theorem assumes SUBSAMPLING at n/2 (complementary
+                    % pairs); @predictive_model/stability_selection resamples with
+                    % REPLACEMENT. Shah & Samworth (2013) give the bootstrap version.
+                    % Treat the number below as indicative, not exact.
+                    if ~exist('stab_threshold_mvpa_reg_cov','var') || isempty(stab_threshold_mvpa_reg_cov)
+                        stab_threshold_mvpa_reg_cov = 0.9;   % well clear of the 0.5 floor
+                    end
+                    if stab_threshold_mvpa_reg_cov <= 0.5
+                        error(['stab_threshold_mvpa_reg_cov must exceed 0.5 - the ' ...
+                               'Meinshausen-Buhlmann bound is undefined at or below it (got %.2f).'], ...
+                               stab_threshold_mvpa_reg_cov);
+                    end
+                    if ~exist('stab_EV_mvpa_reg_cov','var') || isempty(stab_EV_mvpa_reg_cov)
+                        stab_EV_mvpa_reg_cov = 1;            % expected false selections
+                    end
+                    n_feat_stab = size(mvpa_fmri_dats{j}.dat, 1);
+                    if ~exist('stab_k_mvpa_reg_cov','var') || isempty(stab_k_mvpa_reg_cov)
+                        stab_k_mvpa_reg_cov = floor(sqrt((2*stab_threshold_mvpa_reg_cov - 1) ...
+                                                    * n_feat_stab * stab_EV_mvpa_reg_cov));
+                        stab_k_mvpa_reg_cov = max(1, min(stab_k_mvpa_reg_cov, n_feat_stab));
+                        fprintf(['\nstability selection: top-k derived as %d from p = %d, ' ...
+                                 'pi = %.2f, target E(V) = %g\n'], ...
+                                 stab_k_mvpa_reg_cov, n_feat_stab, ...
+                                 stab_threshold_mvpa_reg_cov, stab_EV_mvpa_reg_cov);
+                    end
+                    ev_bound = stab_k_mvpa_reg_cov^2 / ...
+                               ((2*stab_threshold_mvpa_reg_cov - 1) * n_feat_stab);
+                    fprintf('stability selection: k = %d, pi = %.2f, p = %d -> E(V) <= %.2f\n', ...
+                            stab_k_mvpa_reg_cov, stab_threshold_mvpa_reg_cov, n_feat_stab, ev_bound);
+                    if ev_bound > 10
+                        fprintf(['  WARNING: this operating point controls almost nothing - expect up to\n' ...
+                                 '  %.0f false selections. Lower stab_k_mvpa_reg_cov (k <= %.0f gives\n' ...
+                                 '  E(V) <= 1 at this pi) or raise the threshold.\n'], ev_bound, ...
+                                 sqrt((2*stab_threshold_mvpa_reg_cov - 1) * n_feat_stab));
+                    end
+
+                    alg_pm = regexprep(lower(algorithm_mvpa_reg_cov), '^cv_', '');
+                    mo_pm  = {};
+                    if isequal(alg_pm,'lassopcr'), mo_pm = {'estimateparam'}; end
+
+                    % Folds: prep_3a saved them on the stats struct. c2a must not
+                    % invent its own - a different split would make these maps
+                    % incomparable with the cross-validated result they follow up.
+                    % teIdx is a CELL of nfolds logical [n x 1] test masks - not a
+                    % matrix, so it cannot be collapsed by multiplication. Verified
+                    % on proj_discoverie model_2k: {1x5} of logical [93x1] summing
+                    % to [18 19 19 19 18] with every subject assigned exactly once.
+                    if ~isfield(mvpa_results{j}, 'teIdx') || isempty(mvpa_results{j}.teIdx)
+                        error(['mvpa_engine = ''predictive_model'' needs the folds prep_3a used, ' ...
+                               'and teIdx is absent from mvpa_stats_results{%d,%d}. Re-run prep_3a.'], c, j);
+                    end
+                    te_pm = mvpa_results{j}.teIdx;
+                    fl_pm = zeros(numel(mvpa_results{j}.Y), 1);
+                    for kf = 1:numel(te_pm)
+                        fl_pm(logical(te_pm{kf})) = kf;
+                    end
+                    if any(fl_pm == 0)
+                        error(['%d subject(s) are in no test fold, so teIdx does not describe a ' ...
+                               'partition and the bootstrap would not match the cross-validated fit.'], ...
+                               sum(fl_pm == 0));
+                    end
+
+                    % PREFER THE OBJECT prep_3a ALREADY FITTED.
+                    % When prep_3a ran with mvpa_engine = 'predictive_model' it
+                    % attached the fitted object as mvpa_stats.pm. Bootstrapping
+                    % THAT is the point of this branch: same algorithm, same
+                    % modeloptions, same selected hyperparameters, so these weight
+                    % maps characterise the very model whose permutation test
+                    % licensed the follow-up. Refitting would re-run crossval and
+                    % could settle on a different penalty.
+                    %
+                    % FALLBACK, and today the common case: a run fitted by legacy
+                    % predict() has no .pm. Note predict(...,'newapi') uses
+                    % @predictive_model INTERNALLY for cross-validation and says so
+                    % in function_call - proj_discoverie model_2k reads
+                    % 'newapi:lassopcr (crossval @predictive_model)' yet has no .pm -
+                    % because prep_3a attaches it only when its own engine branch is
+                    % taken. There the model is rebuilt from the same algorithm and
+                    % the same folds, and the report says so rather than implying
+                    % the saved object was used.
+                    X_pm = double(mvpa_fmri_dats{j}.dat)';
+                    Y_pm = mvpa_fmri_dats{j}.Y(:);
+
+                    if isfield(mvpa_results{j},'pm') && ~isempty(mvpa_results{j}.pm) ...
+                            && isa(mvpa_results{j}.pm,'predictive_model')
+
+                        fprintf(['\nbootstrapping the predictive_model object prep_3a fitted ' ...
+                                 '(algorithm %s) - NOT refitting\n'], mvpa_results{j}.pm.algorithm);
+                        pm_bs = bootstrap(mvpa_results{j}.pm, X_pm, Y_pm, ...
+                                          'nboot', boot_n_mvpa_reg_cov);
+                        % returns a STRUCT: pm's diagnostics property is protected,
+                        % so an external function cannot attach to it
+                        stab_bs = mvpa_reg_cov_stability_from_boot(pm_bs, X_pm, Y_pm, ...
+                                    mvpa_fmri_dats{j}, 'nstab', nstab_mvpa_reg_cov, ...
+                                    'k', stab_k_mvpa_reg_cov, ...
+                                    'threshold', stab_threshold_mvpa_reg_cov);
+
+                    else
+
+                        fprintf(['\nNO SAVED predictive_model OBJECT on mvpa_stats_results{%d,%d} ' ...
+                                 '- prep_3a used the legacy engine, so the model is REBUILT from the ' ...
+                                 'same algorithm (%s) and the same folds before bootstrapping.\n'], ...
+                                 c, j, alg_pm);
+                        [pm_bs, stab_bs] = mvpa_reg_cov_predictive_model(mvpa_fmri_dats{j}, fl_pm, ...
+                                    'algorithm',      alg_pm, ...
+                                    'modeloptions',   mo_pm, ...
+                                    'nperm',          0, ...
+                                    'nboot',          boot_n_mvpa_reg_cov, ...
+                                    'nstab',          nstab_mvpa_reg_cov, ...
+                                    'stab_k',         stab_k_mvpa_reg_cov, ...
+                                    'stab_threshold', stab_threshold_mvpa_reg_cov);
+
+                    end
+
+                    % Adapt into the legacy shape so the montage/threshold code
+                    % below runs unchanged: it needs .weight_obj carrying .p.
+                    wobj = pm_bs.weights.weight_obj;
+                    if isfield(pm_bs.weights,'p') && ~isempty(pm_bs.weights.p)
+                        wobj.p = pm_bs.weights.p(:);
+                    end
+                    mvpa_bs_stats{j} = struct('weight_obj', wobj, 'pm', pm_bs, 'stability', stab_bs);
+
+                    % REPORT THE COLLAPSE IF IT HAPPENED. The floor is the tell.
+                    if isfield(pm_bs.weights,'p') && ~isempty(pm_bs.weights.p)
+                        pfloor = 2 / (boot_n_mvpa_reg_cov + 1);
+                        n_at_floor = sum(pm_bs.weights.p(:) <= pfloor * (1 + 1e-12));
+                        fprintf('\nbootstrap p: %d of %d voxel(s) at the floor 2/(nboot+1) = %.5f (%.1f%%)\n', ...
+                                n_at_floor, numel(pm_bs.weights.p), pfloor, ...
+                                100*n_at_floor/numel(pm_bs.weights.p));
+                        if n_at_floor > 0.5 * numel(pm_bs.weights.p)
+                            fprintf(['  MOST VOXELS ARE AT THE FLOOR, so the bootstrap z/p and the FDR\n' ...
+                                     '  mask below are NOT interpretable - the regularised fit gives\n' ...
+                                     '  near-identical weights on every resample. READ THE STABILITY\n' ...
+                                     '  SELECTION MAP INSTEAD.\n']);
+                        end
+                    end
+                    if ~isempty(stab_bs)
+                        ssj = stab_bs;
+                        fprintf('stability selection: %d of %d voxel(s) stable at freq >= %.2f (top-k = %d, %d valid boots)\n', ...
+                                ssj.n_stable, numel(ssj.selection_freq), stab_threshold_mvpa_reg_cov, ...
+                                ssj.k, ssj.valid_boots);
+                    end
+
+                else
+
+                    % ---- LEGACY fmri_data/predict ENGINE --------------------
+                    switch algorithm_mvpa_reg_cov   % TO DO: add optimal alpha and lambda lasso parameters from nested cv in predict() run in prep_3a, should be stored in stats.other_output somewhere
+
+                        case 'cv_lassopcr'
+
+                            [~ , mvpa_bs_stats{j}] = predict(mvpa_fmri_dats{j}, 'algorithm_name', algorithm_mvpa_reg_cov,...
+                                'bootsamples', boot_n_mvpa_reg_cov, 'nfolds', 1, 'error_type', 'mse', ...
+                                parallelstr_mvpa_reg_cov, 'verbose', 0);
+
+                        case 'cv_lassopcr_matlab'
+
+                            [~ , mvpa_bs_stats{j}] = predict(mvpa_fmri_dats{j}, 'algorithm_name', algorithm_mvpa_reg_cov,...
+                                'bootsamples', boot_n_mvpa_reg_cov, 'nfolds', 1, 'error_type', 'mse', ...
+                                parallelstr_mvpa_reg_cov, 'verbose', 0);
+
+                        otherwise
+
+                            [~ , mvpa_bs_stats{j}] = predict(mvpa_fmri_dats{j}, 'algorithm_name', algorithm_mvpa_reg_cov,...
+                                'bootsamples', boot_n_mvpa_reg_cov, 'nfolds', 1, 'error_type', 'mse', ...
+                                parallelstr_mvpa_reg_cov, 'verbose', 0);
+
+                    end
+
+                end % if mvpa_engine
 
                 t_end_boot = toc(t0_boot);
 
@@ -1814,7 +2075,73 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 end
 
             clear o2, clear figtitle, clear j, clear tj
-        
+
+            % ---- STABILITY-SELECTION FREQUENCY MAP ----------------------------
+            % Only the @predictive_model engine produces one. This is the map to
+            % read when the bootstrap p collapsed to its floor: it shows WHERE the
+            % model reliably leans, by counting how often each voxel is top-k by
+            % |w| across resamples, rather than asking whether its weight differs
+            % from zero. Plotted unthresholded as a frequency in [0,1], with the
+            % 'stable' contour at stab_threshold_mvpa_reg_cov reported in text -
+            % thresholding a frequency map at an FDR q would be a category error.
+            if isequal(lower(mvpa_engine),'predictive_model')
+
+                has_ss = false(1, mvpa_num_effects);
+                for j = 1:mvpa_num_effects
+                    has_ss(j) = isfield(mvpa_bs_stats{j},'stability') && ...
+                                ~isempty(mvpa_bs_stats{j}.stability) && ...
+                                isfield(mvpa_bs_stats{j}.stability,'freq_obj');
+                end
+
+                if any(has_ss)
+                    fprintf('\n\n');
+                    printhdr('PLOTTING STABILITY-SELECTION FREQUENCY MAPS');
+                    fprintf('\n\n');
+                    fprintf(['\nMONTAGE STABILITY SELECTION THRESHOLDED AT freq >= %.2f, ' ...
+                             'top-k = %s, CONTRAST: %s, REGRESSORS: %s, MASK: %s, SCALING: %s\n\n'], ...
+                             stab_threshold_mvpa_reg_cov, mat2str(stab_k_mvpa_reg_cov), ...
+                             analysisname, names_string, mask_string, scaling_string);
+
+                    o2 = canlab_results_fmridisplay([], 'multirow', sum(has_ss));
+                    row = 0;
+                    for j = find(has_ss)
+                        row = row + 1;
+                        ssj = mvpa_bs_stats{j}.stability;
+                        fobj = ssj.freq_obj;
+                        if apply_mask_before_fdr
+                            fobj = apply_mask(fobj, glmmask);
+                        end
+                        % THRESHOLD AT pi, because c2a reports thresholded results.
+                        % The surviving voxels are the 'stable' set the E(V) bound
+                        % above refers to; the frequency value is kept as the blob
+                        % intensity so the montage still shows HOW stable each is.
+                        fobj.dat(fobj.dat < stab_threshold_mvpa_reg_cov) = 0;
+                        o2 = addblobs(o2, region(fobj), 'wh_montages', (2*row)-1:2*row, ...
+                                      'mincolor', [.2 .2 .6], 'maxcolor', [1 1 .2]);
+                        o2 = title_montage(o2, 2*row, sprintf('%s stability freq %s %s %s', ...
+                                  analysisname, names{j}, mask_string, scaling_string));
+                        % no iif() in this codebase - spell the branch out
+                        if isfield(ssj,'derived_from_bootstrap') && ssj.derived_from_bootstrap
+                            src_str = ' [derived from the bootstrap weights, no refits]';
+                        else
+                            src_str = ' [refitted by stability_selection]';
+                        end
+                        fprintf('  %-22s %d of %d voxel(s) stable (freq >= %.2f), %d valid boot(s)%s\n', ...
+                                names{j}, ssj.n_stable, numel(ssj.selection_freq), ...
+                                stab_threshold_mvpa_reg_cov, ssj.valid_boots, src_str);
+                    end
+                    figtitle = sprintf('%s_%s_stability_freq_montage_%s_%s_%s', ...
+                                       analysisname, results_suffix, names_string, mask_string, scaling_string);
+                    set(gcf, 'Tag', figtitle); plugin_set_figure_size;
+                    drawnow, snapnow;
+                    if save_figures_glm
+                        plugin_save_figure;
+                    end
+                    clear o2, clear figtitle, clear j, clear fobj, clear ssj, clear row, clear has_ss, clear src_str
+                end
+
+            end % if predictive_model engine
+
         end % if loop exist cons2boot_mvpa_reg_cov
         
     end % if loop bootstrap

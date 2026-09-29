@@ -1,4 +1,4 @@
-function pm = mvpa_reg_cov_predictive_model(mvpa_dat, fold_labels, varargin)
+function [pm, stab] = mvpa_reg_cov_predictive_model(mvpa_dat, fold_labels, varargin)
 % mvpa_reg_cov_predictive_model  MVPA regression on a covariate via @predictive_model.
 %
 % Drop-in replacement for the hand-rolled predict()/permutation/bootstrap code
@@ -98,6 +98,7 @@ p.addParameter('nboot',         0,      @isscalar);
 p.addParameter('nstab',         0,      @isscalar);
 p.addParameter('stab_k',        [],     @(x) isempty(x) || isscalar(x));
 p.addParameter('stab_threshold',0.6,    @isscalar);
+p.addParameter('stab_reuse_boot', true, @islogical);   % see the stability block
 p.addParameter('seed',          [],     @(x) isempty(x) || isscalar(x));
 p.addParameter('use_parallel',  true,   @islogical);
 p.parse(varargin{:});
@@ -155,27 +156,25 @@ end
 
 % Stability selection: inference on the RANK of a voxel's weight rather than
 % its magnitude. See NOTE ON WHICH PATTERN INFERENCE above.
+% STABILITY SELECTION IS RETURNED SEPARATELY, NOT ATTACHED TO pm.
+% predictive_model declares diagnostics and weights under
+% properties (SetAccess = protected), so only class methods may write them.
+% An external function assigning pm.diagnostics.stability_selection fails with
+% "Unable to set the 'diagnostics' property ... because it is read-only" - which
+% is what an earlier version of this file did, along with tmp.weights.w = freq,
+% so that path could never have run. Delegated to
+% mvpa_reg_cov_stability_from_boot, which returns a struct and derives the
+% counts from pm.weights.boot_w rather than refitting when it can.
+stab = [];
 if o.nstab > 0
-    stabargs = {'nboot', o.nstab, 'threshold', o.stab_threshold};
-    if ~isempty(o.stab_k), stabargs = [stabargs, {'k', o.stab_k}]; end
-    pm = stability_selection(pm, X, Y, stabargs{:});
+    stab = mvpa_reg_cov_stability_from_boot(pm, X, Y, mvpa_dat, ...
+               'nstab',     o.nstab, ...
+               'k',         o.stab_k, ...
+               'threshold', o.stab_threshold);
 end
 
 % Attach the brain map so montage/surface work downstream.
 pm = weight_map_object(pm, mvpa_dat);
 
-% Map the selection frequencies into voxel space too, by the route the method's
-% own documentation recommends: stash them as a weight vector and re-run
-% weight_map_object. Done on a COPY so pm.weights.w keeps the real weights -
-% overwriting them here would silently corrupt every downstream weight map.
-if o.nstab > 0 && isfield(pm.diagnostics, 'stability_selection')
-    freq = pm.diagnostics.stability_selection.selection_freq;
-    tmp  = pm;
-    tmp.weights.w = freq(:);
-    tmp  = weight_map_object(tmp, mvpa_dat);
-    pm.diagnostics.stability_selection.freq_obj = tmp.weights.weight_obj;
-    fprintf('\nstability selection: %d of %d feature(s) stable at freq >= %.2f\n', ...
-        pm.diagnostics.stability_selection.n_stable, numel(freq), o.stab_threshold);
-end
 
 end

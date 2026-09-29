@@ -2744,6 +2744,45 @@ for c = 1:kc
                 fprintf('\n\n');
 
                 % Guarded defaults, so a study a2 that predates these options still runs.
+                % ENGINE: 'legacy' uses fmri_data/predict plus the hand-rolled
+                % permutation loop below; 'predictive_model' delegates the whole
+                % fit, null and weight map to CanlabCore's @predictive_model via
+                % mvpa_reg_cov_predictive_model. Default is 'legacy' so existing
+                % study copies are unaffected.
+                % 'tuned_nested' is the third option: mvpa_reg_cov_tuned_nested,
+                % which implements the nesting CanlabCore's own tutorials teach -
+                % an inner grid search rebuilt from the TRAINING subset's strata,
+                % per outer fold. It is not a variant of 'predictive_model': that
+                % one tunes via @predictive_model's 'estimateparam', a round-robin
+                % over ROW INDEX that is blind to the outer folds' structure.
+                % Measured on proj_discoverie model_2k immune_PC1, GM-masked, same
+                % folds: legacy +0.0158, predictive_model +0.0158, ooFmri +0.1186,
+                % tuned_nested +0.1812. The split is by inner-CV design.
+                if ~exist('mvpa_engine','var') || isempty(mvpa_engine), mvpa_engine = 'legacy'; end
+                if ~ismember(lower(mvpa_engine), {'legacy','predictive_model','tuned_nested'})
+                    error(['mvpa_engine must be ''legacy'', ''predictive_model'' or ' ...
+                           '''tuned_nested'', not ''%s''.'], mvpa_engine);
+                end
+                if ~exist('grid_mvpa_reg_cov','var') || isempty(grid_mvpa_reg_cov)
+                    grid_mvpa_reg_cov = struct('lasso_num', 1:12);   % what the tutorials tune
+                end
+                if ~exist('inner_k_mvpa_reg_cov','var') || isempty(inner_k_mvpa_reg_cov)
+                    inner_k_mvpa_reg_cov = 4;
+                end
+                % SEPARATE SEED FOR THE INNER FOLDS, defaulting to cv_seed so
+                % nothing changes unless it is set. cv_seed_mvpa_reg_cov already
+                % seeds the OUTER partition (rng above); passing it on to
+                % tuned_nested makes one value drive both, which cannot reproduce
+                % a run that used different ones. That is not hypothetical: the
+                % 2000-draw null for model_2k immune_PC1 was produced with outer
+                % folds at 20260923 and tuned_nested at 20260925, and reusing it
+                % needs exactly that pair. Inner-fold randomness moves the point
+                % estimate by ~0.06 here, so the distinction is not cosmetic.
+                if ~exist('tuned_seed_mvpa_reg_cov','var') || isempty(tuned_seed_mvpa_reg_cov)
+                    tuned_seed_mvpa_reg_cov = cv_seed_mvpa_reg_cov;
+                end
+                if ~exist('nboot_mvpa_reg_cov','var'),         nboot_mvpa_reg_cov = 0; end
+                if ~exist('nstab_mvpa_reg_cov','var'),         nstab_mvpa_reg_cov = 0; end
                 if ~exist('cv_seed_mvpa_reg_cov','var'),       cv_seed_mvpa_reg_cov = []; end
                 if ~exist('cv_strata_mvpa_reg_cov','var'),     cv_strata_mvpa_reg_cov = {}; end
                 if ~exist('nperm_mvpa_reg_cov','var') || isempty(nperm_mvpa_reg_cov), nperm_mvpa_reg_cov = 0; end
@@ -2883,7 +2922,125 @@ for c = 1:kc
                 fprintf('\n\n');
 
                 t0 = tic;
-                
+
+                if isequal(lower(mvpa_engine),'tuned_nested')
+
+                % ---- tuned_nested ENGINE ----------------------------------------
+                % Needs the STRATA as well as the fold labels: the inner splitter is
+                % rebuilt from the training subset of them, which is the whole point
+                % of this engine. cv_strata_mvpa_reg_cov names the column(s); the
+                % composite key is built the same way the fold construction above
+                % builds it, so inner and outer folds respect the same structure.
+                if isempty(cv_strata_mvpa_reg_cov)
+                    error(['mvpa_engine = ''tuned_nested'' needs cv_strata_mvpa_reg_cov ' ...
+                           'to name the column(s) the inner folds must respect.']);
+                end
+                Tstrat_tn = DAT.BETWEENPERSON.(mygroupnamefield){c};
+                strat_tn  = strings(height(Tstrat_tn), 1);
+                for v_tn = 1:numel(cv_strata_mvpa_reg_cov)
+                    col_tn   = Tstrat_tn.(cv_strata_mvpa_reg_cov{v_tn});
+                    strat_tn = strat_tn + "|" + string(col_tn(:));
+                end
+                [~, ~, strat_tn] = unique(strat_tn);    % tuned_nested wants numeric
+
+                o_tn = mvpa_reg_cov_tuned_nested(mvpa_dat, fold_labels, strat_tn, ...
+                            'algorithm', regexprep(lower(algorithm_mvpa_reg_cov),'^cv_',''), ...
+                            'grid',      grid_mvpa_reg_cov, ...
+                            'inner_k',   inner_k_mvpa_reg_cov, ...
+                            'nperm',     nperm_mvpa_reg_cov, ...
+                            'seed',      tuned_seed_mvpa_reg_cov);
+
+                % ---- adapt -> legacy mvpa_stats ---------------------------------
+                % .pm is the FULL-DATA refit at the MODAL tuned hyperparameter, which
+                % is what the weight map represents and therefore what c2a should
+                % bootstrap. The per-fold tuned values are kept on .tuned_chosen so a
+                % reader can see how stable the tuning was.
+                mvpa_stats                = struct();
+                mvpa_stats.yfit           = o_tn.yfit(:);
+                mvpa_stats.weight_obj     = o_tn.pm_full.weights.weight_obj;
+                mvpa_stats.pred_outcome_r = o_tn.r;
+                mvpa_stats.pm             = o_tn.pm_full;
+                mvpa_stats.engine         = 'tuned_nested';
+                mvpa_stats.tuned_chosen   = o_tn.chosen(:)';
+                mvpa_stats.tuned_best     = o_tn.best_overall;
+                mvpa_stats.tuned_grid     = grid_mvpa_reg_cov;
+                mvpa_stats.Y              = mvpa_dat.Y(:);
+                mvpa_stats.teIdx          = arrayfun(@(k) fold_labels(:) == k, ...
+                                                unique(fold_labels(:))', 'UniformOutput', false);
+                mvpa_stats.algorithm_name = algorithm_mvpa_reg_cov;
+                mvpa_stats.function_call  = sprintf('tuned_nested:%s grid %s inner_k %d', ...
+                                            regexprep(lower(algorithm_mvpa_reg_cov),'^cv_',''), ...
+                                            strjoin(fieldnames(grid_mvpa_reg_cov)', ','), ...
+                                            inner_k_mvpa_reg_cov);
+                if isstruct(o_tn.perm) && ~isnan(o_tn.perm.p)
+                    mvpa_stats.perm = struct('n', o_tn.perm.n, 'p', o_tn.perm.p, ...
+                                             'null_r', o_tn.perm.null_r(:));
+                end
+                fprintf(['\ntuned_nested: r = %+.4f, tuned %s per fold %s (modal %g), ' ...
+                         'perm p = %s\n'], o_tn.r, strjoin(fieldnames(grid_mvpa_reg_cov)', ','), ...
+                         mat2str(o_tn.chosen(:)'), o_tn.best_overall, ...
+                         num2str(o_tn.perm.p));
+
+                elseif isequal(lower(mvpa_engine),'predictive_model')
+
+                % ---- @predictive_model ENGINE -----------------------------------
+                % Delegates fit, permutation null, optional bootstrap and stability
+                % selection. The result is adapted back into the legacy mvpa_stats
+                % shape below, so EVERY downstream consumer - the plotting block,
+                % the save, and c2a - works unchanged. The full object is kept on
+                % mvpa_stats.pm for anything that wants the richer API.
+                %
+                % Algorithm names differ between engines: the legacy path uses
+                % predict()'s 'cv_pcr'/'cv_lassopcr', the class uses 'pcr'/'lassopcr'.
+                % Map here rather than making the caller know which engine it is on.
+                alg_pm = regexprep(lower(algorithm_mvpa_reg_cov), '^cv_', '');
+                mo_pm  = {};
+                if isequal(alg_pm,'lassopcr')
+                    % default cv_lassopcr reduces to PCR unless asked to shrink;
+                    % 'estimateparam' selects the penalty by nested CV.
+                    mo_pm = {'estimateparam'};
+                end
+
+                pm = mvpa_reg_cov_predictive_model(mvpa_dat, fold_labels, ...
+                        'algorithm',     alg_pm, ...
+                        'modeloptions',  mo_pm, ...
+                        'numcomponents', numcomponents_mvpa_reg_cov, ...
+                        'nperm',         nperm_mvpa_reg_cov, ...
+                        'nboot',         nboot_mvpa_reg_cov, ...
+                        'nstab',         nstab_mvpa_reg_cov, ...
+                        'seed',          cv_seed_mvpa_reg_cov, ...
+                        'use_parallel',  true);
+
+                % ---- adapt pm -> legacy mvpa_stats -------------------------------
+                mvpa_stats            = struct();
+                mvpa_stats.yfit       = pm.fitted_values.yfit(:);
+                mvpa_stats.weight_obj = pm.weights.weight_obj;
+                mvpa_stats.pred_outcome_r = corr(mvpa_stats.yfit, mvpa_dat.Y(:));
+                mvpa_stats.pm         = pm;
+                mvpa_stats.engine     = 'predictive_model';
+
+                % .perm carries the same fields the legacy block writes, so any
+                % reader can treat the two engines identically.
+                % isstruct FIRST: permutation_results is empty (not a struct) when
+                % nperm = 0, and isfield() on a non-struct errors rather than
+                % returning false.
+                if isstruct(pm.permutation_results) && isfield(pm.permutation_results,'p_value') ...
+                        && ~isempty(pm.permutation_results.p_value)
+                    nullv = pm.permutation_results.null_scores(:);
+                    mvpa_stats.perm = struct('n', numel(nullv), ...
+                        'p', pm.permutation_results.p_value, 'null_r', nullv, ...
+                        'seed', cv_seed_mvpa_reg_cov, ...
+                        'observed_r', pm.permutation_results.observed, 'n_failed', 0);
+                else
+                    mvpa_stats.perm = struct('n', 0, 'p', NaN, 'null_r', [], ...
+                        'seed', cv_seed_mvpa_reg_cov);
+                end
+
+                mvpa_cverr  = NaN;    % predict()-specific, not produced by the class
+                mvpa_optout = {};
+
+                else
+
                 switch algorithm_mvpa_reg_cov
                     
                     case 'cv_lassopcr'
@@ -2911,6 +3068,8 @@ for c = 1:kc
                         
                 end
 
+                end   % if mvpa_engine
+
                 t_end = toc(t0); 
                 
                 mvpa_stats.Y_names = mvpa_dat.Y_names;
@@ -2934,7 +3093,9 @@ for c = 1:kc
                 mvpa_stats.perm = struct('n', 0, 'p', NaN, 'null_r', [], ...
                                          'seed', cv_seed_mvpa_reg_cov);
 
-                if nperm_mvpa_reg_cov > 0
+                % The predictive_model engine has already run its own null via
+                % permutation_test, and mvpa_stats.perm is populated above.
+                if nperm_mvpa_reg_cov > 0 && ~isequal(lower(mvpa_engine),'predictive_model')
 
                     fprintf('\n\n');
                     printhdr('PERMUTATION TEST ON pred_outcome_r');
