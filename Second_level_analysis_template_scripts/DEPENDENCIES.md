@@ -37,7 +37,7 @@ than guessed:
 | `c2a_second_level_regression` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 19 | 3 |
 | `c2f_run_MVPA_regression_single_trial` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, ooFmriDataObjML | 23 | 18 |
 | `c2g_run_multivariate_mediation_single_trial` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, MediationToolbox | 12 | 4 |
-| `c2h_run_multivariate_mediation` | Second_level_analysis_template_scripts | CanlabCore, MediationToolbox | 7 | 1 |
+| `c2h_run_multivariate_mediation` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, MediationToolbox | 8 | 1 |
 | `d10_signature_riverplots` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 4 | 0 |
 | `d_signature_responses_generic` | Second_level_analysis_template_scripts | — | 0 | 0 |
 | `e1_corr_patterns` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 11 | 0 |
@@ -51,7 +51,7 @@ than guessed:
 | `prep_1b_prep_behavioral_data` | Second_level_analysis_template_scripts | — | 0 | 0 |
 | `prep_2_load_image_data_and_save` | Second_level_analysis_template_scripts | CanlabCore, ComBatHarmonization, LaBGAScore, canlab_single_trials, spm12 | 11 | 1 |
 | `prep_3_calc_univariate_contrast_maps_and_save` | Second_level_analysis_template_scripts | CanlabCore, ComBatHarmonization, LaBGAScore | 6 | 0 |
-| `prep_3a_run_second_level_regression_and_save` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 33 | 5 |
+| `prep_3a_run_second_level_regression_and_save` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore | 34 | 5 |
 | `prep_3c_run_SVMs_on_contrasts_masked` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, ooFmriDataObjML | 23 | 5 |
 | `prep_3f_create_fmri_data_single_trial_object` | Second_level_analysis_template_scripts | CanlabCore, LaBGAScore, canlab_single_trials | 4 | 1 |
 | `prep_3g_create_fmri_data_runwise_contrast_object` | Second_level_analysis_template_scripts | CanlabCore, canlab_single_trials | 2 | 1 |
@@ -62,7 +62,7 @@ than guessed:
 | Repository | Call edges | Distinct functions |
 |---|---:|---:|
 | CanlabCore | 190 | 70 |
-| LaBGAScore | 25 | 10 |
+| LaBGAScore | 27 | 12 |
 | ooFmriDataObjML | 24 | 15 |
 | canlab_single_trials | 4 | 2 |
 | MediationToolbox | 3 | 2 |
@@ -212,6 +212,10 @@ No external dependencies.
 - `group` *(@group)* — `dotcall`
 - `load_atlas`
 - `resample_space` *(@image_vector)* — `ambiguous_within_repo`, 2 candidates
+
+**LaBGAScore**
+
+- `LaBGAScore_pdm_report`
 
 **MediationToolbox**
 
@@ -447,6 +451,7 @@ No external dependencies.
 **LaBGAScore**
 
 - `LaBGAScore_Storey_FDR`
+- `LaBGAScore_dummy_code`
 - `LaBGAScore_smart_parallel_pool_setup`
 - `group_tfce_from_subject_maps`
 - `plugin_set_figure_size`
