@@ -77,6 +77,17 @@ You do **not** need to explicitly reload `.mat` files before Group 2 scripts. Fr
 
 **If you adapt a Group 1 script, keep the guard.** A study copy that replaces the guarded reload with a bare call to its own `s0` path script gets paths but no `DAT`, and then fails on the first `isfield(DAT, ...)` with `Unrecognized function or variable 'DAT'` whenever it is run on its own. Setting paths is not the same as loading data. The generic template's `b_reload_saved_matfiles.m` is only relevant earlier/manually (e.g., if you want a fresh MATLAB session to have `DAT` in the workspace before editing `prep_1b` interactively).
 
+> **Build these from the repo, not from another study's copies.** Copying a
+> previous study's renamed scripts and search-replacing the prefix is tempting,
+> because they already carry the study-specific settings - but those copies were
+> frozen when made and drift. Measured 2026-10-01, one study's second-level copies
+> were 66-628 lines behind the current templates, two of them
+> `core_scripts_to_run_without_modifying` missing more than half their current
+> content plus two upstream fixes. Download fresh and port only the genuinely
+> study-specific values; check the template's history
+> (`git log -L '/^<option> /,+1:<file>'`) to tell a real study choice from a
+> default that has since moved on.
+
 ## Shared data model
 
 - **`DAT`** — one struct threaded through the whole pipeline: `conditions`, `contrasts`, `contrastnames`, `colors`/`contrastcolors`, `subfolders`/`functional_wildcard` (set in `prep_1`), `BEHAVIOR`/`BETWEENPERSON` (set in `prep_1b`), `SIG_conditions`/`SIG_contrasts`/`NPSsubregions`/`npsresponse`/`npscontrasts` (set in `prep_4`).
