@@ -239,7 +239,13 @@ subsets_i_want = {'NPS','SIIPS','PINES','GSR','Heart','FM_pain'};
 % p-value, a different quantity from the FDR q-values, not a stricter version
 % of one.
 if ~exist('corrections_i_want','var') || isempty(corrections_i_want)
-    corrections_i_want = {'BH','Storey'};
+    % Matches the roi table prep_3a writes, which always carries q_BH, q_Storey
+    % AND q_adaptiveFDR. Keeping the two tables on the same correction set means a
+    % signature result and an roi result can be read side by side without
+    % wondering whether a missing column means "not significant" or "not computed".
+    % adaptiveFDR matters most at these family sizes: it controls FDR provably at
+    % finite m, where Storey's guarantee is only asymptotic.
+    corrections_i_want = {'BH','Storey','adaptiveFDR'};
 end
 
 % Output tag. This script writes its summary table to a name built from the
@@ -249,6 +255,28 @@ end
 % NPS decomposition after the main panel replaced the main panel's table with a
 % two-row one. Set sig_results_tag in the second script to keep them apart.
 if ~exist('sig_results_tag','var') || isempty(sig_results_tag), sig_results_tag = ''; end
+
+% NPS SUBREGION DECOMPOSITION: OFF unless asked for.
+% The subregion block near the bottom of this script used to be gated on
+% isfield(DAT,'NPSsubregions') alone, which is true whenever prep_4 ran with nps
+% among keyword_sigs - i.e. almost always. So the FIRST pass emitted a subregion
+% table too, decomposing NPS whether or not NPS was significant, and in MoodBugs
+% WP2 even though NPS had been dropped from subsets_i_want entirely (a
+% healthy-volunteer trial where the pain signatures carry no hypothesis). It
+% produced 75 subregion tests nobody asked for - exactly the family inflation the
+% rule in this header exists to prevent.
+%
+% The decomposition belongs in its OWN run, conventionally a separate
+% s9a_h1_NPS_decomposition script with subsets_i_want = {'NPSpos','NPSneg'} and
+% sig_results_tag = '_NPSdecomp', launched only when NPS came out significant
+% UNADJUSTED in the first pass. That script sets this flag true.
+%
+% Note the gate cannot be "is NPS in subsets_i_want": the first-pass family
+% legitimately CONTAINS 'NPS' (that is how NPS gets tested at all), so keying on
+% that would fire the decomposition in exactly the run it must not fire in.
+if ~exist('do_nps_subregions','var') || isempty(do_nps_subregions)
+    do_nps_subregions = false;
+end
 
 if ~exist('corrections_i_want_subregions','var') || isempty(corrections_i_want_subregions)
     corrections_i_want_subregions = {'BH','Storey','holmSidak'};
@@ -407,7 +435,10 @@ for s = 1:length(mysignature)
             % current, and create_figure reuses a figure carrying the same tag rather
             % than opening a new one, so neither gcf nor a new-figure test is reliable.
             if exist('fh_sig','var') && all(isgraphics(fh_sig))
-                            plugin_set_figure_size('fig', fh_sig);
+                            % 1 x kc strip carrying full contrast names: at the 2/3 default
+                            % these overlap, the case the plugin's own help calls out for the
+                            % carpet plots. 0.5 is what those use.
+                            plugin_set_figure_size('fig', fh_sig, 'titlescale', 0.5);
             end
 
             if ~isempty(adjust_for_covs)
@@ -531,7 +562,7 @@ for s = 1:length(mysignature)
         % current, and create_figure reuses a figure carrying the same tag rather
         % than opening a new one, so neither gcf nor a new-figure test is reliable.
         if exist('fh_sig','var') && all(isgraphics(fh_sig))
-                    plugin_set_figure_size('fig', fh_sig);
+                    plugin_set_figure_size('fig', fh_sig, 'titlescale', 0.5);
         end
 
         if ~isempty(adjust_for_covs)
@@ -666,7 +697,13 @@ if ~isempty(sig_fdr)
         % LaBGAScore_Storey_FDR under a different 'method', so the table cannot
         % drift from the function: there is one implementation, selected here.
         corr_defs = { 'BH',          'bh',             'q_BH'
-                      'Storey',      'sas',            'q_Storey'
+                      'Storey',      '',               'q_Storey'   % '' = follow
+                                   % LaBGAScore_Storey_FDR's OWN default. Pinning this to 'sas' meant the
+                                   % q_Storey column kept using the SAS spline after the default changed to
+                                   % DECREASESLOPE on 2026-10-01, so every signature table in every study
+                                   % silently kept the superseded estimator - and refreshing the script from
+                                   % this template did not help, because the pin was HERE. Use 'sas'
+                                   % explicitly only when reproducing a SAS run is the point.
                       'adaptiveFDR', 'adaptivefdr',    'q_adaptiveFDR'
                       'BKY',         'bky',            'q_BKY'
                       'holmSidak',   'stepdown_sidak', 'p_holmSidak' };
@@ -681,7 +718,9 @@ if ~isempty(sig_fdr)
         corr_u = cell(numel(wh_corr),1);
         for z = 1:numel(wh_corr)
             v = nan(size(pu));
-            v(ok_u) = LaBGAScore_Storey_FDR(pu(ok_u), 'method', corr_defs{wh_corr(z),2}, 'verbose', false);
+            margs = {};
+            if ~isempty(corr_defs{wh_corr(z),2}), margs = {'method', corr_defs{wh_corr(z),2}}; end
+            v(ok_u) = LaBGAScore_Storey_FDR(pu(ok_u), margs{:}, 'verbose', false);
             corr_u{z} = v(:);
         end
 
@@ -711,7 +750,9 @@ if ~isempty(sig_fdr)
             ok_a = ~isnan(pa);
             for z = 1:numel(wh_corr)
                 v = nan(size(pa));
-                v(ok_a) = LaBGAScore_Storey_FDR(pa(ok_a), 'method', corr_defs{wh_corr(z),2}, 'verbose', false);
+                margs = {};
+                if ~isempty(corr_defs{wh_corr(z),2}), margs = {'method', corr_defs{wh_corr(z),2}}; end
+                v(ok_a) = LaBGAScore_Storey_FDR(pa(ok_a), margs{:}, 'verbose', false);
                 corr_a{z} = v(:);
             end
             if ismember('Storey', corrections_i_want)
@@ -756,6 +797,17 @@ if ~isempty(sig_fdr)
         for z = 1:numel(wh_corr)
             corr_cols_u{z} = [corr_defs{wh_corr(z),3} '_unadj'];
             T.(corr_cols_u{z}) = corr_u{z};
+        end
+        % The Storey diagnostics travel WITH the q column, as columns, the way
+        % prep_3a's roi table carries storey_reliable and pi0. They were already
+        % computed and put in T.Properties.UserData below - but UserData does NOT
+        % survive writetable(), so every .csv exported from here had a q_Storey
+        % column with no way to tell whether pi0 was trustworthy. At the family
+        % sizes here (3-6 signatures) that is the single most important thing to
+        % know about the column.
+        if ismember('Storey', corrections_i_want)
+            T.pi0_unadj             = repmat(pi0_u, height(T), 1);
+            T.storey_reliable_unadj = repmat(logical(info_u.reliable), height(T), 1);
         end
         T.diff_adj = [sig_fdr(sel).diff_adj]';
         T.t_adj    = [sig_fdr(sel).t_adj]';
@@ -1212,7 +1264,7 @@ end
 % ttest2_printout or, worse, produce a table that looks valid.
 %
 % TODO: give the subregion pass the same branch the signature loop now has.
-if isequal(sig_test_type,'continuous') && isfield(DAT, 'NPSsubregions')
+if do_nps_subregions && isequal(sig_test_type,'continuous') && isfield(DAT, 'NPSsubregions')
     fprintf('\n\n');
     printhdr('NPS SUBREGION ANALYSIS SKIPPED');
     fprintf('\n');
@@ -1221,7 +1273,7 @@ if isequal(sig_test_type,'continuous') && isfield(DAT, 'NPSsubregions')
              'family above IS analysed continuously; only this section is skipped.\n']);
 end
 
-if ~isequal(sig_test_type,'continuous') && isfield(DAT, 'NPSsubregions')
+if do_nps_subregions && ~isequal(sig_test_type,'continuous') && isfield(DAT, 'NPSsubregions')
 
     fprintf('\n\n');
     printhdr('NPS SUBREGIONS: GROUP DIFFERENCES');
@@ -1276,7 +1328,9 @@ if ~isequal(sig_test_type,'continuous') && isfield(DAT, 'NPSsubregions')
             sub_cols = cell(numel(wh_sub),1);
             for z = 1:numel(wh_sub)
                 sub_cols{z} = corr_defs{wh_sub(z),3};
-                Tsub.(sub_cols{z}) = LaBGAScore_Storey_FDR(pv, 'method', corr_defs{wh_sub(z),2}, 'verbose', false);
+                margs = {};
+                if ~isempty(corr_defs{wh_sub(z),2}), margs = {'method', corr_defs{wh_sub(z),2}}; end
+                Tsub.(sub_cols{z}) = LaBGAScore_Storey_FDR(pv, margs{:}, 'verbose', false);
             end
             Tsub = sortrows(Tsub, 'p');
             Tsub.set = repmat({lbl}, height(Tsub), 1);
@@ -1326,7 +1380,16 @@ if ~isequal(sig_test_type,'continuous') && isfield(DAT, 'NPSsubregions')
     end
 
 else
-    fprintf('\n\nDAT.NPSsubregions not present - run the cosine prep_4 variant first.\n\n');
+    % Two different reasons land here, and conflating them sends the reader
+    % looking for a missing field when the real answer is that the
+    % decomposition was not requested.
+    if ~do_nps_subregions
+        fprintf(['\n\nNPS subregion decomposition SKIPPED: do_nps_subregions is false.\n' ...
+                 'That is the default, and correct unless NPS came out significant\n' ...
+                 'UNADJUSTED in the first pass. Run the s9a decomposition script instead.\n\n']);
+    else
+        fprintf('\n\nDAT.NPSsubregions not present - run the cosine prep_4 variant first.\n\n');
+    end
 end
 
 
@@ -1726,7 +1789,7 @@ set(fh_adj, 'Tag', figtitle);
 % Size by HANDLE, not gcf: barplot_columns can leave another figure current,
 % so plugin_set_figure_size() with no 'fig' may size the wrong one and leave
 % this figure at the 480x420 default.
-plugin_set_figure_size('fig', fh_adj);
+plugin_set_figure_size('fig', fh_adj, 'titlescale', 0.5);
 drawnow, snapnow;
 
 end
