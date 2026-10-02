@@ -9,8 +9,31 @@
 % plugin_get_group_names_colors, barplot_columns, and ttest2_printout
 % under the hood.
 %
-% NOTE: NPS-subregion group-difference code exists at the bottom of the
-% script but is currently commented out/inactive.
+% *THIS ONE SCRIPT CONTAINS TWO ANALYSES*
+%
+% Worth reading before hunting for a script that does not exist:
+%
+%   1. THE SIGNATURE FAMILY (always runs). The signatures named in
+%      subsets_i_want, tested per contrast, with the corrections in
+%      corrections_i_want, a summary table and the violin/bar panels.
+%
+%   2. THE NPS SUBREGION DECOMPOSITION (runs only when do_nps_subregions is
+%      true, which is NOT the default). A live section near the bottom -
+%      "NPS SUBREGIONS: GROUP DIFFERENCES, TABLE AND PLOT" - which writes
+%      NPS_subregion_group_diff_<metric>_<scaling>.csv/.mat.
+%
+% So the subregion results DO come from this file. An earlier version of this
+% note said the subregion code was "commented out/inactive", which was wrong and
+% actively confusing: there are four commented-out ANCESTORS of that section
+% further down (search "% %% NPS SUBREGIONS"), kept for reference, and the live
+% one is easy to miss among them.
+%
+% There is no separate s9a template in this repo. A study's
+% <prefix>_s9a_h1_NPS_decomposition script is a SECOND COPY of this same file with
+% three settings changed - see *WHEN TO RUN THE NPS DECOMPOSITION AT ALL* below
+% for exactly which three. When the decomposition is skipped, this script now
+% prints whether it was warranted, NPS's unadjusted p, and those three settings,
+% so the next step is in the report rather than in somebody's memory.
 %
 % *WHEN TO RUN THE NPS DECOMPOSITION AT ALL*
 %
@@ -39,6 +62,42 @@
 % comparison correction is reported, and by the 2026-10-01 change of the Storey
 % pi0 estimator in particular: correcting q never changes whether the
 % decomposition was warranted.
+%
+% HOW TO CONFIGURE THE DECOMPOSITION RUN. There is no separate template for it -
+% it is THIS script with three settings changed, which is why it is worth writing
+% them down rather than copying a sibling study's s9a and hoping:
+%
+%   subsets_i_want    = {'NPSpos','NPSneg'};   % NPS itself excluded: it is their
+%                                             % sum, so the three are not
+%                                             % exchangeable members of one family
+%   sig_results_tag   = '_NPSdecomp';          % or the table overwrites s9's, which
+%                                             % is a real failure mode - the output
+%                                             % name is built from metric, scaling
+%                                             % and contrast, none of which change
+%                                             % between the two runs
+%   do_nps_subregions = true;                  % the subregion block is OFF by
+%                                             % default; this is the run it is for
+%
+% Set do_nps_subregions AFTER the guarded default near the top, not before it, or
+% the default overwrites it. Run clean/use_before_def.py if unsure.
+%
+% *A TRANSFORM ONLY MATTERS WHERE THE TRANSFORMED VARIABLE IS THE ONE BEING FIT*
+%
+% Recorded because it cost a redundant arm. This script regresses on ONE
+% covariate - sig_covariate_name for a continuous test, one grouping for a group
+% test - whereas prep_3a can put several covariates in one model. So a sensitivity
+% arm that transforms variables OTHER than the one named here produces output
+% identical to the untransformed arm.
+%
+% Measured case, proj_discoverie model_2k, 2026-10-02: an arm winsorized all three
+% immune PCs at |z| = 3 and then regressed on PC1. Winsorizing capped 0 values in
+% PC1 (2 in PC2, 3 in PC3), so its table was byte-identical to the untransformed
+% one and the script was removed. The same transform IS informative in prep_3a
+% there, where covs2use puts all three PCs in one model and each beta is unique
+% variance - so moving PC2 and PC3 moves the PC1 estimate.
+%
+% Before adding a transformed sensitivity arm here, check that the transform
+% actually alters sig_covariate_name. If it does not, the arm cannot differ.
 %
 %
 % *OPTIONS*
@@ -1384,9 +1443,36 @@ else
     % looking for a missing field when the real answer is that the
     % decomposition was not requested.
     if ~do_nps_subregions
-        fprintf(['\n\nNPS subregion decomposition SKIPPED: do_nps_subregions is false.\n' ...
-                 'That is the default, and correct unless NPS came out significant\n' ...
-                 'UNADJUSTED in the first pass. Run the s9a decomposition script instead.\n\n']);
+        % Say whether the decomposition is WARRANTED, not just that it was
+        % skipped, and say exactly how to run it. There is no separate template
+        % to point at: the decomposition is THIS script with three settings
+        % changed, conventionally saved as a study copy named
+        % <prefix>_s9a_h1_NPS_decomposition. Telling the reader to "run s9a"
+        % without that is useless in a study that has not written one yet.
+        fprintf('\n\nNPS SUBREGION DECOMPOSITION SKIPPED (do_nps_subregions is false, the default).\n');
+        nps_p = [];
+        if exist('sig_fdr','var') && ~isempty(sig_fdr)
+            wh_nps = strcmpi({sig_fdr.name}, 'NPS');
+            if any(wh_nps), nps_p = [sig_fdr(wh_nps).p_unadj]; end
+        end
+        if isempty(nps_p)
+            fprintf(['  NPS is not in this run''s family, so the question does not arise.\n' ...
+                     '  (subsets_i_want = %s)\n'], strjoin(cellstr(string(subsets_i_want)), ', '));
+        elseif any(nps_p < 0.05)
+            fprintf(['  NPS p_unadj = %s -> SIGNIFICANT unadjusted, so the decomposition IS\n' ...
+                     '  warranted. To run it, take THIS script and set:\n' ...
+                     '      subsets_i_want    = {''NPSpos'',''NPSneg''};\n' ...
+                     '      sig_results_tag   = ''_NPSdecomp'';   %% or it overwrites this run''s table\n' ...
+                     '      do_nps_subregions = true;           %% after the guarded default above\n' ...
+                     '  Conventionally saved as a copy named <prefix>_s9a_h1_NPS_decomposition.\n'], ...
+                     strjoin(compose('%.4f', nps_p(:)'), ', '));
+        else
+            fprintf(['  NPS p_unadj = %s -> NOT significant unadjusted, so the decomposition is\n' ...
+                     '  NOT warranted and there is nothing further to run. The absence of\n' ...
+                     '  NPSdecomp output for this model is a result, not a missing step.\n'], ...
+                     strjoin(compose('%.4f', nps_p(:)'), ', '));
+        end
+        fprintf('\n');
     else
         fprintf('\n\nDAT.NPSsubregions not present - run the cosine prep_4 variant first.\n\n');
     end
