@@ -12,6 +12,34 @@
 % NOTE: NPS-subregion group-difference code exists at the bottom of the
 % script but is currently commented out/inactive.
 %
+% *WHEN TO RUN THE NPS DECOMPOSITION AT ALL*
+%
+% Only when NPS itself is significant BEFORE correction. NPSpos and NPSneg are
+% the positive- and negative-weight halves of NPS, and the subregions are its
+% parts, so decomposing a null NPS tests the same null pattern a dozen more
+% times and inflates the family for nothing. The gate is the UNADJUSTED p for
+% NPS in the first pass (see subsets_i_want below).
+%
+% A separate decomposition script (conventionally s9a_h1_NPS_decomposition in a
+% study's code dir) is therefore run for SOME models and not others, and the
+% absence of NPSdecomp output is a deliberate result, not a missing step. As
+% measured across seven LaBGAS models on 2026-10-02, the rule had been applied
+% without exception:
+%
+%   model                       NPS p_unadj     decomposition run
+%   proj_cfs model_2b              0.0152             yes
+%   proj_discoverie model_2h       0.0212             yes
+%   proj_discoverie model_2i       0.1993             no
+%   proj_discoverie model_2j       0.7771             no
+%   proj_discoverie model_2k    0.571/0.571/0.686/0.0953   no
+%   proj_discoverie model_2l    0.177/0.584/0.981          no
+%   moodbugs wp2 model_3        NPS not in the family      no
+%
+% Note the gate uses the UNADJUSTED p, so it is unaffected by which multiple-
+% comparison correction is reported, and by the 2026-10-01 change of the Storey
+% pi0 estimator in particular: correcting q never changes whether the
+% decomposition was warranted.
+%
 %
 % *OPTIONS*
 %
