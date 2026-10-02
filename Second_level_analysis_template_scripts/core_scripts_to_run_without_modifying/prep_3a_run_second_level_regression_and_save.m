@@ -36,6 +36,27 @@
 %
 %   LaBGAScore_prov_publish('prep_3a_run_second_level_regression_and_save', htmlsavedir)
 %
+% WITH doTFCE = true, PREFER HEADLESS. Measured on moodbugs wp2 model_3 on
+% 2026-10-02, one run each on the same data:
+%
+%   headless     completed in 48.1 min
+%   interactive  still running after 3 h, making no progress, and was killed
+%
+% The stuck interactive run had a parallel pool of 21 workers all idle (~16 s CPU
+% each), the parent sleeping on futex_wait_queue_me with no thread in R state, and
+% 23 s of CPU accumulated over 11 min of wall clock. So it was blocked on the
+% pool, not merely slow. The TFCE block below calls
+% LaBGAScore_smart_parallel_pool_setup, which sizes a pool to ~60%% of cores, and
+% that session was also rendering figures to a visible desktop on a machine
+% already running four other MATLAB jobs.
+%
+% The cause was NOT isolated - pool sizing under contention and interactive
+% figure capture are both candidates, and one observation cannot separate them.
+% What is established is that the headless route completed and the interactive one
+% did not. Note also that ps %%CPU is a LIFETIME average: the stuck run showed
+% ~140%% there while accumulating almost no new CPU. Compare the TIME column
+% against ELAPSED to tell a slow run from a hung one.
+%
 % NOTE: publish() catches a script error into the html and returns normally, so
 % a crashed run looks exactly like a successful one. Prefer the routes above,
 % which read the report back and check for a caught error, over a bare
