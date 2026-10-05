@@ -167,6 +167,58 @@ doneurotransmitter_maps = true;                                         % calcul
     neurotransmitter_maps_metric = 'cosine_similarity';                     % 'cosine_similarity', or 'correlation'
 domvpa_reg_cov = false;                                                 % run MVPA regression model to predict covariate levels from (between-subject) brain data using CANlab's predict() function
     % mvpa_reg_covariate options
+    %
+    % THE DEFAULTS BELOW ARE A RECOMMENDED SET, NOT INDEPENDENT KNOBS. They are
+    % proj_discoverie model_2k's tuned_nested configuration (s6c1t), the
+    % best-performing of the three engines on that model, and prep_3a's header
+    % documents the set under 'THE RECOMMENDED CONFIGURATION'. Three couplings are
+    % worth knowing before changing one value: lassopcr goes WITH the lasso_num
+    % grid (cv_pcr has nothing for it to tune), 'strata' goes WITH
+    % cv_strata_mvpa_reg_cov (tuned_nested errors without it), and the two seeds
+    % are deliberately DISTINCT. Start here; deviate on purpose.
+    %
+    % ENGINE FIRST. mvpa_engine decides which of the options below are actually
+    % READ: each engine silently ignores the others' options, so a wrong one looks
+    % like it worked and changes nothing. Everything down to nperm_mvpa_reg_cov is
+    % shared, grid/inner_k/tuned_seed belong to tuned_nested, and nboot/nstab
+    % belong to predictive_model.
+    %
+    % THE ONE VALUE YOU MUST SUPPLY is cv_strata_mvpa_reg_cov further down: which
+    % design column carries the structure is a study decision with no generic
+    % default, and tuned_nested errors rather than guessing.
+    mvpa_engine = 'tuned_nested';                                           % 'tuned_nested' (default), 'predictive_model' or 'legacy'.
+                                                                            % tuned_nested runs an inner grid search on the TRAINING rows
+                                                                            % only, with the inner splitter rebuilt from the training
+                                                                            % subset of the strata - the nesting CanlabCore's tutorials
+                                                                            % teach. Measured on proj_discoverie model_2k immune_PC1,
+                                                                            % same outer folds: tuned_nested +0.1812, predictive_model
+                                                                            % +0.0158, legacy +0.0158. The gap is the inner-CV design,
+                                                                            % not the algorithm. 'legacy' is kept for reproducing
+                                                                            % existing results.
+                                                                            % READ BY c2a TOO, which must bootstrap the weight map of
+                                                                            % whichever engine prep_3a fitted. tuned_nested and
+                                                                            % predictive_model share c2a's path there: both bootstrap the
+                                                                            % object prep_3a saved on mvpa_stats.pm. Set it ONCE, here.
+                                                                            % NOTE tuned_nested REQUIRES cv_strata_mvpa_reg_cov below;
+                                                                            % with it empty the script errors rather than fitting
+                                                                            % untuned. That column is a study decision - there is no
+                                                                            % generic default for which one carries the structure.
+    grid_mvpa_reg_cov = struct('lasso_num', 1:12);                          % tuned_nested only. Hyperparameter grid; the default is the
+                                                                            % PATH STEP, which is what the tutorials tune (NOT
+                                                                            % 'estimateparam').
+    inner_k_mvpa_reg_cov = 4;                                               % tuned_nested only. Inner fold count, chosen INDEPENDENTLY
+                                                                            % of nfolds_mvpa_reg_cov on purpose.
+    tuned_seed_mvpa_reg_cov = 20260925;                                     % INNER folds (tuned_nested only). DISTINCT from cv_seed on
+                                                                            % purpose: one value driving both cannot reproduce a run that
+                                                                            % used two. Empty falls back to cv_seed_mvpa_reg_cov.
+    nboot_mvpa_reg_cov = 0;                                                 % predictive_model only. Bootstrap samples for the weight
+                                                                            % map, 0 = skip. Answers "is this voxel's weight reliably
+                                                                            % non-zero?". DIFFERENT from dobootstrap_mvpa_reg_cov further
+                                                                            % down, which is the legacy display-time bootstrap.
+    nstab_mvpa_reg_cov = 0;                                                 % predictive_model only. Resamples for STABILITY SELECTION,
+                                                                            % 0 = skip. Answers "is this voxel reliably among the top-k
+                                                                            % |weights|?" - an ALTERNATIVE to the bootstrap z/p, not a
+                                                                            % duplicate of it.
     domask_mvpa_reg_cov = true;                                             % default true. MASK THE FEATURES with maskname_glm before fitting.
                                                                             % prep_3a builds the MVPA design from the UNMASKED cat_obj; the univariate
                                                                             % branch masks only the STATISTIC IMAGE, after fitting, which is correct
@@ -178,8 +230,17 @@ domvpa_reg_cov = false;                                                 % run MV
                                                                             % model_2k: 235807 voxels unmasked vs 149154 in the canlab2023 grey-matter
                                                                             % mask, i.e. 36.7%% of the features were white matter, CSF and edge.
                                                                             % Set false only to reproduce a result predating this option.
-    algorithm_mvpa_reg_cov = 'cv_pcr';                                      % default cv_pcr, will be passed into predict function (help fmri_data.predict for options)
-    holdout_set_method_mvpa_reg_cov = 'no_group';                           % 'no_group', or 'group'
+    algorithm_mvpa_reg_cov = 'cv_lassopcr';                                 % default cv_lassopcr, matching the reference configuration:
+                                                                            % grid_mvpa_reg_cov tunes lasso_num, the L1 path step, which only
+                                                                            % exists for lassopcr. With 'cv_pcr' the grid has nothing to tune
+                                                                            % and tuned_nested reduces to plain PCR. Any predict() algorithm
+                                                                            % still works for 'legacy'; the newer engines accept
+                                                                            % lassopcr / pcr / linear_svr / ridge / svr.
+    holdout_set_method_mvpa_reg_cov = 'strata';                             % default 'strata', matching the reference configuration. The
+                                                                            % other two ('no_group', 'group') cannot balance folds on a
+                                                                            % design column, which is what a CONTINUOUS outcome with
+                                                                            % structure (scanning site, cohort) needs. REQUIRES
+                                                                            % cv_strata_mvpa_reg_cov below.
                                                                                 % 'group': use DAT.BETWEENPERSON.group or 
                                                                                     % DAT.BETWEENPERSON.contrasts{c}.group;
                                                                                     % @lukasvo76: balances holdout sets over groups
@@ -188,9 +249,11 @@ domvpa_reg_cov = false;                                                 % run MV
                                                                                     % subject (i.e.leave whole subject out) since data is purely between-subject
     nfolds_mvpa_reg_cov = 5;                                                % default 5; number of cross-validation folds for kfold
     zscore_outcome_mvpa_reg_cov = false;                                    % default false; zscores behavioral outcome variable (fmri_dat.Y) prior to fitting models
-    cv_seed_mvpa_reg_cov = [];                                              % default empty = unseeded, so the fold split - and therefore pred_outcome_r - changes
-                                                                            % every run. Set an integer to make the analysis reproducible. Left empty by
-                                                                            % default only for backward compatibility; set it for anything you report.
+    cv_seed_mvpa_reg_cov = 20260923;                                        % OUTER folds. A FIXED default, not empty: unseeded, the fold
+                                                                            % split and therefore pred_outcome_r change on every run, which
+                                                                            % is the wrong default for anything reportable. The value is
+                                                                            % arbitrary - it is the reference configuration's - so change it
+                                                                            % deliberately rather than by accident.
     cv_strata_mvpa_reg_cov = {};                                            % default empty. Names of columns in DAT.BETWEENPERSON.(mygroupnamefield){c} to
                                                                             % balance the CV folds on, e.g. {'center'}. Used when
                                                                             % holdout_set_method_mvpa_reg_cov = 'strata'. The other two methods stratify on

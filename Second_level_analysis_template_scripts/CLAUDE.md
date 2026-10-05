@@ -198,9 +198,16 @@ That stopgap is now backed by a real migration for the `domvpa_reg_cov` path.
 
 | value | fit | inner CV that tunes the hyperparameter |
 |---|---|---|
-| `'legacy'` (default) | `fmri_data.predict` | `estimateparams`: round-robin over ROW INDEX |
+| `'legacy'` | `fmri_data.predict` | `estimateparams`: round-robin over ROW INDEX |
 | `'predictive_model'` | `@predictive_model` via `mvpa_reg_cov_predictive_model` | `estimateparam`: the same round-robin |
-| `'tuned_nested'` | `mvpa_reg_cov_tuned_nested` | inner folds REBUILT from the training subset's strata, per outer fold - the pattern CanlabCore's own tutorials teach |
+| `'tuned_nested'` (**default** since 2026-10-05) | `mvpa_reg_cov_tuned_nested` | inner folds REBUILT from the training subset's strata, per outer fold - the pattern CanlabCore's own tutorials teach |
+
+`'legacy'` was the default until 2026-10-05, so **a null MVPA result from an
+earlier run may be the engine, not the data.** The default now comes as a
+coupled SET (lassopcr + the `lasso_num` grid + `'strata'` + two distinct seeds),
+documented in `prep_3a`'s header under *THE RECOMMENDED CONFIGURATION* and
+shipped in `a2`; `cv_strata_mvpa_reg_cov` is the one member a study must supply,
+and `tuned_nested` errors rather than fitting untuned without it.
 
 **This is not a stylistic choice.** Measured on proj_discoverie model_2k
 immune_PC1, identical data, identical outer folds, 149154 grey-matter voxels:

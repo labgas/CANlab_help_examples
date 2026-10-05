@@ -158,6 +158,29 @@ Designed so the merge back to `master` is small and reviewable:
 Stage two, once the new path has reproduced the legacy numbers on a real model,
 is to flip the default and then delete the legacy branch in a separate commit.
 
+**Status (2026-10-05): the default was flipped, but to a THIRD engine.** The plan
+above anticipated `'predictive_model'` taking over from `'legacy'`. What happened
+instead is that both turned out to tune by the same round-robin over row index
+and to score identically (+0.0158 on proj_discoverie model_2k immune_PC1), while
+`'tuned_nested'` — added later, and not part of this port — scored +0.1812 on the
+same data, folds and mask. So `'tuned_nested'` is now the default in `prep_3a`,
+`c2a` and `a2`, as part of a coupled recommended configuration documented in
+`prep_3a`'s header.
+
+**The legacy branch was NOT deleted, and should not be**: it is how existing
+results stay reproducible, and `c2a` still needs it to bootstrap a legacy fit.
+What did change in `c2a` is that `'tuned_nested'` now reaches the
+`@predictive_model` bootstrap branch instead of being rejected. It needs nothing
+new: `prep_3a`'s tuned_nested branch already attaches its full-data refit — at
+the modal tuned hyperparameter — as `mvpa_stats.pm`, so that branch bootstraps
+exactly the licensed model without refitting. This is the route proj_discoverie
+model_2k already used, by pinning `mvpa_engine = 'predictive_model'` by hand in
+`s7c` while reading `s6c1t`'s results; the dispatch change removes the manual
+step. The legacy `predict()` path is **not** an alternative here — it refits at
+`predict()`'s default shrinkage, which per the measurement at the top of this
+file reduces to unregularised PCR, so a tuned result that somehow lacks `.pm`
+now errors rather than being quietly rebuilt with `'estimateparam'`.
+
 ### Rebase before merging
 
 This branch is based on `c918827` and therefore does **not** contain two fixes
@@ -446,7 +469,7 @@ result is known. c2a's previous comment recommended the opposite and has been
 corrected.
 
 **The two engines are exclusive.** `mvpa_engine` selects which bootstrap c2a
-runs — `'legacy'` (default, `fmri_data/predict` with `bootsamples`) or
+runs — `'legacy'` (`fmri_data/predict` with `bootsamples`) or
 `'predictive_model'`. Never both, so there is one set of weight maps to report.
 
 ### The `'predictive_model'` path

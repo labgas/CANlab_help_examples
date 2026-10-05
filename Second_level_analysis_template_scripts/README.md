@@ -110,13 +110,42 @@ predicts a continuous design column out of sample. Three things about it are
 easy to get wrong and are now options rather than assumptions.
 
 **`mvpa_engine` selects how the inner CV is built**, and that choice dominates
-the result. `'legacy'` (default) and `'predictive_model'` both tune by a
-round-robin over row index, blind to the outer folds' structure;
-`'tuned_nested'` rebuilds the inner splitter from the training subset's strata
-per outer fold, as CanlabCore's tutorials teach. Measured on one real dataset
-with identical data, folds and mask: **+0.0158 for both round-robin engines
-against +0.1812 for `tuned_nested`**. If a model reports a null MVPA result
-fitted with the default engine, that null may be the engine rather than the data.
+the result. `'legacy'` and `'predictive_model'` both tune by a round-robin over
+row index, blind to the outer folds' structure; `'tuned_nested'` rebuilds the
+inner splitter from the training subset's strata per outer fold, as CanlabCore's
+tutorials teach. Measured on one real dataset with identical data, folds and
+mask: **+0.0158 for both round-robin engines against +0.1812 for
+`tuned_nested`**. On that evidence `'tuned_nested'` became the default on
+2026-10-05; `'legacy'` was the default before, so **a model fitted earlier and
+reporting a null MVPA result may be reporting the engine rather than the data**,
+and is worth refitting before it is believed.
+
+**The defaults are a recommended SET, not independent knobs.** `a2` now ships
+proj_discoverie model_2k's configuration, documented in full in `prep_3a`'s
+header under *THE RECOMMENDED CONFIGURATION*:
+
+| option | default | why it is part of the set |
+|---|---|---|
+| `mvpa_engine` | `'tuned_nested'` | the inner-CV design above |
+| `algorithm_mvpa_reg_cov` | `'cv_lassopcr'` | the grid tunes the L1 path step, which only exists for lassopcr — under `'cv_pcr'` the grid has nothing to tune and `tuned_nested` collapses to plain PCR |
+| `grid_mvpa_reg_cov` | `struct('lasso_num', 1:12)` | the path step, which is what the tutorials tune |
+| `inner_k_mvpa_reg_cov` | `4` | chosen independently of `nfolds_mvpa_reg_cov` |
+| `holdout_set_method_mvpa_reg_cov` | `'strata'` | the only method that balances folds on a design column, which is what `tuned_nested`'s inner splitter needs |
+| `cv_strata_mvpa_reg_cov` | `{}` — **the one value a study must supply** | which column carries the structure (site, cohort, batch) has no generic answer; `tuned_nested` **errors** rather than fitting untuned |
+| `cv_seed_mvpa_reg_cov` / `tuned_seed_mvpa_reg_cov` | `20260923` / `20260925` | fixed, and deliberately distinct — see below |
+| `nperm_mvpa_reg_cov` | `0` | **not a reportable state**: see the caveat below |
+
+Two consequences of changing one value in isolation: `'cv_pcr'` silently
+un-tunes the model, and `'no_group'`/`'group'` silently removes the structure the
+inner splitter is built from.
+
+**`nperm_mvpa_reg_cov = 0` is a starting point, not a recommendation.** With no
+null, `predict()` returns `pred_outcome_r`, `mse`, `rmse`, `meanabserr` and
+`cverr` — none of which is inferential — so the correlation cannot be tested.
+Before reporting, either set it `> 0` (it re-runs the whole CV per permutation;
+check the printed time estimate) or obtain the null elsewhere, as
+proj_discoverie does in its `s7c`. It stays `0` in the defaults because the cost
+is large and the choice should be deliberate.
 
 **`domask_mvpa_reg_cov` (default true) masks the features.** The univariate
 branch masks the statistic image *after* fitting, which is correct because each
@@ -128,13 +157,23 @@ prediction, and no post-hoc mask undoes it. Leaving this off means fitting on
 **`cv_seed_mvpa_reg_cov` and `tuned_seed_mvpa_reg_cov` are separate.** The first
 seeds the outer partition, the second the inner tuning folds. One value for both
 cannot reproduce a run that used different ones, and the failure is silent — the
-fit still runs and still looks reasonable, on a different hyperparameter.
+fit still runs and still looks reasonable, on a different hyperparameter. Both
+now default to a **fixed integer rather than `[]`**: unseeded, the fold split and
+therefore `pred_outcome_r` change on every run, which is the wrong default for
+anything reportable. The particular values are arbitrary — change them
+deliberately, not by accident.
 
 **Pattern inference belongs in `c2a`, not `prep_3a`.** `prep_3a` answers *is the
 model better than chance*; only if that is significant is *which voxels* worth
 the cost. So `dobootstrap_mvpa_reg_cov` in `c2a` runs the bootstrap and stability
 selection, and `mvpa_engine` there picks which bootstrap — exclusively, never
-both. Two cautions:
+both. `tuned_nested` and `predictive_model` take the same path, bootstrapping the
+saved `@predictive_model` object rather than refitting: this is how
+proj_discoverie model_2k's tuned `immune_PC1` pattern was bootstrapped
+(`s6c1t` → `s7c`, r = +0.181, p = .0445), where the study script had to pin
+`mvpa_engine = 'predictive_model'` by hand to reach that branch while reading
+`s6c1t`'s results. Routing `tuned_nested` there removes the manual step. Two
+cautions:
 
 - **Bootstrap z/p collapse on strongly regularised models.** Weights come out
   near-identical across resamples, the empirical p floors at `2/(nboot+1)` for
@@ -198,8 +237,8 @@ Always copied in alongside Group 1: `prep_2_load_image_data_and_save.m`, `prep_3
 | ------------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `prep_2_load_image_data_and_save.m`                  | `prep_`        | Loads first-level beta/con images per`DAT.conditions`/wildcards into `fmri_data_st` objects, runs QC and z-scoring, saves `data_objects*.mat`, publishes an HTML report.                                                                                                                                                                             | `dofullplot`, `omit_histograms`, `dozipimages`, `maskname_brain`, `subjs2exclude_data`                                                                                                                                                                                                                                                                                                                                                  |
 | `prep_3_calc_univariate_contrast_maps_and_save.m`    | `prep_`        | Computes`DATA_OBJ_CON*` from `prep_2`'s condition objects per `DAT.contrasts`, l2norm-rescales, QC, saves `contrast_data_objects.mat`.                                                                                                                                                                                                             | (shares the`prep_2` section above)                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `prep_3a_run_second_level_regression_and_save.m`     | `prep_`        | Group-level regression per condition/contrast: voxelwise (`regress()`, optionally robust/TFCE — see the TFCE note below) or parcelwise (`robfit_parcelwise()`, atlas-defined parcels). Optional Bayes Factor conversion, ROI-average extraction, neurotransmitter-map similarity, and MVPA regression of covariates from between-subject brain data.                             | `maskname_glm`, `atlasname_glm`/`atlas_granularity`, `myscaling_glm`, `design_matrix_type`, `dorobust`, `dorobfit_parcelwise` (+ `csf_wm_covs`, `remove_outliers`), `doBayes`, `doTFCE` (+ perm/sidedness/tail), `doroi_analysis` (+ `roi_names`/`roi_modelname`/`roi_set_name`), `doneurotransmitter_maps`, `domvpa_reg_cov` (+ algorithm/holdout/folds), **`mvpa_engine`** (`legacy`/`predictive_model`/`tuned_nested` — the inner-CV design, which dominates the result), **`domask_mvpa_reg_cov`** (default true; MVPA must mask the FEATURES, unlike the univariate path), **`tuned_seed_mvpa_reg_cov`** (inner-fold seed, separate from `cv_seed_mvpa_reg_cov` which seeds the outer partition), `grid_mvpa_reg_cov`/`inner_k_mvpa_reg_cov`                                                       |
-| `c2a_second_level_regression.m`                      | lettered (`c`) | Displays/thresholds`prep_3a` results (FDR-q via CanlabCore's `FDR.m`, i.e. plain Benjamini-Hochberg; uncorrected-p, extent, Bayes Factor thresholds). Also carries the PATTERN INFERENCE for MVPA-on-covariates — bootstrap and stability selection — which lives here rather than in `prep_3a` because it is only worth paying for once `prep_3a`'s permutation test says the model beats chance.                                                                                                                                                                                       | `save_figures_glm`, `q_threshold_glm`, `p_threshold_glm`, `k_threshold_glm`, `BF_threshold_glm`, `dobootstrap_mvpa_reg_cov` (+ boot_n/parallel/cons2boot), `q_threshold_mvpa_reg_cov`, `k_threshold_mvpa_reg_cov`, **`mvpa_engine`** (EXCLUSIVE — selects which bootstrap runs, never both), **`nstab_mvpa_reg_cov`**, **`stab_threshold_mvpa_reg_cov`** (0.9, must exceed 0.5), **`stab_EV_mvpa_reg_cov`** (false-selection budget), **`stab_k_mvpa_reg_cov`** (leave EMPTY to derive k from the Meinshausen-Buhlmann bound — the class default of 2000 controls nothing at brain scale)                                                                                                                                                                                                                 |
+| `prep_3a_run_second_level_regression_and_save.m`     | `prep_`        | Group-level regression per condition/contrast: voxelwise (`regress()`, optionally robust/TFCE — see the TFCE note below) or parcelwise (`robfit_parcelwise()`, atlas-defined parcels). Optional Bayes Factor conversion, ROI-average extraction, neurotransmitter-map similarity, and MVPA regression of covariates from between-subject brain data.                             | `maskname_glm`, `atlasname_glm`/`atlas_granularity`, `myscaling_glm`, `design_matrix_type`, `dorobust`, `dorobfit_parcelwise` (+ `csf_wm_covs`, `remove_outliers`), `doBayes`, `doTFCE` (+ perm/sidedness/tail), `doroi_analysis` (+ `roi_names`/`roi_modelname`/`roi_set_name`), `doneurotransmitter_maps`, `domvpa_reg_cov` (+ algorithm/holdout/folds), **`mvpa_engine`** (`tuned_nested` **default** since 2026-10-05, was `legacy` — the inner-CV design, which dominates the result), **`domask_mvpa_reg_cov`** (default true; MVPA must mask the FEATURES, unlike the univariate path), **`tuned_seed_mvpa_reg_cov`** (inner-fold seed, separate from `cv_seed_mvpa_reg_cov` which seeds the outer partition; both now fixed integers, not `[]`), `grid_mvpa_reg_cov`/`inner_k_mvpa_reg_cov`, `cv_strata_mvpa_reg_cov` (**required** by `tuned_nested`), `nboot_mvpa_reg_cov`/`nstab_mvpa_reg_cov` (`predictive_model` only). All seventeen are in `a2` as a coupled recommended SET — see [above](#mvpa-on-a-covariate-engines-masking-and-pattern-inference)                                                       |
+| `c2a_second_level_regression.m`                      | lettered (`c`) | Displays/thresholds`prep_3a` results (FDR-q via CanlabCore's `FDR.m`, i.e. plain Benjamini-Hochberg; uncorrected-p, extent, Bayes Factor thresholds). Also carries the PATTERN INFERENCE for MVPA-on-covariates — bootstrap and stability selection — which lives here rather than in `prep_3a` because it is only worth paying for once `prep_3a`'s permutation test says the model beats chance.                                                                                                                                                                                       | `save_figures_glm`, `q_threshold_glm`, `p_threshold_glm`, `k_threshold_glm`, `BF_threshold_glm`, `dobootstrap_mvpa_reg_cov` (+ boot_n/parallel/cons2boot), `q_threshold_mvpa_reg_cov`, `k_threshold_mvpa_reg_cov`, **`mvpa_engine`** (EXCLUSIVE — selects which bootstrap runs, never both; must MATCH the engine `prep_3a` ran. `tuned_nested` (the default since 2026-10-05) and `predictive_model` share one path: both bootstrap the `@predictive_model` object `prep_3a` saved on `mvpa_stats.pm`, which for `tuned_nested` is the full-data refit at the modal tuned hyperparameter — no refit, no hyperparameter guessing. `legacy` instead re-runs `predict()` at its own default shrinkage, unregularised PCR for `cv_lassopcr`, so it is not the way to bootstrap a tuned fit; a tuned result with no `.pm` now errors rather than being quietly rebuilt with `estimateparam`), **`nstab_mvpa_reg_cov`**, **`stab_threshold_mvpa_reg_cov`** (0.9, must exceed 0.5), **`stab_EV_mvpa_reg_cov`** (false-selection budget), **`stab_k_mvpa_reg_cov`** (leave EMPTY to derive k from the Meinshausen-Buhlmann bound — the class default of 2000 controls nothing at brain scale)                                                                                                                                                                                                                 |
 | `prep_3c_run_SVMs_on_contrasts_masked.m`             | `prep_`        | Cross-validated SVM per contrast (masked), via either`ooFmriDataObjML` or CANlab `predict()`; optional bootstrapping, stability selection, and searchlight SVM. Saves results.                                                                                                                                                                         | `ml_method_svm`, `holdout_set_method_svm`/`holdout_set_type_svm`/`nfolds_svm`, `maskname_svm`, `myscaling_svm`, `dosavesvmstats`, `dobootstrap_svm` (+ boot_n/cons2boot), `dostabilityselection_svm` (+ boot_n_ss/cons2ss/k_ss/threshold_ss), `dosearchlight_svm` (+ radius/cons2searchlight)                                                                                                                                 |
 | `c2_SVM_contrasts_masked.m`                          | lettered (`c`) | Displays/thresholds SVM results from`prep_3c_`, with atlas-based region labeling; uses `LaBGAScore_atlas_binary_mask_from_atlas.m`-generated masks when a custom atlas is specified.                                                                                                                                                                   | `save_figures_svm`, `q_threshold_svm`, `p_threshold_svm`, `k_threshold_svm`, `atlasname_svm`                                                                                                                                                                                                                                                                                                                                            |
 | `prep_3f_create_fmri_data_single_trial_object.m`     | `prep_`        | Builds a single-trial`fmri_data_st` object from single-trial con images produced by `LaBGAScore_firstlevel_s2_fit_model.m`, attaching per-trial ratings and VIF-based outlier flags.                                                                                                                                                                   | `cons2exclude_dat_st`, `behav_outcome_dat_st`, `subj_identifier_dat_st`, `cond_identifier_dat_st`, `group_identifier_dat_st` (optional), `vif_threshold_dat_st`                                                                                                                                                                                                                                                                       |

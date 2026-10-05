@@ -83,7 +83,18 @@
 %     mvpa bootstrapping options
 %
 %       * boot_n_mvpa_reg_cov           number of bootstrap samples
-%       * mvpa_engine                   'legacy' (default) or 'predictive_model'.
+%       * mvpa_engine                   'tuned_nested' (default), 'predictive_model'
+%                                       or 'legacy'. MUST MATCH THE ENGINE prep_3a
+%                                       RAN. 'tuned_nested' and 'predictive_model'
+%                                       share one path: both bootstrap the
+%                                       @predictive_model object prep_3a saved on
+%                                       mvpa_stats.pm - for tuned_nested, the
+%                                       full-data refit at the modal tuned
+%                                       hyperparameter - with no refit. 'legacy'
+%                                       re-runs predict() at its own default
+%                                       shrinkage, which for cv_lassopcr is
+%                                       unregularised PCR, so it is NOT the way to
+%                                       bootstrap a tuned fit.
 %                                       EXCLUSIVE: selects which bootstrap runs,
 %                                       never both. 'predictive_model' adds
 %                                       stability selection alongside it.
@@ -1818,14 +1829,33 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                 % THE TWO ENGINES ARE EXCLUSIVE. mvpa_engine selects which
                 % bootstrap runs; a model gets one or the other, never both, so
                 % there is exactly one set of weight maps to report.
-                if ~exist('mvpa_engine','var') || isempty(mvpa_engine), mvpa_engine = 'legacy'; end
-                if ~ismember(lower(mvpa_engine), {'legacy','predictive_model'})
-                    error('mvpa_engine must be ''legacy'' or ''predictive_model'', not ''%s''.', mvpa_engine);
+                % 'tuned_nested' SHARES THE predictive_model BRANCH, because
+                % prep_3a's tuned_nested branch attaches its full-data refit - at
+                % the modal tuned hyperparameter - as mvpa_stats.pm, a genuine
+                % @predictive_model object, along with the folds on .teIdx. So the
+                % branch below bootstraps exactly the model the permutation test
+                % licensed, with no refit and no hyperparameter guessing.
+                %
+                % This is how proj_discoverie model_2k's tuned immune_PC1 pattern
+                % was actually bootstrapped (s6c1t -> s7c, r = +0.181, p = .0445):
+                % the study script had to pin mvpa_engine = 'predictive_model' by
+                % hand to reach this branch while reading s6c1t's results. Routing
+                % 'tuned_nested' here removes that manual step, and is required now
+                % that it is prep_3a's default - rejecting it would error out every
+                % model that takes a2's defaults and asks c2a for a bootstrap.
+                %
+                % NOT the legacy predict() path: that refits from scratch at
+                % predict()'s own default shrinkage, which for cv_lassopcr reduces
+                % to unregularised PCR - a different model from the one reported.
+                if ~exist('mvpa_engine','var') || isempty(mvpa_engine), mvpa_engine = 'tuned_nested'; end
+                if ~ismember(lower(mvpa_engine), {'legacy','predictive_model','tuned_nested'})
+                    error(['mvpa_engine must be ''legacy'', ''predictive_model'' or ' ...
+                           '''tuned_nested'', not ''%s''.'], mvpa_engine);
                 end
 
-                if isequal(lower(mvpa_engine), 'predictive_model')
+                if ismember(lower(mvpa_engine), {'predictive_model','tuned_nested'})
 
-                    % ---- @predictive_model ENGINE ----------------------------
+                    % ---- @predictive_model / tuned_nested ENGINE -------------
                     % Bootstrap gives voxel-wise z/p/FDR; stability selection
                     % gives how often a voxel is top-k by |w| across resamples.
                     % They answer different questions and the class documentation
@@ -1896,8 +1926,9 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                     % on proj_discoverie model_2k: {1x5} of logical [93x1] summing
                     % to [18 19 19 19 18] with every subject assigned exactly once.
                     if ~isfield(mvpa_results{j}, 'teIdx') || isempty(mvpa_results{j}.teIdx)
-                        error(['mvpa_engine = ''predictive_model'' needs the folds prep_3a used, ' ...
-                               'and teIdx is absent from mvpa_stats_results{%d,%d}. Re-run prep_3a.'], c, j);
+                        error(['mvpa_engine = ''%s'' needs the folds prep_3a used, ' ...
+                               'and teIdx is absent from mvpa_stats_results{%d,%d}. Re-run prep_3a.'], ...
+                               lower(mvpa_engine), c, j);
                     end
                     te_pm = mvpa_results{j}.teIdx;
                     fl_pm = zeros(numel(mvpa_results{j}.Y), 1);
@@ -1944,6 +1975,23 @@ for c = 1:size(results, 2) % number of contrasts or conditions
                                     mvpa_fmri_dats{j}, 'nstab', nstab_mvpa_reg_cov, ...
                                     'k', stab_k_mvpa_reg_cov, ...
                                     'threshold', stab_threshold_mvpa_reg_cov);
+
+                    elseif isequal(lower(mvpa_engine),'tuned_nested')
+
+                        % NO SILENT SUBSTITUTION FOR A TUNED FIT. The rebuild below
+                        % tunes with 'estimateparam' - the round-robin over row
+                        % index - which is precisely the design tuned_nested exists
+                        % to avoid, and on model_2k immune_PC1 the difference is
+                        % +0.0158 against +0.1812. Bootstrapping that instead would
+                        % report weight-map inference for a model nobody fitted. The
+                        % tuned_nested branch of prep_3a always attaches .pm, so this
+                        % only happens on a result predating it.
+                        error(['mvpa_engine = ''tuned_nested'' but mvpa_stats_results{%d,%d} ' ...
+                               'carries no @predictive_model object on .pm, so there is nothing ' ...
+                               'to bootstrap. That result predates the tuned_nested engine - ' ...
+                               're-run prep_3a with it. Do NOT work around this by setting ' ...
+                               'mvpa_engine = ''legacy'' or ''predictive_model'': both would ' ...
+                               'bootstrap a DIFFERENTLY TUNED model from the one reported.'], c, j);
 
                     else
 
@@ -2077,14 +2125,15 @@ for c = 1:size(results, 2) % number of contrasts or conditions
             clear o2, clear figtitle, clear j, clear tj
 
             % ---- STABILITY-SELECTION FREQUENCY MAP ----------------------------
-            % Only the @predictive_model engine produces one. This is the map to
+            % Only the pm-based engines (predictive_model, tuned_nested) produce
+            % one - both bootstrap a @predictive_model object. This is the map to
             % read when the bootstrap p collapsed to its floor: it shows WHERE the
             % model reliably leans, by counting how often each voxel is top-k by
             % |w| across resamples, rather than asking whether its weight differs
             % from zero. Plotted unthresholded as a frequency in [0,1], with the
             % 'stable' contour at stab_threshold_mvpa_reg_cov reported in text -
             % thresholding a frequency map at an FDR q would be a category error.
-            if isequal(lower(mvpa_engine),'predictive_model')
+            if ismember(lower(mvpa_engine),{'predictive_model','tuned_nested'})
 
                 has_ss = false(1, mvpa_num_effects);
                 for j = 1:mvpa_num_effects
