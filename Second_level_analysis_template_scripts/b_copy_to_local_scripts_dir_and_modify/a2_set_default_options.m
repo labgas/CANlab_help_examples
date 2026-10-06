@@ -205,7 +205,9 @@ domvpa_reg_cov = false;                                                 % run MV
                                                                             % generic default for which one carries the structure.
     grid_mvpa_reg_cov = struct('lasso_num', 1:12);                          % tuned_nested only. Hyperparameter grid; the default is the
                                                                             % PATH STEP, which is what the tutorials tune (NOT
-                                                                            % 'estimateparam').
+                                                                            % 'estimateparam'). THE FIELD NAME MUST MATCH
+                                                                            % algorithm_mvpa_reg_cov - see the list there. ONE FIELD ONLY:
+                                                                            % with two, only the first is tuned and a warning fires.
     inner_k_mvpa_reg_cov = 4;                                               % tuned_nested only. Inner fold count, chosen INDEPENDENTLY
                                                                             % of nfolds_mvpa_reg_cov on purpose.
     tuned_seed_mvpa_reg_cov = 20260925;                                     % INNER folds (tuned_nested only). DISTINCT from cv_seed on
@@ -230,12 +232,22 @@ domvpa_reg_cov = false;                                                 % run MV
                                                                             % model_2k: 235807 voxels unmasked vs 149154 in the canlab2023 grey-matter
                                                                             % mask, i.e. 36.7%% of the features were white matter, CSF and edge.
                                                                             % Set false only to reproduce a result predating this option.
-    algorithm_mvpa_reg_cov = 'cv_lassopcr';                                 % default cv_lassopcr, matching the reference configuration:
-                                                                            % grid_mvpa_reg_cov tunes lasso_num, the L1 path step, which only
-                                                                            % exists for lassopcr. With 'cv_pcr' the grid has nothing to tune
-                                                                            % and tuned_nested reduces to plain PCR. Any predict() algorithm
-                                                                            % still works for 'legacy'; the newer engines accept
-                                                                            % lassopcr / pcr / linear_svr / ridge / svr.
+    algorithm_mvpa_reg_cov = 'cv_lassopcr';                                 % default cv_lassopcr, matching the reference configuration, and the
+                                                                            % only algorithm exercised on real data so far.
+                                                                            % CHANGE THIS AND YOU MUST CHANGE grid_mvpa_reg_cov WITH IT - the
+                                                                            % grid's field name has to be a hyperparameter that algorithm
+                                                                            % accepts, under exactly that name:
+                                                                            %     'cv_lassopcr' -> lasso_num          (default)
+                                                                            %     'cv_pcr'      -> numcomponents
+                                                                            %     'linear_svr' / 'lasso' / 'ridge' -> Lambda
+                                                                            %     'svr'         -> BoxConstraint / Epsilon / KernelScale,
+                                                                            %                      linear kernel only
+                                                                            % REFUSED by tuned_nested, up front: tree_regressor,
+                                                                            % rf_regressor, nnet_regressor, gp - none gives one weight per
+                                                                            % voxel, so there is no map to build or bootstrap.
+                                                                            % 'legacy' is different: it takes any predict() algorithm and
+                                                                            % reads none of the grid options.
+                                                                            % prep_3a's header has the measurements and the pcr/lasso_num trap.
     holdout_set_method_mvpa_reg_cov = 'strata';                             % default 'strata', matching the reference configuration. The
                                                                             % other two ('no_group', 'group') cannot balance folds on a
                                                                             % design column, which is what a CONTINUOUS outcome with

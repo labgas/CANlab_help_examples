@@ -127,7 +127,7 @@ header under *THE RECOMMENDED CONFIGURATION*:
 | option | default | why it is part of the set |
 |---|---|---|
 | `mvpa_engine` | `'tuned_nested'` | the inner-CV design above |
-| `algorithm_mvpa_reg_cov` | `'cv_lassopcr'` | the grid tunes the L1 path step, which only exists for lassopcr — under `'cv_pcr'` the grid has nothing to tune and `tuned_nested` collapses to plain PCR |
+| `algorithm_mvpa_reg_cov` | `'cv_lassopcr'` | the grid tunes `lasso_num`, the L1 path step, which exists only for lassopcr — change one and you must change the other (see the table below) |
 | `grid_mvpa_reg_cov` | `struct('lasso_num', 1:12)` | the path step, which is what the tutorials tune |
 | `inner_k_mvpa_reg_cov` | `4` | chosen independently of `nfolds_mvpa_reg_cov` |
 | `holdout_set_method_mvpa_reg_cov` | `'strata'` | the only method that balances folds on a design column, which is what `tuned_nested`'s inner splitter needs |
@@ -135,9 +135,42 @@ header under *THE RECOMMENDED CONFIGURATION*:
 | `cv_seed_mvpa_reg_cov` / `tuned_seed_mvpa_reg_cov` | `20260923` / `20260925` | fixed, and deliberately distinct — see below |
 | `nperm_mvpa_reg_cov` | `0` | **not a reportable state**: see the caveat below |
 
-Two consequences of changing one value in isolation: `'cv_pcr'` silently
-un-tunes the model, and `'no_group'`/`'group'` silently removes the structure the
-inner splitter is built from.
+Two consequences of changing one value in isolation: `'cv_pcr'` with the default
+grid silently un-tunes the model (now guarded — see below), and
+`'no_group'`/`'group'` silently removes the structure the inner splitter is built
+from.
+
+**Which algorithms `tuned_nested` accepts, and the grid each one needs.**
+lassopcr is the default and the only one exercised on real data, but not the only
+one that works. The grid's *field name* must be a hyperparameter that algorithm
+accepts, under exactly that name:
+
+| `algorithm_mvpa_reg_cov` | `grid_mvpa_reg_cov` field | |
+|---|---|---|
+| `'cv_lassopcr'` | `lasso_num` | **default** |
+| `'cv_pcr'` | `numcomponents` | works |
+| `'linear_svr'`, `'lasso'`, `'ridge'` | `Lambda` | works (`fitrlinear`) |
+| `'svr'` | `BoxConstraint`, `Epsilon` or `KernelScale` | works, **linear kernel only** |
+
+**Refused up front:** `tree_regressor`, `rf_regressor`, `nnet_regressor`, `gp`.
+None exposes one coefficient per voxel, so there is no weight map to build and
+nothing for `c2a` to bootstrap. Measured on 40 × 200 synthetic data, the first
+three return a `[0 0]` weight vector; `gp` returns `[1 1]`, because
+`RegressionGP`'s `Beta` holds the explicit-basis coefficient rather than
+per-feature weights — so its map would be *wrong* rather than missing. For a
+non-linear regressor the honest route is a permutation test on prediction
+accuracy with no weight map, which this engine does not do. Classification
+algorithms are not candidates at all: the task is hardcoded to regression, and
+this block predicts a continuous covariate — use `prep_3c`/`c2` for groups.
+
+**The trap this closes.** `fit_pcr` and `fit_lassopcr` read their option *by
+name* and ignore everything else, so `'cv_pcr'` with the default `lasso_num` grid
+fitted the **identical** model at all twelve grid points — verified, weights
+identical to 0.000e+00 — scored them identically, and reported `lasso_num = 1` as
+"chosen", with no error and no tuning at all. That pairing is now refused before
+any fitting. The registry algorithms were never exposed to it, since MATLAB's
+`fit*()` functions reject an unknown parameter name outright. Related: **only the
+first field of the grid is tuned**, and a multi-field grid now warns.
 
 **`nperm_mvpa_reg_cov = 0` is a starting point, not a recommendation.** With no
 null, `predict()` returns `pred_outcome_r`, `mse`, `rmse`, `meanabserr` and

@@ -25,7 +25,9 @@ function out = mvpa_reg_cov_tuned_nested(mvpa_dat, fold_labels, strata, varargin
 %                    is the whole point - see WHY THIS EXISTS.
 %
 % :Optional Inputs:
-%   **'algorithm':** default 'lassopcr'.
+%   **'algorithm':** default 'lassopcr'. See WHICH ALGORITHMS WORK HERE below -
+%                    NOT every @predictive_model algorithm can be used, and the
+%                    grid field name has to match the one you pick.
 %   **'grid':**      struct of hyperparameter vectors. Default
 %                    struct('lasso_num', 1:12) - the PATH STEP, which is what
 %                    the tutorials tune, NOT 'estimateparam'.
@@ -68,6 +70,70 @@ function out = mvpa_reg_cov_tuned_nested(mvpa_dat, fold_labels, strata, varargin
 % constraints as the outer ones, with inner k free. Strata are re-derived from
 % the training subset each time, so nothing has to be sliced by hand.
 %
+% WHICH ALGORITHMS WORK HERE
+% --------------------------
+% The algorithm name is passed straight to predictive_model with
+% 'task','regression', so the candidates are its regression algorithms. Two
+% requirements narrow that list, and neither is enforced by the class:
+%
+%   1. IT MUST EXPOSE ONE WEIGHT PER FEATURE. This function ends by building a
+%      weight map from the full-data refit, which needs a coefficient per voxel.
+%      Measured on 40 x 200 synthetic data (p = 200 features):
+%
+%        pcr / lassopcr / ridge / lasso / linear_svr / svr  ->  [200 1]   usable
+%        tree_regressor / rf_regressor / nnet_regressor     ->  [0 0]     empty
+%        gp                                                 ->  [1 1]     WRONG
+%
+%      The first three of those failures are honest: extract_weights finds no
+%      Beta and weight_map_object errors (NoWeights). gp is the nastier one -
+%      RegressionGP HAS a Beta, but it holds the EXPLICIT BASIS coefficients
+%      (one value under the default Constant basis, measured at -0.5814), not
+%      per-feature weights. extract_weights takes it anyway, so the result is
+%      non-empty and WRONG rather than absent. Either way the failure lands
+%      AFTER the whole nested CV has run, so the guard below refuses all four up
+%      front.
+%   2. THE GRID FIELD MUST BE A HYPERPARAMETER THAT ALGORITHM ACCEPTS, under
+%      exactly that name. modeloptions is built as {gridfieldname, value}.
+%
+% WORKS (tunable, and produces a weight map):
+%
+%   algorithm        grid field to use        notes
+%   ---------------  ----------------------   ------------------------------------
+%   lassopcr         lasso_num                THE DEFAULT, and the only one
+%                                             exercised on real data so far
+%                                             (proj_discoverie model_2k)
+%   pcr              numcomponents            NOT lasso_num - see the trap below
+%   linear_svr       Lambda                   fitrlinear
+%   lasso            Lambda                   fitrlinear, Regularization lasso
+%   ridge            Lambda                   fitrlinear, Regularization ridge
+%   svr              BoxConstraint, Epsilon   fitrsvm; KEEP the default linear
+%                    or KernelScale           kernel, or there are no Beta
+%                                             weights and (1) fails
+%
+% DOES NOT WORK, and the guard below refuses them: tree_regressor,
+% rf_regressor, nnet_regressor, gp. All four are legitimate regressors that this
+% function cannot serve, because none exposes one coefficient per voxel to map
+% onto the brain (see the measurements above). Nothing is wrong with them - there
+% is just no weight map, and so nothing for c2a to bootstrap either. If you want
+% a non-linear regressor here, the honest route is a permutation test on
+% prediction accuracy with no weight map at all, which this function does not do.
+%
+% Classification algorithms (svm, logistic, lda, ...) are not candidates at all:
+% 'task' is hardcoded to regression here, and domvpa_reg_cov predicts a
+% CONTINUOUS covariate. Use prep_3c / c2 to classify groups.
+%
+% THE TRAP, and why the guard checks the grid name for the two PCA estimators.
+% fit_pcr and fit_lassopcr read their options BY NAME via
+% predictive_model.opt_value and IGNORE everything else. So 'pcr' with the
+% default grid struct('lasso_num', 1:12) fits the IDENTICAL model at all twelve
+% grid points, scores them identically, and reports lasso_num = 1 as "chosen" -
+% no error, no warning, and no tuning whatsoever. The registry algorithms are
+% safe from this, because MATLAB's fit*() functions reject an unknown parameter
+% name outright.
+%
+% ONLY THE FIRST FIELD OF THE GRID IS USED (see local_nested). A grid with two
+% fields silently tunes one of them; the guard below warns.
+%
 % NOT USED HERE, DELIBERATELY: select_features. It is applied to the FULL data
 % and carried via omitted_features, so calling it before a cross-validation
 % leaks the outcome into feature selection. Any feature selection must happen
@@ -86,6 +152,44 @@ p.addParameter('seed',      [], @(x) isempty(x) || isscalar(x));
 p.addParameter('verbose',   true, @islogical);
 p.parse(varargin{:});
 o = p.Results;
+
+% ---- ALGORITHM / GRID COMPATIBILITY, CHECKED BEFORE ANY FITTING ----------
+% Both failures below are otherwise expensive or silent: a weightless algorithm
+% errors only at the final refit, after every outer fold has been fitted, and a
+% mismatched grid name on a PCA estimator never errors at all.
+alg_tn = lower(char(o.algorithm));
+no_weights = {'tree_regressor','rf_regressor','nnet_regressor','gp'};
+if ismember(alg_tn, no_weights)
+    if isequal(alg_tn, 'gp')
+        extra = [' RegressionGP does expose a Beta, but it holds the EXPLICIT BASIS ' ...
+                 'coefficients - one value under the default Constant basis - not one ' ...
+                 'weight per voxel, so the map would be wrong rather than absent.'];
+    else
+        extra = '';
+    end
+    error(['algorithm ''%s'' does not expose one weight per feature, so this function ' ...
+           'cannot build a weight map from it and the failure would land after the whole ' ...
+           'nested CV had run.%s Use lassopcr (default), pcr, linear_svr, lasso, ridge ' ...
+           'or svr - see WHICH ALGORITHMS WORK HERE in the header.'], alg_tn, extra);
+end
+gnames_tn = fieldnames(o.grid);
+if numel(gnames_tn) > 1
+    warning('mvpa_reg_cov_tuned_nested:GridFirstFieldOnly', ...
+        ['grid has %d fields (%s) but ONLY THE FIRST (%s) is tuned. Pass one ' ...
+         'hyperparameter at a time.'], numel(gnames_tn), ...
+         strjoin(gnames_tn', ', '), gnames_tn{1});
+end
+% The two PCA estimators read their option by name and ignore anything else, so
+% a wrong name here means twelve identical fits and no tuning. Check it.
+pca_tunable = struct('lassopcr', {{'lasso_num'}}, 'pcr', {{'numcomponents'}});
+if isfield(pca_tunable, alg_tn) && ~ismember(gnames_tn{1}, pca_tunable.(alg_tn))
+    error(['algorithm ''%s'' tunes on %s, but the grid names ''%s''. fit_%s reads its ' ...
+           'options BY NAME and ignores the rest, so this would fit the IDENTICAL model ' ...
+           'at every grid point and report no error - tuning nothing. Set grid = ' ...
+           'struct(''%s'', <values>).'], alg_tn, ...
+           strjoin(pca_tunable.(alg_tn), ' or '), gnames_tn{1}, alg_tn, ...
+           pca_tunable.(alg_tn){1});
+end
 
 X = double(mvpa_dat.dat)';
 Y = mvpa_dat.Y(:);

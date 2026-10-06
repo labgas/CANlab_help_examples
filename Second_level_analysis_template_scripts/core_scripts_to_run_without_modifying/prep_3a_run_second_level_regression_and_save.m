@@ -301,9 +301,9 @@
 %
 %       The pieces are not independent, which is why it is given as a set:
 %
-%       * lassopcr WITH the lasso_num grid. grid_mvpa_reg_cov tunes the L1 path
-%         step, which only exists for lassopcr - under 'cv_pcr' the grid has
-%         nothing to tune and tuned_nested collapses to plain PCR.
+%       * lassopcr WITH the lasso_num grid. The two travel together: lasso_num is
+%         the L1 path step, which exists only for lassopcr. Under 'cv_pcr' that
+%         grid tunes NOTHING AND SAYS NOTHING - see the trap below.
 %       * 'strata' WITH cv_strata_mvpa_reg_cov. tuned_nested rebuilds the inner
 %         splitter from the training subset of the strata, so the strata are what
 %         make the nesting mean anything; it ERRORS if they are empty.
@@ -333,8 +333,10 @@
 %                                   set defines the model.
 %       * algorithm_mvpa_reg_cov    'cv_pcr', 'cv_lassopcr', ... For the two newer
 %                                   engines the 'cv_' prefix is stripped and the
-%                                   choice is limited to lassopcr / pcr /
-%                                   linear_svr / ridge / svr.
+%                                   name is passed to @predictive_model, which
+%                                   also offers lasso / ridge / linear_svr / svr.
+%                                   NOT EVERY REGRESSOR CAN BE USED - see WHICH
+%                                   ALGORITHMS WORK WITH tuned_nested below.
 %       * nfolds_mvpa_reg_cov       number of OUTER cross-validation folds.
 %       * holdout_set_method_mvpa_reg_cov
 %                                   'no_group'  leave whole subject out
@@ -381,6 +383,44 @@
 %       structure selects the hyperparameter under a different sampling model than
 %       the one being estimated. This is the one option a study must supply itself:
 %       there is no sensible generic default for which column carries the structure.
+%
+%     _WHICH ALGORITHMS WORK WITH tuned_nested_
+%
+%       lassopcr is the default and the only one exercised on real data so far,
+%       but it is not the only one that works. Two requirements decide, and the
+%       grid field name must change with the algorithm:
+%
+%         algorithm_mvpa_reg_cov    grid_mvpa_reg_cov field    status
+%         ------------------------  -------------------------  ----------------
+%         'cv_lassopcr'             lasso_num                  DEFAULT
+%         'cv_pcr'                  numcomponents              works
+%         'linear_svr'              Lambda                     works
+%         'lasso'                   Lambda                     works
+%         'ridge'                   Lambda                     works
+%         'svr'                     BoxConstraint / Epsilon    works, linear
+%                                   / KernelScale              kernel only
+%
+%       REFUSED, up front, with a message naming these: tree_regressor,
+%       rf_regressor, nnet_regressor, gp. None exposes one coefficient per voxel,
+%       so there is no weight map to build and nothing for c2a to bootstrap.
+%       Measured on 40 x 200 synthetic data: the first three return a [0 0] weight
+%       vector, while gp returns [1 1] - RegressionGP's Beta is the explicit-basis
+%       coefficient, not per-feature weights, so its map would be WRONG rather
+%       than missing. Classification algorithms are not candidates either: the
+%       task is hardcoded to regression, and this block predicts a CONTINUOUS
+%       covariate. Use prep_3c / c2 to classify groups.
+%
+%       THE TRAP, now guarded. fit_pcr and fit_lassopcr read their option BY NAME
+%       and IGNORE anything else, so 'cv_pcr' with the default lasso_num grid
+%       fitted the IDENTICAL model at all twelve grid points - verified, weights
+%       identical to 0.000e+00 - scored them identically, and reported
+%       lasso_num = 1 as "chosen", with no error and no tuning whatsoever.
+%       mvpa_reg_cov_tuned_nested now refuses that pairing before fitting. The
+%       registry algorithms were never exposed to it, because MATLAB's fit*()
+%       functions reject an unknown parameter name outright.
+%
+%       ONLY THE FIRST FIELD OF grid_mvpa_reg_cov IS TUNED. A two-field grid
+%       silently tunes one of them; a warning now fires.
 %
 %     _predictive_model ONLY_
 %
