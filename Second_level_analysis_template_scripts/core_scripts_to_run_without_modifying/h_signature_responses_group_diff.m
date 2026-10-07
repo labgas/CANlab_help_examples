@@ -286,16 +286,22 @@ subsets_i_want = {'NPS','SIIPS','PINES','GSR','Heart','FM_pain'};
 % WHICH MULTIPLE-COMPARISON CORRECTIONS TO REPORT
 %
 % 'BH'          Benjamini-Hochberg linear step-up                    FDR
-% 'Storey'      Storey q-values via LaBGAScore_Storey_FDR ('sas')     FDR
+% 'Storey'      Storey q-values via LaBGAScore_Storey_FDR, at the
+%               function's OWN default - DECREASESLOPE since 2026-10-01,
+%               previously the SAS spline. NOT pinned here; see corr_defs  FDR
 % 'adaptiveFDR' Benjamini & Hochberg (2000) adaptive step-up, m0 by
 %               lowest slope (SAS ADAPTIVEFDR default)               FDR
 % 'BKY'         Benjamini, Krieger & Yekutieli (2006) two-stage      FDR
 % 'holmSidak'   Holm step-down with Sidak multiplier                 FWER
 %
-% BH and Storey only by default: those are the two the pipeline has always
-% reported, and a table with every method in it is harder to read, not easier.
-% Add the others when the question is specifically whether a result depends on
-% the choice of correction - at small m it often does.
+% BH, Storey and adaptiveFDR by default (adaptiveFDR added 2026-10-02, to match
+% the correction set prep_3a writes into its roi table). The first two are what
+% the pipeline has always reported; the third is a second, independently
+% estimated adaptive column, which is what makes a collapsed Storey pi0 visible
+% in the table itself. BKY and the FWER holmSidak are opt-in - a table with
+% every method in it is harder to read, not easier. Add them when the question
+% is specifically whether a result depends on the choice of correction; at small
+% m it often does.
 %
 % Note holmSidak is reported as p_holmSidak, not q_: it is an FWER-adjusted
 % p-value, a different quantity from the FDR q-values, not a stricter version

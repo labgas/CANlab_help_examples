@@ -1935,11 +1935,22 @@ for c = 1:kc
                 for ee = 1:ncov_glm
                     p_ee   = PP(:,ee);
                     % FDR through the lab's canonical implementation, so prep_3a and the
-                    % decoding scripts cannot drift apart. LaBGAScore_Storey_FDR defaults to
-                    % SAS PROC MULTTEST's PFDR (spline, falling back to the Storey &
-                    % Tibshirani bootstrap on SAS's own trigger), estimates pi0, judges
-                    % whether pi0 is identifiable at all, and returns Benjamini-Hochberg when
-                    % it is not. It prints its own diagnostics into the report.
+                    % decoding scripts cannot drift apart. No 'method' is passed, so this
+                    % follows the function's default - DECREASESLOPE SINCE 2026-10-01,
+                    % previously the SAS spline. DECREASESLOPE reads pi0 off the slope of
+                    % the ordered p-values rather than fitting a spline, which is what fails
+                    % when the p-value set is small; measured, the spline realises FDR 0.178
+                    % against a nominal 0.05 at m = 8, DECREASESLOPE 0.065. The function
+                    % still estimates pi0, judges whether pi0 is identifiable at all, and
+                    % returns Benjamini-Hochberg when it is not, printing its own
+                    % diagnostics into the report.
+                    %
+                    % Consequence for the tables below: storey_reliable is now true far more
+                    % often (0.3% of random panels fire the warning under DECREASESLOPE
+                    % against 78.5% under the spline), so q_Storey is kept where this
+                    % script used to fall back to q_BH. THE BENCHMARK CHECK IS NOT RETIRED
+                    % BY THAT - a quieter flag is not a correct pi0, so read pi0 against
+                    % #{p>0.05}/0.95 in the printout. See stats_tools/README.md.
                     %
                     % This replaced an inline copy that took mafdr's spline pi0 and guarded
                     % only aprioriprob > 0.99. That catches the conservative failure but not
@@ -1955,10 +1966,16 @@ for c = 1:kc
                     [qst_ee, pi0_ee, storey_info_ee] = LaBGAScore_Storey_FDR(p_ee);
 
                     % Adaptive FDR (two-stage BH), computed independently of Storey.
-                    % At these m, Storey's spline pi0 has collapsed to the floor more
-                    % than once, leaving q_Storey identical to p while still flagged
-                    % reliable. adaptiveFDR estimates pi0 differently, so it is a
-                    % second adaptive column to weigh against q_BH.
+                    % WHY IT IS STILL HERE after the default changed: at these m the
+                    % spline pi0 collapsed to the floor more than once, leaving q_Storey
+                    % identical to p while still flagged reliable, and that is what this
+                    % column was added to catch. DECREASESLOPE makes it rarer, not
+                    % impossible: on the 8 NPSpos subregions of proj_discoverie model_2h
+                    % (the signature script, same function, same m) it estimated m0 = 2.00
+                    % where the #{p>0.05}/0.95 benchmark says 5.26 - so it was MORE
+                    % permissive than BH, 3 significant against BH's 1, and NO warning
+                    % fired. adaptiveFDR estimates pi0 differently, so it remains a second
+                    % adaptive column to weigh against q_BH.
                     qaf_ee = LaBGAScore_Storey_FDR(p_ee, 'method', 'adaptivefdr', ...
                                                    'verbose', false);
                     qaf_ee = qaf_ee(:);
