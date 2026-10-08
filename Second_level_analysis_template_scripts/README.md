@@ -50,11 +50,11 @@ where `M` is the model number and `N` is the script's sequential order within th
 - `prep_1_set_conditions_contrasts_colors.m`
 - `prep_1b_prep_behavioral_data.m`
 
-**Group 2 — core analysis scripts**, in `core_scripts_to_run_without_modifying/` (15 scripts, listed in full in the [script reference](#script-reference) below).
+**Group 2 — core analysis scripts**, in `core_scripts_to_run_without_modifying/` (16 scripts, listed in full in the [script reference](#script-reference) below).
 
 Both directories also contain many other scripts not covered here — see [Out of scope](#out-of-scope).
 
-Not every script gets copied into every study's model folder: the 4 Group 1 scripts plus `prep_2_load_image_data_and_save.m` and `prep_3_calc_univariate_contrast_maps_and_save.m` are always needed (core setup and image/contrast loading, a prerequisite for everything else). The remaining 13 Group 2 scripts are added only as a given model's specific analyses require them.
+Not every script gets copied into every study's model folder: the 4 Group 1 scripts plus `prep_2_load_image_data_and_save.m` and `prep_3_calc_univariate_contrast_maps_and_save.m` are always needed (core setup and image/contrast loading, a prerequisite for everything else). The remaining 14 Group 2 scripts are added only as a given model's specific analyses require them.
 
 ## Per-study workflow
 
@@ -349,8 +349,9 @@ One point from that guide matters directly here: the `con_000N` numbering that `
 ## Dependency and provenance documentation
 
 [`DEPENDENCIES.md`](DEPENDENCIES.md) documents what each script calls and which repository
-each of those lives in. It covers exactly the **20 scripts listed above** (4 Group 1 + 16
-Group 2) — the set LaBGAS actively uses and maintains — not the ~113 scripts in this
+each of those lives in. It covers the **20 scripts listed above** (4 Group 1 + 16
+Group 2) plus the five `mvpa_reg_cov_*` helpers they call, so 25 files in all — the
+set LaBGAS actively uses and maintains — not the ~113 scripts in this
 folder, the rest of which are generic CANlab machinery LaBGAS does not document.
 
 That file, along with `dependencies.tsv` and `dependencies.yml`, is **generated** by

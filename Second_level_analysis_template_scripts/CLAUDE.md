@@ -129,7 +129,7 @@ The last three were found by LaBGAScore's dependency tooling and were previously
 
 Document this dependency at a high level (what's called and why) rather than diving into LaBGAScore's own internals.
 
-`DEPENDENCIES.md` in THIS folder (not the repo root — it documents this folder, so it lives here) is the **generated**, authoritative version of the above, produced by `LaBGAScore_dep_report`. It covers exactly the 20 scripts in README.md's Script reference (4 Group 1 + 16 Group 2), not all ~113 in this folder. Regenerate with the file list from that table; do not hand-edit it, `dependencies.tsv` or `dependencies.yml`.
+`DEPENDENCIES.md` in THIS folder (not the repo root — it documents this folder, so it lives here) is the **generated**, authoritative version of the above, produced by `LaBGAScore_dep_report`. It covers the 20 scripts in README.md's Script reference (4 Group 1 + 16 Group 2) plus the five `mvpa_reg_cov_*` helpers, so 25 files in all, not all ~113 in this folder. Regenerate with the file list from that table; do not hand-edit it, `dependencies.tsv` or `dependencies.yml`.
 
 Provenance — which commit of CanlabCore et al. produced a given result — is recorded by LaBGAScore's `clean/LaBGAScore_prov_*` tooling, not by anything here. See `clean/README_provenance.md` in LaBGAScore.
 
@@ -208,6 +208,26 @@ coupled SET (lassopcr + the `lasso_num` grid + `'strata'` + two distinct seeds),
 documented in `prep_3a`'s header under *THE RECOMMENDED CONFIGURATION* and
 shipped in `a2`; `cv_strata_mvpa_reg_cov` is the one member a study must supply,
 and `tuned_nested` errors rather than fitting untuned without it.
+
+**Which algorithms `tuned_nested` accepts** (added to `README.md` and `prep_3a`'s
+header by `27b0e01`; the grid's *field name* must be a hyperparameter that
+algorithm accepts, under exactly that name):
+
+| `algorithm_mvpa_reg_cov` | `grid_mvpa_reg_cov` field | |
+|---|---|---|
+| `'cv_lassopcr'` | `lasso_num` | **default**, the only one exercised on real data |
+| `'cv_pcr'` | `numcomponents` | works |
+| `'linear_svr'`, `'lasso'`, `'ridge'` | `Lambda` | works (`fitrlinear`) |
+| `'svr'` | `BoxConstraint`, `Epsilon` or `KernelScale` | works, **linear kernel only** |
+
+**Refused up front:** `tree_regressor`, `rf_regressor`, `nnet_regressor`, `gp` —
+none exposes one coefficient per voxel, so there is no weight map to build and
+nothing for `c2a` to bootstrap. Measured on 40 × 200 synthetic data the first
+three return a `[0 0]` weight vector; `gp` returns `[1 1]`, because
+`RegressionGP`'s `Beta` holds the explicit-basis coefficient rather than
+per-feature weights — its map would be **wrong rather than missing**, which is the
+more dangerous failure. Only the first field of the grid is tuned, so pairing
+`cv_pcr` with a `lasso_num` grid is refused too.
 
 **This is not a stylistic choice.** Measured on proj_discoverie model_2k
 immune_PC1, identical data, identical outer folds, 149154 grey-matter voxels:
@@ -359,6 +379,38 @@ predictive direction is orthogonal to the dominant variance components, **no**
 algorithm recovers it - `cv_pcr` r = 0.13, `cv_pls` -0.12, `cv_svr` 0.16, none
 significant. A null from voxel-wise MVPA at these sample sizes therefore does not
 license "no diffuse association exists".
+
+## Conventions for editing these templates
+
+Recorded 2026-10-08 from an agent memory store that is not version-controlled, so
+it survives the move to the team plan.
+
+- **The `a2` boilerplate note goes inline under `*OPTIONS*`**, not in its own
+  `*NOTES*` section. The note is the recurring "defaults are specified in
+  `a2_set_default_options` for any given model, but if you want to run the same
+  model with different options, make a copy of this script with a letter index
+  (e.g. `_s6a_`) and change the default below". Eleven already-approved scripts
+  (`prep_2`, `prep_3`, `prep_3a`, `c2a`, `prep_3c`, `c2_SVM_contrasts_masked`,
+  `prep_3f`, `prep_3g`, `c2f`, `c2g`, `prep_4`) inline it; match that. A script's
+  own `*NOTES*` section is for genuinely different content — caveats, known bugs,
+  WIP status, non-obvious runtime behaviour.
+- **`README.md` describes intended usage, not known defects.** Quirks, naming
+  mismatches and bugs belong in a fix backlog, not baked into the reference doc as
+  if they were permanent behaviour.
+- **Behaviour-changing edits to a Group 2 core script go into a `test_`-prefixed
+  copy first** (e.g. `test_figs_prep_3a_...`), leaving the canonical script
+  untouched until the change has been validated against real project data. Pure
+  header/documentation edits go directly into the canonical file. The risk
+  categories are different: a doc edit cannot change what a run produces.
+- **Live Scripts / `.mlx` / `export()` have been investigated and rejected** — do
+  not re-research from scratch. The Live Editor's inline figure capture is not more
+  DPI-independent than `publish()` + `snapnow`; `export()`'s `FigureResolution`
+  applies only to PDF/LaTeX/Markdown/Jupyter output and only accepts Live
+  Scripts as input, so it does nothing for the HTML workflow; and the git-diffable
+  plain-text Live Script format needs R2025a while this server runs **R2021a**, so
+  any Live Script here would have to be a binary `.mlx` — against this repo's whole
+  plain-text, copy-and-edit model. Worth a fresh look only if a **PDF** deliverable
+  becomes a real requirement.
 
 ## Where to look for more detail
 

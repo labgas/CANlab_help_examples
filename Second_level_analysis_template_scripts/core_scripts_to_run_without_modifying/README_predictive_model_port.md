@@ -1,5 +1,14 @@
 # Porting the MVPA-on-covariate analysis to `@predictive_model`
 
+> **HISTORICAL RECORD — read the dates before acting on anything here.** This
+> documents a port that has since been superseded. Two passages in particular read
+> as current but are not: the default engine is no longer `'legacy'` but
+> **`'tuned_nested'`** (flipped 2026-10-05, i.e. to a *third* engine that did not
+> exist when this was written — see the correcting note further down), and the
+> "Verification checklist — none of this has been run yet" heading was overtaken by
+> the "All four have now been run" status below it. For current behaviour use
+> `README.md`, `CLAUDE.md`, and `prep_3a`'s own header.
+
 Branch `feature/predictive-model-mvpa`, based on `c918827` (prep_3a v9.3, the
 commit that first gave `domvpa_reg_cov` any inference at all).
 
