@@ -3349,12 +3349,23 @@ for c = 1:kc
                 % whether the brain predicts THIS outcome better than a random one
                 % through the same CV structure. Redrawing folds would mix the fold
                 % draw into the null and answer a different question.
-                mvpa_stats.perm = struct('n', 0, 'p', NaN, 'null_r', [], ...
-                                         'seed', cv_seed_mvpa_reg_cov);
+                % Engines that build their OWN null must not be touched here.
+                % tuned_nested permutes the whole nested procedure (re-tuning inside
+                % every draw) and predictive_model runs permutation_test; both have
+                % already populated mvpa_stats.perm above. Until 2026-10-23 this
+                % block reset mvpa_stats.perm for every engine and then, for
+                % tuned_nested, refilled it from a second null built with an UNTUNED
+                % predict() - the wrong estimator for the statistic being tested,
+                % and ~40 min of wasted compute. Found in proj_discoverie model_2j,
+                % where the report printed p = .484 (tuned) but the saved .mat held
+                % p = .540 (untuned).
+                engine_has_own_null = ismember(lower(mvpa_engine), {'tuned_nested','predictive_model'});
+                if ~engine_has_own_null || ~isfield(mvpa_stats,'perm')   % keep the field present when nperm = 0
+                    mvpa_stats.perm = struct('n', 0, 'p', NaN, 'null_r', [], ...
+                                             'seed', cv_seed_mvpa_reg_cov);
+                end
 
-                % The predictive_model engine has already run its own null via
-                % permutation_test, and mvpa_stats.perm is populated above.
-                if nperm_mvpa_reg_cov > 0 && ~isequal(lower(mvpa_engine),'predictive_model')
+                if nperm_mvpa_reg_cov > 0 && ~engine_has_own_null
 
                     fprintf('\n\n');
                     printhdr('PERMUTATION TEST ON pred_outcome_r');
