@@ -19,7 +19,7 @@
 % Run this script headless from the Linux command line (the default), which
 % publishes the html report and fails loudly if the script errors:
 %
-%   labgascore_run_headless.sh -d /data/proj_xxx \
+%   /data/master_github_repos/LaBGAScore/clean/labgascore_run_headless.sh -d /data/proj_xxx \
 %       -s <proj>_secondlevel_m<M>_s0_a_set_up_paths_always_run_first \
 %       <proj>_secondlevel_m<M>_s<N>_d_signature_responses_generic
 %
