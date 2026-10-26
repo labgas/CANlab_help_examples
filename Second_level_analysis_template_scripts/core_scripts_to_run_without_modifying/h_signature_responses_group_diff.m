@@ -221,6 +221,10 @@ end
 % When set, each contrast additionally gets a covariate-adjusted group test
 % (signature ~ group + covariates) and a companion barplot of the adjusted
 % responses, so the adjusted and unadjusted results sit side by side.
+% With sig_test_type = 'continuous' the adjusted test is the JOINT regression
+% signature ~ sig_covariate_name + covariates (beta in diff_adj, partial r in
+% partial_r_adj); the unadjusted one is the bivariate regression. As in the
+% group case, the FDR family is corrected on the ADJUSTED p when this is set.
 adjust_for_covs = {};   % names of DAT.BETWEENPERSON.contrasts{i} columns to adjust for; {} for none.
 
 % TEST TYPE: 'group' (default) or 'continuous'.
@@ -432,7 +436,19 @@ for s = 1:length(mysignature)
                     % synthesise them.
                     xv = h_sig_get_covariate(DAT, mygroupnamefield, i, sig_covariate_name);
                     [cm, cn] = h_sig_get_covmat(DAT, mygroupnamefield, i, adjust_for_covs);
-                    cont_this = h_sig_continuous_test(contrastdata(:,i), xv, cm, cn, ...
+                    % Two regressions when adjust_for_covs is set (fixed 2026-10-26): the JOINT
+                    % model (signature ~ predictor + covariates) fills the adjusted columns and,
+                    % with them, the FDR family; the BIVARIATE model fills the unadjusted ones.
+                    % Before, the covariates went into the only regression run, its p was stored
+                    % as p_unadj, and the group-only h_adjusted_group_test was then called and
+                    % crashed on the empty group split. The joint fit runs first so the figure
+                    % ends up showing the bivariate fit, which is what its axes describe.
+                    cont_adj = [];
+                    if ~isempty(cm)
+                        cont_adj = h_sig_continuous_test(contrastdata(:,i), xv, cm, cn, ...
+                                        signature, DAT.contrastnames{i}, kc, i);
+                    end
+                    cont_this = h_sig_continuous_test(contrastdata(:,i), xv, [], {}, ...
                                     signature, DAT.contrastnames{i}, kc, i);
                     y = {[] []};
                     p_unadj_this = cont_this.p;
@@ -471,7 +487,13 @@ for s = 1:length(mysignature)
             % correction and the summary table - the unadjusted analysis lost its
             % multiple-comparison correction precisely when it was the only one being
             % reported. The adjusted fields are NaN/[] when no adjustment was made.
-            if ~isempty(adjust_for_covs)
+            if isequal(sig_test_type,'continuous') && ~isempty(adjust_for_covs)
+                % adjusted = the joint regression above; its beta is stored as diff_adj
+                y_adj_all{i} = [];
+                adj_stats_this = struct('p',cont_adj.p,'t',cont_adj.t,'df',cont_adj.df, ...
+                                        'diff',cont_adj.beta,'covs',{cn});
+                y1a = []; y2a = [];
+            elseif ~isempty(adjust_for_covs)
                 [y_adj_all{i}, adj_stats_this] = h_adjusted_group_test(y, group, DAT, i, adjust_for_covs);
                 if iscell(y_adj_all{i}) && numel(y_adj_all{i}) == 2
                     y1a = y_adj_all{i}{1}; y2a = y_adj_all{i}{2};
@@ -561,7 +583,19 @@ for s = 1:length(mysignature)
                 % synthesise them.
                 xv = h_sig_get_covariate(DAT, mygroupnamefield, i, sig_covariate_name);
                 [cm, cn] = h_sig_get_covmat(DAT, mygroupnamefield, i, adjust_for_covs);
-                cont_this = h_sig_continuous_test(contrastdata(:,i), xv, cm, cn, ...
+                % Two regressions when adjust_for_covs is set (fixed 2026-10-26): the JOINT
+                % model (signature ~ predictor + covariates) fills the adjusted columns and,
+                % with them, the FDR family; the BIVARIATE model fills the unadjusted ones.
+                % Before, the covariates went into the only regression run, its p was stored
+                % as p_unadj, and the group-only h_adjusted_group_test was then called and
+                % crashed on the empty group split. The joint fit runs first so the figure
+                % ends up showing the bivariate fit, which is what its axes describe.
+                cont_adj = [];
+                if ~isempty(cm)
+                    cont_adj = h_sig_continuous_test(contrastdata(:,i), xv, cm, cn, ...
+                                    mysignature{s}, DAT.contrastnames{i}, kc, i);
+                end
+                cont_this = h_sig_continuous_test(contrastdata(:,i), xv, [], {}, ...
                                 mysignature{s}, DAT.contrastnames{i}, kc, i);
                 y = {[] []};
                 p_unadj_this = cont_this.p;
@@ -598,7 +632,13 @@ for s = 1:length(mysignature)
             % guard, so turning the adjustment off emptied sig_fdr and silently
             % skipped both the FDR correction and the summary table. Adjusted fields
             % are NaN/[] when no adjustment was made.
-            if ~isempty(adjust_for_covs)
+            if isequal(sig_test_type,'continuous') && ~isempty(adjust_for_covs)
+                % adjusted = the joint regression above; its beta is stored as diff_adj
+                y_adj_all{i} = [];
+                adj_stats_this = struct('p',cont_adj.p,'t',cont_adj.t,'df',cont_adj.df, ...
+                                        'diff',cont_adj.beta,'covs',{cn});
+                y1a = []; y2a = [];
+            elseif ~isempty(adjust_for_covs)
                 [y_adj_all{i}, adj_stats_this] = h_adjusted_group_test(y, group, DAT, i, adjust_for_covs);
                 if iscell(y_adj_all{i}) && numel(y_adj_all{i}) == 2
                     y1a = y_adj_all{i}{1}; y2a = y_adj_all{i}{2};
@@ -880,6 +920,10 @@ if ~isempty(sig_fdr)
         T.diff_adj = [sig_fdr(sel).diff_adj]';
         T.t_adj    = [sig_fdr(sel).t_adj]';
         T.p_adj    = pa;
+        if isequal(sig_test_type,'continuous') && use_adj   % partial r of the joint model
+            dfa = [sig_fdr(sel).df]' - numel(adjust_for_covs);
+            T.partial_r_adj = sign(T.t_adj) .* sqrt(T.t_adj.^2 ./ (T.t_adj.^2 + dfa));
+        end
         corr_cols_a = {};
         if use_adj
             corr_cols_a = cell(numel(wh_corr),1);
