@@ -71,9 +71,14 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_2_load_image_data_and_save.m         v2.6
+% prep_2_load_image_data_and_save.m         v2.7
 %
-% last modified: 2026/09/23
+% last modified: 2026/10/27
+%
+% v2.7  The subjs2exclude_data guard accepts an EMPTY DAT.BETWEENPERSON.group.
+%       A continuous-regressor design (design_matrix_type 'custom') has no
+%       grouping factor and leaves group empty, which prep_3a reads as such;
+%       v2.6 rejected it as "0 entries; expected <n>" before loading anything.
 %
 % v2.6  The subjs2exclude_data block no longer assumes prep_1b built
 %       DAT.BETWEENPERSON on the FULL subject list. A model whose sample is
@@ -186,7 +191,10 @@ if ~isempty(subjs2exclude_data) % we have subjects to exclude
         end
     end
 
-    if isfield(DAT,'BETWEENPERSON') && isfield(DAT.BETWEENPERSON,'group')
+    % An EMPTY group is legitimate - a continuous-regressor design has no
+    % grouping factor, and prep_3a reads empty as exactly that - so there is
+    % nothing to subset.
+    if isfield(DAT,'BETWEENPERSON') && isfield(DAT.BETWEENPERSON,'group') && ~isempty(DAT.BETWEENPERSON.group)
         n_grp = numel(DAT.BETWEENPERSON.group);
         if n_grp == n_all
             DAT.BETWEENPERSON.group = DAT.BETWEENPERSON.group(idx_include,:);

@@ -158,8 +158,8 @@
 %
 %         TFCE here is classic threshold-free cluster enhancement (Smith &
 %         Nichols 2009), computed by LaBGAScore's group_tfce_from_subject_maps
-%         with a sign-flip (one-sample) or label-exchange (two-sample)
-%         permutation null. Height and extent exponents and connectivity are
+%         with a sign-flip (one-sample), label-exchange (two-sample) or
+%         residual-permutation (continuous regressor) null. Height and extent exponents and connectivity are
 %         left at their defaults (H = 2, E = 0.5, conn = 26); pass them through
 %         group_tfce_from_subject_maps directly if you need to change them.
 %     cons2tfce:
@@ -173,6 +173,14 @@
 %         are not comparable. That work replaced a mis-parameterised pTFCE call
 %         and repaired both permutation schemes; the two-sample null had been
 %         degenerate, and one-sample with covariates could never reject.
+%
+%         CONTINUOUS regressors (design_matrix_type 'custom' with an empty
+%         DAT.BETWEENPERSON.group) are supported since v9.5: TFCE tests the
+%         slope of the single non-nuisance column, with nuisance_covs as
+%         Freedman-Lane covariates. With more than one effect of interest
+%         there is no single slope, and TFCE is skipped with a message.
+%         Note the TFCE statistic is the OLS t, so beside a robust GLM
+%         (dorobust) its map differs slightly from regression_stats.t.
 %
 %
 %         * perm_n_tfce         number of permutations for TFCE-based stats
@@ -489,9 +497,17 @@
 %
 % -------------------------------------------------------------------------
 %
-% prep_3a_run_second_level_regression_and_save.m         v9.4
+% prep_3a_run_second_level_regression_and_save.m         v9.5
 %
-% last modified: 2026/10/05
+% last modified: 2026/10/27
+%
+% v9.5  TFCE for a CONTINUOUS regressor. The 'custom' branch used to print
+%       "TFCE stats not implemented yet for continuous regressors" and then
+%       die on an undefined tfce_dat a few lines later. It now calls
+%       group_tfce_from_subject_maps with design 'regression' (LaBGAScore),
+%       taking the predictor and the nuisance columns from cat_obj.X, so they
+%       carry the same missing-value row drop as the data. Contrasts where
+%       TFCE cannot run are skipped cleanly via tfce_done_c.
 %
 % v9.4  MVPA-on-covariate: three engines, and tuned_nested as the default.
 %
@@ -2305,7 +2321,12 @@ for c = 1:kc
             cons2tfce = [];
         end
         
-        if doTFCE && (isempty(cons2tfce) || ismember(c,cons2tfce))
+        % tfce_done_c is false when TFCE was requested for this contrast but cannot
+        % run on its design (see the 'custom' case below); plotting and saving
+        % then skip it instead of dying on an undefined tfce_dat.
+        tfce_done_c = doTFCE && (isempty(cons2tfce) || ismember(c,cons2tfce));
+        
+        if tfce_done_c
             
             % CALCULATE TFCE STATS FROM DATA OBJECT
             
@@ -2438,19 +2459,71 @@ for c = 1:kc
                        
                     else
                         
-                        warning('TFCE stats not implemented yet for continuous regressors, skipping TFCE for this contrast')
+                        % CONTINUOUS effect of interest: DAT.BETWEENPERSON.group is
+                        % empty, so the design has no grouping factor. TFCE tests the
+                        % slope of the ONE non-nuisance column (design 'regression'),
+                        % with the nuisance columns as Freedman-Lane covariates. Both
+                        % are taken from cat_obj.X, whose rows are exactly the images
+                        % in cat_obj_tfce (subjects with a missing value were dropped
+                        % above, via imgs_nan), so the design cannot misalign.
+                        %
+                        % More than one effect of interest has no single slope to
+                        % test, so TFCE is skipped for that contrast with a message
+                        % rather than run on an arbitrary column.
+                        wh_int_tfce = find(~idx_nuisance);
+                        x_tfce = [];
+                        if numel(wh_int_tfce) == 1
+                            x_tfce = double(cat_obj.X(:, wh_int_tfce));
+                        end
+                        
+                        if isempty(x_tfce) || numel(unique(x_tfce)) <= 2
+                            
+                            fprintf(['\nTFCE SKIPPED for this contrast: design ''custom'' with an empty ' ...
+                                     'DAT.BETWEENPERSON.group needs exactly ONE continuous effect of ' ...
+                                     'interest; found %d non-nuisance column(s): %s.\n' ...
+                                     'Name the others in nuisance_covs, or fill DAT.BETWEENPERSON.group ' ...
+                                     'for a two-group design.\n\n'], numel(wh_int_tfce), ...
+                                     strjoin(groupnames(wh_int_tfce), ', '));
+                            tfce_done_c = false;
+                            
+                        else
+                            
+                            covs_tfce = double(cat_obj.X(:, idx_nuisance));
+                            fprintf('\nTFCE design ''regression'': slope of %s (n = %d), %d nuisance covariate(s)%s\n', ...
+                                groupnames{wh_int_tfce}, numel(x_tfce), size(covs_tfce,2), ...
+                                repmat([': ' strjoin(groupnames(idx_nuisance), ', ')], 1, size(covs_tfce,2) > 0));
+                            
+                            switch tfce_sidedness
+                                
+                                case 'two'
+                                    
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj_tfce,'regression',x_tfce,covs_tfce,perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness);
+                                    
+                                case 'one'
+                                    
+                                    [tfce_dat,tfce_stat_img,tfce_info] = group_tfce_from_subject_maps(cat_obj_tfce,'regression',x_tfce,covs_tfce,perm_n_tfce,'seed',tfce_seed,'sidedness',tfce_sidedness,'tail',tfce_tail);
+                                    
+                            end
+                            
+                        end
+                        
+                        clear wh_int_tfce x_tfce covs_tfce
                         
                     end
                     
             end % switch design_matrix_type
             
-            tfce_regression_stats.tfce_dat = tfce_dat;
-            tfce_regression_stats.tfce_stat_img = tfce_stat_img;
-            tfce_regression_stats.tfce_info = tfce_info;
+            if tfce_done_c
             
-            fprintf('\nMaximum real TFCE = %g\n',tfce_info.TFCE_real_max);
-            fprintf('\nMaximum null TFCE = %g\n',max(tfce_info.TFCE_null_max));
-            fprintf('\nGlobal TFCE p-value = %g\n',tfce_info.p_TFCE_global);
+                tfce_regression_stats.tfce_dat = tfce_dat;
+                tfce_regression_stats.tfce_stat_img = tfce_stat_img;
+                tfce_regression_stats.tfce_info = tfce_info;
+
+                fprintf('\nMaximum real TFCE = %g\n',tfce_info.TFCE_real_max);
+                fprintf('\nMaximum null TFCE = %g\n',max(tfce_info.TFCE_null_max));
+                fprintf('\nGlobal TFCE p-value = %g\n',tfce_info.p_TFCE_global);
+            
+            end
                     
             
         end % if doTFCE
@@ -2574,7 +2647,7 @@ for c = 1:kc
             
         end
         
-        if doTFCE && (isempty(cons2tfce) || ismember(c,cons2tfce))
+        if tfce_done_c
             
             fprintf('\n\n');
             printhdr('Plotting voxel-wise TFCE GLM results');
@@ -2645,7 +2718,7 @@ for c = 1:kc
             bayesian_regression_stats_results{c} = bayesian_regression_stats;
         end
         
-        if doTFCE && (isempty(cons2tfce) || ismember(c,cons2tfce))
+        if tfce_done_c
             tfce_regression_stats_results{c} = tfce_regression_stats;
         end
 

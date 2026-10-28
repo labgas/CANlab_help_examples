@@ -402,8 +402,14 @@ This README documents only the 4 Group 1 + 16 Group 2 scripts listed above. The 
 `doTFCE` in `prep_3a_run_second_level_regression_and_save.m` runs **classic
 threshold-free cluster enhancement** (Smith & Nichols 2009) through LaBGAScore's
 `group_tfce_from_subject_maps`, with a sign-flip permutation null for
-`'onesample'` and a label-exchange null for `'twosample'`. Nuisance covariates,
-when supplied, are handled by Freedman-Lane.
+`'onesample'`, a label-exchange null for `'twosample'`, and a permutation of the
+residuals with the predictor held fixed for `'regression'` (a continuous predictor:
+`prep_3a` v9.5+ uses it for a custom design with an empty `DAT.BETWEENPERSON.group`
+and exactly one non-nuisance column; otherwise TFCE is skipped with a message).
+Nuisance covariates, when supplied, are handled by Freedman-Lane. The
+`'regression'` null was calibrated on simulated data: 5.0% rejections with no
+covariate (200 datasets), 4.8% with a covariate correlated .5 with the predictor
+(800), 100% for a true slope of .5 (200); details in the function header.
 
 The searchlight path (`prep_3c_run_SVMs_on_contrasts_masked.m` →
 `c2_SVM_contrasts_masked.m`) uses the same classic TFCE, via
